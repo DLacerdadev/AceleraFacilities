@@ -583,6 +583,7 @@ export const workOrderComments = pgTable("work_order_comments", {
 export const equipmentTypes = pgTable("equipment_types", {
   id: varchar("id").primaryKey(),
   companyId: varchar("company_id").notNull().references(() => companies.id),
+  customerId: varchar("customer_id").references(() => customers.id),
   name: varchar("name").notNull(),
   description: text("description"),
   module: moduleEnum("module").notNull().default('maintenance'),
@@ -1261,6 +1262,10 @@ export const equipmentTypesRelations = relations(equipmentTypes, ({ one, many })
   company: one(companies, {
     fields: [equipmentTypes.companyId],
     references: [companies.id],
+  }),
+  customer: one(customers, {
+    fields: [equipmentTypes.customerId],
+    references: [customers.id],
   }),
   equipment: many(equipment),
 }));

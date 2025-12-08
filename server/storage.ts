@@ -6200,6 +6200,17 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(equipmentTypes.createdAt));
   }
 
+  async getEquipmentTypesByCustomer(customerId: string, module?: 'clean' | 'maintenance'): Promise<EquipmentType[]> {
+    const conditions = [eq(equipmentTypes.customerId, customerId)];
+    if (module) {
+      conditions.push(eq(equipmentTypes.module, module));
+    }
+    return await db.select()
+      .from(equipmentTypes)
+      .where(and(...conditions))
+      .orderBy(desc(equipmentTypes.createdAt));
+  }
+
   async getEquipmentType(id: string): Promise<EquipmentType | undefined> {
     const [result] = await db.select().from(equipmentTypes).where(eq(equipmentTypes.id, id));
     return result;

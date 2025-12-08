@@ -5631,6 +5631,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get equipment categories by customer
+  app.get("/api/customers/:customerId/equipment-categories", async (req, res) => {
+    try {
+      const module = req.query.module as 'clean' | 'maintenance' | undefined;
+      const categories = await storage.getEquipmentTypesByCustomer(req.params.customerId, module);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching equipment categories:", error);
+      res.status(500).json({ message: "Failed to fetch equipment categories" });
+    }
+  });
+
   // Get single equipment category
   app.get("/api/equipment-categories/:id", async (req, res) => {
     try {
@@ -5648,14 +5660,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create equipment category
   app.post("/api/equipment-categories", requirePermission('schedule_create'), async (req, res) => {
     try {
-      const { companyId, name, description, module, isActive } = req.body;
+      const { companyId, customerId, name, description, module, isActive } = req.body;
       
-      if (!companyId || !name) {
-        return res.status(400).json({ message: "companyId and name are required" });
+      if (!companyId || !customerId || !name) {
+        return res.status(400).json({ message: "companyId, customerId and name are required" });
       }
 
       const newCategory = await storage.createEquipmentType({
         companyId,
+        customerId,
         name,
         description: description || null,
         module: module || 'maintenance',
@@ -5732,6 +5745,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const cat of defaultCategories) {
         const newCat = await storage.createEquipmentType({
           companyId,
+          name: cat.name,
+          description: cat.description,
+          module,
+          isActive: true,
+        });
+        createdCategories.push(newCat);
+      }
+      
+      res.status(201).json({ message: "Default categories created", categories: createdCategories });
+    } catch (error) {
+      console.error("Error seeding default equipment categories:", error);
+      res.status(500).json({ message: "Failed to seed default equipment categories" });
+    }
+  });
+
+  // Seed default equipment categories for a customer
+  app.post("/api/customers/:customerId/equipment-categories/seed-defaults", requirePermission('schedule_create'), async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const module = (req.body.module || 'maintenance') as 'clean' | 'maintenance';
+      
+      // Get customer to find companyId
+      const customer = await storage.getCustomer(customerId);
+      if (!customer) {
+        return res.status(404).json({ message: "Customer not found" });
+      }
+      
+      // Check if categories already exist for this customer
+      const existingCategories = await storage.getEquipmentTypesByCustomer(customerId, module);
+      if (existingCategories.length > 0) {
+        return res.json({ message: "Categories already exist", categories: existingCategories });
+      }
+      
+      // Default categories for maintenance module
+      const defaultCategories = [
+        { name: "HVAC", description: "Sistemas de aquecimento, ventilação e ar condicionado" },
+        { name: "Elétrico", description: "Equipamentos e sistemas elétricos" },
+        { name: "Hidráulico", description: "Sistemas de água e encanamento" },
+        { name: "Elevadores", description: "Elevadores e equipamentos de transporte vertical" },
+        { name: "Segurança", description: "Sistemas de segurança e alarmes" },
+        { name: "Incêndio", description: "Sistemas de combate e prevenção de incêndio" },
+        { name: "Industrial", description: "Equipamentos industriais e de produção" },
+        { name: "TI/Telecom", description: "Equipamentos de tecnologia e telecomunicações" },
+        { name: "Outros", description: "Outros equipamentos não categorizados" },
+      ];
+      
+      const createdCategories = [];
+      for (const cat of defaultCategories) {
+        const newCat = await storage.createEquipmentType({
+          companyId: customer.companyId,
+          customerId,
           name: cat.name,
           description: cat.description,
           module,

@@ -31,6 +31,7 @@ import {
 interface EquipmentCategory {
   id: string;
   companyId: string;
+  customerId: string | null;
   name: string;
   description: string | null;
   module: 'clean' | 'maintenance';
@@ -55,10 +56,11 @@ export default function EquipmentCategories() {
 
   const { toast } = useToast();
   const companyId = activeClient?.companyId;
+  const customerId = activeClient?.id;
 
   const { data: categories = [], isLoading } = useQuery<EquipmentCategory[]>({
-    queryKey: [`/api/companies/${companyId}/equipment-categories`, { module: currentModule }],
-    enabled: !!companyId,
+    queryKey: [`/api/customers/${customerId}/equipment-categories`, { module: currentModule }],
+    enabled: !!customerId,
   });
 
   useEffect(() => {
@@ -73,7 +75,7 @@ export default function EquipmentCategories() {
     },
     onSuccess: () => {
       toast({ title: "Categoria criada com sucesso" });
-      queryClient.invalidateQueries({ queryKey: [`/api/companies/${companyId}/equipment-categories`, { module: currentModule }] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/equipment-categories`, { module: currentModule }] });
       setIsCreateDialogOpen(false);
       resetForm();
     },
@@ -93,7 +95,7 @@ export default function EquipmentCategories() {
     },
     onSuccess: () => {
       toast({ title: "Categoria atualizada com sucesso" });
-      queryClient.invalidateQueries({ queryKey: [`/api/companies/${companyId}/equipment-categories`, { module: currentModule }] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/equipment-categories`, { module: currentModule }] });
       setIsEditDialogOpen(false);
       setEditingCategory(null);
       resetForm();
@@ -114,7 +116,7 @@ export default function EquipmentCategories() {
     },
     onSuccess: () => {
       toast({ title: "Categoria excluída com sucesso" });
-      queryClient.invalidateQueries({ queryKey: [`/api/companies/${companyId}/equipment-categories`, { module: currentModule }] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/equipment-categories`, { module: currentModule }] });
     },
     onError: (error: any) => {
       const errorMessage = error?.message || "Erro ao excluir categoria";
@@ -128,7 +130,7 @@ export default function EquipmentCategories() {
 
   const seedDefaultsMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", `/api/companies/${companyId}/equipment-categories/seed-defaults`, {
+      return await apiRequest("POST", `/api/customers/${customerId}/equipment-categories/seed-defaults`, {
         module: currentModule
       });
     },
@@ -137,7 +139,7 @@ export default function EquipmentCategories() {
         title: data.message || "Categorias padrão criadas",
         description: `${data.categories?.length || 0} categorias adicionadas`
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/companies/${companyId}/equipment-categories`, { module: currentModule }] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/equipment-categories`, { module: currentModule }] });
     },
     onError: (error: any) => {
       const errorMessage = error?.message || "Erro ao criar categorias padrão";
@@ -156,7 +158,7 @@ export default function EquipmentCategories() {
   };
 
   const handleCreate = () => {
-    if (!companyId || !categoryName.trim()) {
+    if (!companyId || !customerId || !categoryName.trim()) {
       toast({ 
         title: "Preencha o nome da categoria", 
         variant: "destructive" 
@@ -166,6 +168,7 @@ export default function EquipmentCategories() {
 
     createCategoryMutation.mutate({
       companyId,
+      customerId,
       name: categoryName.trim(),
       description: categoryDescription.trim() || null,
       module: currentModule,
