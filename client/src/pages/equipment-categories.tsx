@@ -210,7 +210,7 @@ export default function EquipmentCategories() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     toast({ title: "Atualizando lista..." });
-    await queryClient.invalidateQueries({ queryKey: [`/api/companies/${companyId}/equipment-categories`, { module: currentModule }] });
+    await queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/equipment-categories`, { module: currentModule }] });
     setTimeout(() => {
       setIsRefreshing(false);
     }, 500);

@@ -202,10 +202,9 @@ export default function Equipment({ customerId }: EquipmentProps) {
   });
 
   // Fetch equipment categories
-  const companyId = (customer as any)?.companyId;
   const { data: equipmentCategories = [] } = useQuery<any[]>({
-    queryKey: [`/api/companies/${companyId}/equipment-categories`, { module: currentModule }],
-    enabled: !!companyId,
+    queryKey: [`/api/customers/${customerId}/equipment-categories`, { module: currentModule }],
+    enabled: !!customerId,
   });
 
   // Redirect if not in maintenance module

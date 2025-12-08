@@ -5710,8 +5710,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       await storage.deleteEquipmentType(req.params.id);
       res.status(204).send();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting equipment category:", error);
+      
+      // Check for foreign key constraint violation
+      if (error.code === '23503') {
+        if (error.constraint?.includes('parts')) {
+          return res.status(409).json({ 
+            message: "Não é possível excluir esta categoria pois existem peças associadas a ela. Remova ou reclassifique as peças primeiro." 
+          });
+        } else if (error.constraint?.includes('equipment')) {
+          return res.status(409).json({ 
+            message: "Não é possível excluir esta categoria pois existem equipamentos associados a ela. Remova ou reclassifique os equipamentos primeiro." 
+          });
+        }
+        return res.status(409).json({ 
+          message: "Não é possível excluir esta categoria pois existem registros associados a ela." 
+        });
+      }
+      
       res.status(500).json({ message: "Failed to delete equipment category" });
     }
   });
