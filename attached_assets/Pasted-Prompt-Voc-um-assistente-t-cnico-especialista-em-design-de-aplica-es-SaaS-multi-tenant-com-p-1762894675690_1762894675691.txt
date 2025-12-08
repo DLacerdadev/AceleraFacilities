@@ -1,0 +1,87 @@
+Prompt:
+
+Você é um assistente técnico especialista em design de aplicações SaaS multi-tenant com personalização visual e roteamento por subdomínios.
+
+Estou desenvolvendo uma plataforma de facilities que atende várias empresas clientes, e cada uma deve acessar a aplicação por um subdomínio próprio, por exemplo:
+
+empresaA.meusistema.com
+
+empresaB.meusistema.com
+
+Quero que a IA descreva o comportamento esperado do sistema e proponha uma arquitetura que permita customização total da interface e branding, conforme as seguintes regras:
+
+🧩 Regras e comportamento esperado
+
+Cada subdomínio representa um cliente.
+
+O sistema deve identificar o cliente pelo subdomínio (empresaA) no momento do acesso.
+
+Essa identificação define qual configuração de tema será carregada.
+
+Antes do login:
+
+O sistema já deve exibir o tema, cores e logo do cliente.
+
+A tela de login e eventuais páginas públicas (landing page) devem refletir a identidade visual da empresa.
+
+Após o login:
+
+A customização continua ativa em todo o app.
+
+Caso o cliente tenha variações internas (por exemplo, departamentos), o tema pode carregar variações secundárias.
+
+As configurações de cada cliente são armazenadas no banco de dados ou cache em estrutura semelhante a:
+
+{
+  "client_id": "empresaA",
+  "subdomain": "empresaA",
+  "theme": {
+    "primary": "#002244",
+    "secondary": "#FFCC00",
+    "logo_url": "https://cdn.meusistema.com/empresaA/logo.png"
+  },
+  "landing_page": {
+    "title": "Bem-vindo à Empresa A",
+    "hero_image": "https://cdn.meusistema.com/empresaA/banner.jpg"
+  }
+}
+
+
+O sistema deve:
+
+Detectar automaticamente o subdomínio no front-end e back-end.
+
+Buscar as configurações correspondentes.
+
+Aplicar o tema dinâmico via CSS variables, Context API, ou Tailwind CSS.
+
+Ter um fallback padrão para quando o subdomínio não existir (por exemplo, www.meusistema.com usa o tema global).
+
+Requisitos técnicos importantes:
+
+O roteamento deve funcionar para múltiplos subdomínios com SSL (sugestão: wildcard certificate *.meusistema.com).
+
+As páginas podem ser geradas estaticamente com revalidação dinâmica (Next.js, por exemplo).
+
+O cache de tema deve ser otimizado (Redis ou memória local).
+
+O sistema deve permitir escalar para centenas de clientes sem necessidade de builds separados.
+
+Peço que a IA produza:
+
+A arquitetura de alto nível (front e back-end).
+
+O fluxo de detecção e carregamento do subdomínio.
+
+O mecanismo de renderização dinâmica do tema.
+
+Um exemplo prático de implementação simplificada (React + Node.js ou Next.js).
+
+Explicação do comportamento esperado de ponta a ponta (da requisição DNS até o carregamento visual).
+
+Objetivo final:
+
+Cada cliente deve sentir que possui um portal próprio (cliente.meusistema.com) com sua identidade completa,
+sem precisar replicar o código ou fazer deploys individuais.
+
+Gere uma explicação detalhada, arquitetural e técnica, com exemplos práticos e boas práticas de segurança e performance.

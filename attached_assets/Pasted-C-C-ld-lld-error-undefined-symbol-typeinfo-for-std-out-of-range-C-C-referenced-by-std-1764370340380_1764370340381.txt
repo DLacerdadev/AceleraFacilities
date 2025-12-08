@@ -1,0 +1,555 @@
+C/C++: ld.lld: error: undefined symbol: typeinfo for std::out_of_range
+C/C++: >>> referenced by stdexcept:249 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:249)
+C/C++: >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(std::__ndk1::__throw_out_of_range[abi:ne180000](char const*))
+C/C++: >>> referenced by stdexcept:249 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:249)
+C/C++: >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(std::__ndk1::__throw_out_of_range[abi:ne180000](char const*))
+C/C++: ld.lld: error: too many errors emitted, stopping now (use --error-limit=0 to see all errors)
+C/C++: CLANG_~1: error: linker command failed with exit code 1 (use -v to see invocation)
+C/C++: ninja: build stopped: subcommand failed.
+
+> Task :app:createBundleReleaseJsAndAssets
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Android Bundling failed 1333ms node_modules\expo\AppEntry.js (1 module)
+SyntaxError: node_modules\expo\AppEntry.js: Cannot find module 'babel-preset-expo'
+Require stack:
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\files\plugins.js       
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\files\index.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\index.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\transform-worker\metro-transform-worker.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\transform-worker\transform-worker.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\metro\src\DeltaBundler\Worker.flow.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\metro\src\DeltaBundler\Worker.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\jest-worker\build\workers\processChild.js     
+
+Make sure that all the Babel plugins and presets you are using
+are defined as dependencies or devDependencies in your package.json
+file. It's possible that the missing plugin is loaded by a preset
+you are using that forgot to add the plugin to its dependencies: you
+can workaround this problem by explicitly adding the missing package
+to your top-level package.json.
+
+Error: Cannot find module 'babel-preset-expo'
+Require stack:
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\files\plugins.js       
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\files\index.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\index.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\transform-worker\metro-transform-worker.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\transform-worker\transform-worker.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\metro\src\DeltaBundler\Worker.flow.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\metro\src\DeltaBundler\Worker.js
+- C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\jest-worker\build\workers\processChild.js     
+
+Make sure that all the Babel plugins and presets you are using
+are defined as dependencies or devDependencies in your package.json
+file. It's possible that the missing plugin is loaded by a preset
+you are using that forgot to add the plugin to its dependencies: you
+can workaround this problem by explicitly adding the missing package
+to your top-level package.json.
+
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+    at resolve (node:internal/modules/helpers:193:19)
+    at tryRequireResolve (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\files\plugins.js:128:11)
+    at resolveStandardizedNameForRequire (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\files\plugins.js:162:19)
+    at resolveStandardizedName (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\files\plugins.js:183:12)
+    at loadPreset (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\files\plugins.js:68:7)
+    at loadPreset.next (<anonymous>)
+    at createDescriptor (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\config-descriptors.js:140:16)
+    at createDescriptor.next (<anonymous>)
+    at evaluateSync (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\gensync\index.js:251:28)   
+    at C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\gensync\index.js:31:34
+    at Array.map (<anonymous>)
+    at Function.sync (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\gensync\index.js:31:22)   
+    at Function.all (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\gensync\index.js:210:24)   
+    at Generator.next (<anonymous>)
+    at createDescriptors (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\config-descriptors.js:102:41)
+    at createDescriptors.next (<anonymous>)
+    at createPresetDescriptors (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\config-descriptors.js:96:17)
+    at createPresetDescriptors.next (<anonymous>)
+    at C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\gensync-utils\functional.js:22:27
+    at Generator.next (<anonymous>)
+    at mergeChainOpts (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\config-chain.js:350:34)
+    at mergeChainOpts.next (<anonymous>)
+    at chainWalker (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\config-chain.js:316:14)
+    at chainWalker.next (<anonymous>)
+    at loadFileChain (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\config-chain.js:191:24)
+    at loadFileChain.next (<anonymous>)
+    at mergeExtendsChain (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\config-chain.js:328:28)
+    at mergeExtendsChain.next (<anonymous>)
+    at chainWalker (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\config-chain.js:312:20)
+    at chainWalker.next (<anonymous>)
+    at buildRootChain (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\config-chain.js:56:36)
+    at buildRootChain.next (<anonymous>)
+    at loadPrivatePartialConfig (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\partial.js:72:62)
+    at loadPrivatePartialConfig.next (<anonymous>)
+    at loadFullConfig (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\config\full.js:36:46)
+    at loadFullConfig.next (<anonymous>)
+    at transform (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\transform.js:20:44)
+    at transform.next (<anonymous>)
+    at evaluateSync (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\gensync\index.js:251:28)   
+    at sync (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\gensync\index.js:89:14)
+    at stopHiding - secret - don't use this - v1 (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\errors\rewrite-stack-trace.js:47:12)
+    at Object.transformSync (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\@babel\core\lib\transform.js:42:76)
+    at parseWithBabel (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\transformSync.js:75:18)
+    at transformSync (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\transformSync.js:64:12)
+    at Object.transform (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\babel-transformer.js:127:58)
+    at transformJSWithBabel (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\transform-worker\metro-transform-worker.js:468:47)
+    at Object.transform (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\transform-worker\metro-transform-worker.js:583:12)
+    at Object.transform (C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo\node_modules\@expo\metro-config\build\transform-worker\transform-worker.js:178:19)
+
+> Task :app:createBundleReleaseJsAndAssets FAILED
+
+[Incubating] Problems report is available at: file:///C:/Users/Daniel%20Lacerda/Desktop/ACELERAFACILITIES/mobile/android/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 3 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':react-native-screens:buildCMakeRelWithDebInfo[arm64-v8a]'.
+> com.android.ide.common.process.ProcessException: ninja: Entering directory `C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\react-native-screens\android\.cxx\RelWithDebInfo\2r305u3r\arm64-v8a'
+  [1/6] Building CXX object CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o
+  [2/6] Building CXX object CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o
+  [3/6] Building CXX object CMakeFiles/rnscreens.dir/65fc6b9e029aba11294d1b6050e78fd4/cpp/RNSScreenRemovalListener.cpp.o
+  [4/6] Building CXX object CMakeFiles/rnscreens.dir/src/main/cpp/OnLoad.cpp.o
+  [5/6] Building CXX object CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o
+  [6/6] Linking CXX shared library ..\..\..\..\build\intermediates\cxx\RelWithDebInfo\2r305u3r\obj\arm64-v8a\librnscreens.so
+  FAILED: ../../../../build/intermediates/cxx/RelWithDebInfo/2r305u3r/obj/arm64-v8a/librnscreens.so
+  cmd.exe /C "cd . && C:\Users\DANIEL~1\AppData\Local\Android\Sdk\ndk\271~1.122\TOOLCH~1\llvm\prebuilt\WINDOW~1\bin\CLANG_~1.EXE --target=aarch64-none-linux-android24 --sysroot="C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot" -fPIC -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D__BIONIC_NO_PAGE_SIZE_MACRO -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -O2 -g -DNDEBUG  -Wl,-z,max-page-size=16384 -Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments  -Wl,--gc-sections -shared -Wl,-soname,librnscreens.so -o ..\..\..\..\build\intermediates\cxx\RelWithDebInfo\2r305u3r\obj\arm64-v8a\librnscreens.so CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o CMakeFiles/rnscreens.dir/65fc6b9e029aba11294d1b6050e78fd4/cpp/RNSScreenRemovalListener.cpp.o CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o CMakeFiles/rnscreens.dir/src/main/cpp/OnLoad.cpp.o  "C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/reactnative/libs/android.arm64-v8a/libreactnative.so"  "C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/jsi/libs/android.arm64-v8a/libjsi.so"  "C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.arm64-v8a/libfbjni.so"  -landroid  -latomic -lm && cd ."
+  ld.lld: error: undefined symbol: __cxa_allocate_exception
+  >>> referenced by References-inl.h:120 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/References-inl.h:120)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(rnscreens::NativeProxy::NativeProxy(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>))
+  >>> referenced by RNScreensTurboModule.cpp:61 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp:61)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(RNScreens::RNScreensTurboModule::startTransition(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced by RNScreensTurboModule.cpp:85 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp:85)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(RNScreens::RNScreensTurboModule::updateTransition(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced 5 more times
+
+  ld.lld: error: undefined symbol: std::bad_alloc::bad_alloc()
+  >>> referenced by References-inl.h:120 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/References-inl.h:120)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(rnscreens::NativeProxy::NativeProxy(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>))
+
+  ld.lld: error: undefined symbol: typeinfo for std::bad_alloc
+  >>> referenced by References-inl.h:120 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/References-inl.h:120)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(rnscreens::NativeProxy::NativeProxy(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>))
+  >>> referenced by References-inl.h:120 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/References-inl.h:120)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(rnscreens::NativeProxy::NativeProxy(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>))
+
+  ld.lld: error: undefined symbol: std::bad_alloc::~bad_alloc()
+  >>> referenced by References-inl.h:120 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/References-inl.h:120)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(rnscreens::NativeProxy::NativeProxy(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>))
+  >>> referenced by References-inl.h:120 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/References-inl.h:120)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(rnscreens::NativeProxy::NativeProxy(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>))
+
+  ld.lld: error: undefined symbol: __cxa_throw
+  >>> referenced by References-inl.h:120 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/References-inl.h:120)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(rnscreens::NativeProxy::NativeProxy(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>))
+  >>> referenced by RNScreensTurboModule.cpp:61 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp:61)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(RNScreens::RNScreensTurboModule::startTransition(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced by RNScreensTurboModule.cpp:85 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp:85)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(RNScreens::RNScreensTurboModule::updateTransition(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced 5 more times
+
+  ld.lld: error: undefined symbol: std::__ndk1::__shared_weak_count::__release_weak()
+  >>> referenced by shared_ptr.h:184 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:184)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(std::__ndk1::shared_ptr<RNSScreenRemovalListener>::~shared_ptr[abi:ne180000]())
+  >>> referenced by shared_ptr.h:184 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:184)
+  >>>               CMakeFiles/rnscreens.dir/65fc6b9e029aba11294d1b6050e78fd4/cpp/RNSScreenRemovalListener.cpp.o:(facebook::react::ShadowViewMutation::~ShadowViewMutation())
+  >>> referenced by shared_ptr.h:184 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:184)
+  >>>               CMakeFiles/rnscreens.dir/65fc6b9e029aba11294d1b6050e78fd4/cpp/RNSScreenRemovalListener.cpp.o:(facebook::react::ShadowViewMutation::~ShadowViewMutation())
+  >>> referenced 20 more times
+
+  ld.lld: error: undefined symbol: operator delete(void*)
+  >>> referenced by RNScreensTurboModule.cpp:25 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp:25)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(RNScreens::RNScreensTurboModule::~RNScreensTurboModule())
+  >>> referenced by new:280 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:280)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(RNScreens::RNScreensTurboModule::get(facebook::jsi::Runtime&, facebook::jsi::PropNameID const&))
+  >>> referenced by function.h:250 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__functional/function.h:250)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/OnLoad.cpp.o:(std::__ndk1::__function::__func<JNI_OnLoad::$_0, std::__ndk1::allocator<JNI_OnLoad::$_0>, void ()>::~__func())
+  >>> referenced 42 more times
+
+  ld.lld: error: undefined symbol: operator new(unsigned long)
+  >>> referenced by new:271 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:271)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/OnLoad.cpp.o:(std::__ndk1::__function::__func<JNI_OnLoad::$_0, std::__ndk1::allocator<JNI_OnLoad::$_0>, void ()>::__clone() const)
+  >>> referenced by new:271 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:271)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o:(Java_com_swmansion_rnscreens_ScreensModule_nativeInstall)
+  >>> referenced by new:271 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:271)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::registerHybrid(std::initializer_list<JNINativeMethod>))
+  >>> referenced 15 more times
+
+  ld.lld: error: undefined symbol: std::__ndk1::__shared_weak_count::~__shared_weak_count()
+  >>> referenced by shared_ptr.h:263 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:263)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o:(Java_com_swmansion_rnscreens_ScreensModule_nativeInstall)
+  >>> referenced by shared_ptr.h:246 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:246)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o:(std::__ndk1::__shared_ptr_emplace<RNScreens::RNScreensTurboModule, std::__ndk1::allocator<RNScreens::RNScreensTurboModule>>::~__shared_ptr_emplace())
+  >>> referenced by shared_ptr.h:246 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:246)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o:(std::__ndk1::__shared_ptr_emplace<RNScreens::RNScreensTurboModule, std::__ndk1::allocator<RNScreens::RNScreensTurboModule>>::~__shared_ptr_emplace())
+  >>> referenced 2 more times
+
+  ld.lld: error: undefined symbol: __cxa_free_exception
+  >>> referenced by RNScreensTurboModule.cpp:61 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp:61)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(RNScreens::RNScreensTurboModule::startTransition(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced by RNScreensTurboModule.cpp:85 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp:85)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(RNScreens::RNScreensTurboModule::updateTransition(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced by RNScreensTurboModule.cpp:96 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp:96)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(RNScreens::RNScreensTurboModule::finishTransition(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced 2 more times
+
+  ld.lld: error: undefined symbol: vtable for __cxxabiv1::__class_type_info
+  >>> referenced by RNSScreenRemovalListener.cpp
+  >>>               CMakeFiles/rnscreens.dir/65fc6b9e029aba11294d1b6050e78fd4/cpp/RNSScreenRemovalListener.cpp.o:(typeinfo for facebook::react::MountingOverrideDelegate)
+  >>> referenced by OnLoad.cpp
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/OnLoad.cpp.o:(typeinfo for std::__ndk1::__function::__base<void ()>)
+  >>> referenced by OnLoad.cpp
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/OnLoad.cpp.o:(typeinfo for JNI_OnLoad::$_0)
+  >>> referenced 13 more times
+  >>> the vtable symbol may be undefined because the class is missing its key function (see https://lld.llvm.org/missingkeyfunction)
+
+  ld.lld: error: undefined symbol: vtable for __cxxabiv1::__si_class_type_info
+  >>> referenced by RNSScreenRemovalListener.cpp
+  >>>               CMakeFiles/rnscreens.dir/65fc6b9e029aba11294d1b6050e78fd4/cpp/RNSScreenRemovalListener.cpp.o:(typeinfo for RNSScreenRemovalListener)
+  >>> referenced by OnLoad.cpp
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/OnLoad.cpp.o:(typeinfo for std::__ndk1::__function::__func<JNI_OnLoad::$_0, std::__ndk1::allocator<JNI_OnLoad::$_0>, void ()>)
+  >>> referenced by jni-adapter.cpp
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o:(typeinfo for std::__ndk1::__shared_ptr_emplace<RNScreens::RNScreensTurboModule, std::__ndk1::allocator<RNScreens::RNScreensTurboModule>>)
+  >>> referenced 12 more times
+  >>> the vtable symbol may be undefined because the class is missing its key function (see https://lld.llvm.org/missingkeyfunction)
+
+  ld.lld: error: undefined symbol: std::__ndk1::__shared_weak_count::__get_deleter(std::type_info const&) const       
+  >>> referenced by jni-adapter.cpp
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o:(vtable for std::__ndk1::__shared_ptr_emplace<RNScreens::RNScreensTurboModule, std::__ndk1::allocator<RNScreens::RNScreensTurboModule>>)
+  >>> referenced by NativeProxy.cpp
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(vtable for std::__ndk1::__shared_ptr_emplace<RNSScreenRemovalListener, std::__ndk1::allocator<RNSScreenRemovalListener>>)
+
+  ld.lld: error: undefined symbol: typeinfo for std::__ndk1::__shared_weak_count
+  >>> referenced by jni-adapter.cpp
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o:(typeinfo for std::__ndk1::__shared_ptr_emplace<RNScreens::RNScreensTurboModule, std::__ndk1::allocator<RNScreens::RNScreensTurboModule>>)
+  >>> referenced by NativeProxy.cpp
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(typeinfo for std::__ndk1::__shared_ptr_emplace<RNSScreenRemovalListener, std::__ndk1::allocator<RNSScreenRemovalListener>>)
+
+  ld.lld: error: undefined symbol: __cxa_begin_catch
+  >>> referenced by Registration-inl.h:97 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/Registration-inl.h:97)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(facebook::jni::detail::FunctionWrapper<facebook::jni::basic_strong_ref<facebook::jni::detail::JTypeFor<facebook::jni::detail::HybridData, facebook::jni::JObject, void>::_javaobject*, facebook::jni::LocalReferenceAllocator> (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>), facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*, facebook::jni::basic_strong_ref<facebook::jni::detail::JTypeFor<facebook::jni::detail::HybridData, facebook::jni::JObject, void>::_javaobject*, facebook::jni::LocalReferenceAllocator>>::call(_JNIEnv*, _jobject*, facebook::jni::basic_strong_ref<facebook::jni::detail::JTypeFor<facebook::jni::detail::HybridData, facebook::jni::JObject, void>::_javaobject*, facebook::jni::LocalReferenceAllocator> (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>)))   
+  >>> referenced by RNScreensTurboModule.cpp
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(__clang_call_terminate)
+  >>> referenced by Registration-inl.h:97 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/Registration-inl.h:97)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(facebook::jni::detail::FunctionWrapper<void (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>, facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::react::JFabricUIManager, facebook::jni::JObject, void>::_javaobject*>&&), facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*, void, facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::react::JFabricUIManager, facebook::jni::JObject, void>::_javaobject*>>::call(_JNIEnv*, _jobject*, facebook::jni::detail::JTypeFor<facebook::react::JFabricUIManager, facebook::jni::JObject, void>::_javaobject*, void (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>, facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::react::JFabricUIManager, facebook::jni::JObject, void>::_javaobject*>&&)))
+  >>> referenced 3 more times
+
+  ld.lld: error: undefined symbol: __cxa_end_catch
+  >>> referenced by Registration-inl.h:100 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/Registration-inl.h:100)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(facebook::jni::detail::FunctionWrapper<facebook::jni::basic_strong_ref<facebook::jni::detail::JTypeFor<facebook::jni::detail::HybridData, facebook::jni::JObject, void>::_javaobject*, facebook::jni::LocalReferenceAllocator> (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>), facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*, facebook::jni::basic_strong_ref<facebook::jni::detail::JTypeFor<facebook::jni::detail::HybridData, facebook::jni::JObject, void>::_javaobject*, facebook::jni::LocalReferenceAllocator>>::call(_JNIEnv*, _jobject*, facebook::jni::basic_strong_ref<facebook::jni::detail::JTypeFor<facebook::jni::detail::HybridData, facebook::jni::JObject, void>::_javaobject*, facebook::jni::LocalReferenceAllocator> (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>)))   
+  >>> referenced by Registration-inl.h:100 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/Registration-inl.h:100)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(facebook::jni::detail::FunctionWrapper<facebook::jni::basic_strong_ref<facebook::jni::detail::JTypeFor<facebook::jni::detail::HybridData, facebook::jni::JObject, void>::_javaobject*, facebook::jni::LocalReferenceAllocator> (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>), facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*, facebook::jni::basic_strong_ref<facebook::jni::detail::JTypeFor<facebook::jni::detail::HybridData, facebook::jni::JObject, void>::_javaobject*, facebook::jni::LocalReferenceAllocator>>::call(_JNIEnv*, _jobject*, facebook::jni::basic_strong_ref<facebook::jni::detail::JTypeFor<facebook::jni::detail::HybridData, facebook::jni::JObject, void>::_javaobject*, facebook::jni::LocalReferenceAllocator> (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>)))   
+  >>> referenced by Registration-inl.h:100 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/include/fbjni/detail/Registration-inl.h:100)
+  >>>               CMakeFiles/rnscreens.dir/src/main/cpp/NativeProxy.cpp.o:(facebook::jni::detail::FunctionWrapper<void (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>, facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::react::JFabricUIManager, facebook::jni::JObject, void>::_javaobject*>&&), facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*, void, facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::react::JFabricUIManager, facebook::jni::JObject, void>::_javaobject*>>::call(_JNIEnv*, _jobject*, facebook::jni::detail::JTypeFor<facebook::react::JFabricUIManager, facebook::jni::JObject, void>::_javaobject*, void (*)(facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::jni::HybridClass<rnscreens::NativeProxy, facebook::jni::detail::BaseHybridClass>::JavaPart, facebook::jni::JObject, void>::_javaobject*>, facebook::jni::alias_ref<facebook::jni::detail::JTypeFor<facebook::react::JFabricUIManager, facebook::jni::JObject, void>::_javaobject*>&&)))
+  >>> referenced 5 more times
+
+  ld.lld: error: undefined symbol: std::terminate()
+  >>> referenced by RNScreensTurboModule.cpp
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(__clang_call_terminate)
+
+  ld.lld: error: undefined symbol: typeinfo for std::length_error
+  >>> referenced by stdexcept:241 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:241)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(std::__ndk1::__throw_length_error[abi:ne180000](char const*))
+  >>> referenced by stdexcept:241 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:241)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(std::__ndk1::__throw_length_error[abi:ne180000](char const*))
+
+  ld.lld: error: undefined symbol: std::length_error::~length_error()
+  >>> referenced by stdexcept:241 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:241)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(std::__ndk1::__throw_length_error[abi:ne180000](char const*))
+  >>> referenced by stdexcept:241 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:241)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(std::__ndk1::__throw_length_error[abi:ne180000](char const*))
+
+  ld.lld: error: undefined symbol: std::logic_error::logic_error(char const*)
+  >>> referenced by stdexcept:152 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:152)
+  >>>               CMakeFiles/rnscreens.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/react-native-screens/cpp/RNScreensTurboModule.cpp.o:(std::length_error::length_error[abi:ne180000](char const*))
+
+  ld.lld: error: too many errors emitted, stopping now (use --error-limit=0 to see all errors)
+  CLANG_~1: error: linker command failed with exit code 1 (use -v to see invocation)
+  ninja: build stopped: subcommand failed.
+
+  C++ build system [build] failed while executing:
+      @echo off
+      "C:\\Users\\Daniel Lacerda\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe" ^
+        -C ^
+        "C:\\Users\\Daniel Lacerda\\Desktop\\ACELERAFACILITIES\\mobile\\node_modules\\react-native-screens\\android\\.cxx\\RelWithDebInfo\\2r305u3r\\arm64-v8a" ^
+        rnscreens
+    from C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\react-native-screens\android
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':expo-modules-core:buildCMakeRelWithDebInfo[arm64-v8a]'.
+> com.android.ide.common.process.ProcessException: ninja: Entering directory `C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo-modules-core\android\.cxx\RelWithDebInfo\5f4x13t4\arm64-v8a'
+  [1/49] Building CXX object src/fabric/CMakeFiles/fabric.dir/cmake_pch.hxx.pch
+  [2/49] Building CXX object CMakeFiles/expo-modules-core.dir/cmake_pch.hxx.pch
+  [3/49] Building CXX object CMakeFiles/expo-modules-core.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/ObjectDeallocator.cpp.o
+  [4/49] Building CXX object CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/LazyObject.cpp.o
+  [5/49] Building CXX object CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/SharedRef.cpp.o
+  [6/49] Building CXX object CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/NativeModule.cpp.o
+  [7/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JNIDeallocator.cpp.o
+  [8/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JNIFunctionBody.cpp.o
+  [9/49] Building CXX object CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/SharedObject.cpp.o
+  [10/49] Building CXX object CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o
+  [11/49] Building CXX object src/fabric/CMakeFiles/fabric.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/fabric/ExpoViewEventEmitter.cpp.o
+  [12/49] Building CXX object CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/JSIUtils.cpp.o
+  [13/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JSharedObject.cpp.o
+  [14/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaReferencesCache.cpp.o
+  [15/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JSReferencesCache.cpp.o
+  [16/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/Exceptions.cpp.o
+  [17/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JNIInjector.cpp.o
+  [18/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/ExpoModulesHostObject.cpp.o
+  [19/49] Building CXX object CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o
+  [20/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptFunction.cpp.o
+  [21/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptModuleObject.cpp.o
+  [22/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/RuntimeHolder.cpp.o
+  [23/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptRuntime.cpp.o
+  [24/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/WeakRuntimeHolder.cpp.o
+  [25/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JNIUtils.cpp.o
+  [26/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptTypedArray.cpp.o
+  [27/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptValue.cpp.o
+  [28/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptWeakObject.cpp.o
+  [29/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JSIContext.cpp.o
+  [30/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptObject.cpp.o
+  [31/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/types/AnyType.cpp.o
+  [32/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/types/ExpectedType.cpp.o
+  [33/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/MethodMetadata.cpp.o
+  [34/49] Building CXX object src/fabric/CMakeFiles/fabric.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/fabric/ExpoViewShadowNode.cpp.o
+  [35/49] Building CXX object src/fabric/CMakeFiles/fabric.dir/FabricComponentsRegistry.cpp.o
+  [36/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/types/FrontendConverter.cpp.o
+  [37/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSObjectDecorator.cpp.o        
+  [38/49] Building CXX object src/fabric/CMakeFiles/fabric.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/fabric/ExpoViewProps.cpp.o
+  [39/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSDecoratorsBridgingObject.cpp.o
+  [40/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSFunctionsDecorator.cpp.o     
+  [41/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSPropertiesDecorator.cpp.o    
+  [42/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSClassesDecorator.cpp.o       
+  [43/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/types/FrontendConverterProvider.cpp.o     
+  [44/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/types/JNIToJSIConverter.cpp.o
+  [45/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSConstantsDecorator.cpp.o     
+  [46/49] Building CXX object src/fabric/CMakeFiles/fabric.dir/b25ff8220382aafdb49a8e8d1758d416/cpp/fabric/ExpoViewComponentDescriptor.cpp.o
+  [47/49] Building CXX object CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaCallback.cpp.o
+  [48/49] Linking CXX static library src\fabric\libfabric.a
+  [49/49] Linking CXX shared library ..\..\..\..\build\intermediates\cxx\RelWithDebInfo\5f4x13t4\obj\arm64-v8a\libexpo-modules-core.so
+  FAILED: ../../../../build/intermediates/cxx/RelWithDebInfo/5f4x13t4/obj/arm64-v8a/libexpo-modules-core.so
+  cmd.exe /C "cd . && C:\Users\DANIEL~1\AppData\Local\Android\Sdk\ndk\271~1.122\TOOLCH~1\llvm\prebuilt\WINDOW~1\bin\CLANG_~1.EXE --target=aarch64-none-linux-android24 --sysroot="C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot" -fPIC -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D__BIONIC_NO_PAGE_SIZE_MACRO -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -DREACT_NATIVE_TARGET_VERSION=81 -O2 -g -DNDEBUG  -Wl,-z,max-page-size=16384 -Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--no-undefined-version -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments  -Wl,--gc-sections -shared -Wl,-soname,libexpo-modules-core.so -o ..\..\..\..\build\intermediates\cxx\RelWithDebInfo\5f4x13t4\obj\arm64-v8a\libexpo-modules-core.so CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/JSIUtils.cpp.o CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/LazyObject.cpp.o CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/NativeModule.cpp.o CMakeFiles/expo-modules-core.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/ObjectDeallocator.cpp.o CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/SharedObject.cpp.o CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/SharedRef.cpp.o CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/Exceptions.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/ExpoModulesHostObject.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JNIDeallocator.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JNIFunctionBody.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JNIInjector.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JNIUtils.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JSIContext.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JSReferencesCache.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JSharedObject.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaCallback.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaReferencesCache.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptFunction.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptModuleObject.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptObject.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptRuntime.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptTypedArray.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptValue.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaScriptWeakObject.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/MethodMetadata.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/RuntimeHolder.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/WeakRuntimeHolder.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/types/AnyType.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/types/ExpectedType.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/types/FrontendConverter.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/types/FrontendConverterProvider.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/types/JNIToJSIConverter.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSClassesDecorator.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSConstantsDecorator.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSDecoratorsBridgingObject.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSFunctionsDecorator.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSObjectDecorator.cpp.o CMakeFiles/expo-modules-core.dir/src/main/cpp/decorators/JSPropertiesDecorator.cpp.o  "C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/lib/aarch64-linux-android/24/liblog.so"  "C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.arm64-v8a/libfbjni.so"  "C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/jsi/libs/android.arm64-v8a/libjsi.so"  -landroid  src/fabric/libfabric.a  "C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/reactnative/libs/android.arm64-v8a/libreactnative.so"  "C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/e2ac816cc322e0622c8e36eeb217f096/transformed/fbjni-0.7.0/prefab/modules/fbjni/libs/android.arm64-v8a/libfbjni.so"  "C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/jsi/libs/android.arm64-v8a/libjsi.so"  "C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/reactnative/libs/android.arm64-v8a/libreactnative.so"  -latomic -lm && cd ."
+  ld.lld: error: undefined symbol: operator new(unsigned long)
+  >>> referenced by new:271 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:271)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(expo::EventEmitter::Listeners::add(facebook::jsi::Runtime&, std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, facebook::jsi::Function const&))
+  >>> referenced by new:271 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:271)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/JSIUtils.cpp.o:(expo::common::createClass(facebook::jsi::Runtime&, char const*, std::__ndk1::function<facebook::jsi::Value (facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long)>))
+  >>> referenced by new:271 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:271)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/JSIUtils.cpp.o:(expo::common::createClass(facebook::jsi::Runtime&, char const*, std::__ndk1::function<facebook::jsi::Value (facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long)>))
+  >>> referenced 316 more times
+
+  ld.lld: error: undefined symbol: operator delete(void*)
+  >>> referenced by new:280 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:280)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(expo::EventEmitter::Listeners::add(facebook::jsi::Runtime&, std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, facebook::jsi::Function const&))
+  >>> referenced by new:280 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:280)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(expo::EventEmitter::Listeners::remove(facebook::jsi::Runtime&, std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, facebook::jsi::Function const&))
+  >>> referenced by new:280 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/new:280)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(expo::EventEmitter::Listeners::removeAll(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&))
+  >>> referenced 1003 more times
+
+  ld.lld: error: undefined symbol: __cxa_begin_catch
+  >>> referenced by EventEmitter.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(__clang_call_terminate)
+  >>> referenced by EventEmitter.cpp:85 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/EventEmitter.cpp:85)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(expo::EventEmitter::Listeners::call(facebook::jsi::Runtime&, std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, facebook::jsi::Object const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced by EventEmitter.cpp:62 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/EventEmitter.cpp:62)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(expo::EventEmitter::Listeners::call(facebook::jsi::Runtime&, std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, facebook::jsi::Object const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced 184 more times
+
+  ld.lld: error: undefined symbol: std::terminate()
+  >>> referenced by EventEmitter.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(__clang_call_terminate)
+
+  ld.lld: error: undefined symbol: std::__ndk1::__shared_weak_count::__release_weak()
+  >>> referenced by shared_ptr.h:184 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:184)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/LazyObject.cpp.o:(expo::LazyObject::~LazyObject())
+  >>> referenced by shared_ptr.h:184 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:184)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/LazyObject.cpp.o:(expo::LazyObject::~LazyObject())
+  >>> referenced by shared_ptr.h:184 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:184)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/JSIUtils.cpp.o:(expo::common::createClass(facebook::jsi::Runtime&, char const*, std::__ndk1::function<facebook::jsi::Value (facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long)>))
+  >>> referenced 751 more times
+
+  ld.lld: error: undefined symbol: __cxa_end_catch
+  >>> referenced by EventEmitter.cpp:87 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/EventEmitter.cpp:87)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(expo::EventEmitter::Listeners::call(facebook::jsi::Runtime&, std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, facebook::jsi::Object const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced by EventEmitter.cpp:64 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/EventEmitter.cpp:64)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(expo::EventEmitter::Listeners::call(facebook::jsi::Runtime&, std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, facebook::jsi::Object const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced by ostream:685 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/ostream:685)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/JSIUtils.cpp.o:(std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>& std::__ndk1::__put_character_sequence[abi:ne180000]<char, std::__ndk1::char_traits<char>>(std::__ndk1::basic_ostream<char, std::__ndk1::char_traits<char>>&, char const*, unsigned long))
+  >>> referenced 269 more times
+
+  ld.lld: error: undefined symbol: __cxa_allocate_exception
+  >>> referenced by ErrorUtils.h:22 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/reactnative/include/cxxreact/ErrorUtils.h:22)        
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(facebook::react::handleJSError(facebook::jsi::Runtime&, facebook::jsi::JSError const&, bool))        
+  >>> referenced by TypedArray.cpp:50 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/TypedArray.cpp:50)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(expo::TypedArray::getBuffer(facebook::jsi::Runtime&) const)
+  >>> referenced by stdexcept:249 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:249)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(std::__ndk1::__throw_out_of_range[abi:ne180000](char const*))
+  >>> referenced 71 more times
+
+  ld.lld: error: undefined symbol: std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> std::__ndk1::operator+<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>(char const*, std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&)
+  >>> referenced by ErrorUtils.h:24 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/reactnative/include/cxxreact/ErrorUtils.h:24)        
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(facebook::react::handleJSError(facebook::jsi::Runtime&, facebook::jsi::JSError const&, bool))        
+  >>> referenced by MethodMetadata.cpp:99 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/android/src/main/cpp/MethodMetadata.cpp:99)
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/MethodMetadata.cpp.o:(expo::MethodMetadata::convertJSIArgsToJNI(_JNIEnv*, facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced by MethodMetadata.cpp:95 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/android/src/main/cpp/MethodMetadata.cpp:95)
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/MethodMetadata.cpp.o:(expo::MethodMetadata::convertJSIArgsToJNI(_JNIEnv*, facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long))
+  >>> referenced 2 more times
+
+  ld.lld: error: undefined symbol: __cxa_throw
+  >>> referenced by ErrorUtils.h:22 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/reactnative/include/cxxreact/ErrorUtils.h:22)        
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(facebook::react::handleJSError(facebook::jsi::Runtime&, facebook::jsi::JSError const&, bool))        
+  >>> referenced by TypedArray.cpp:50 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/TypedArray.cpp:50)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(expo::TypedArray::getBuffer(facebook::jsi::Runtime&) const)
+  >>> referenced by stdexcept:249 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:249)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(std::__ndk1::__throw_out_of_range[abi:ne180000](char const*))
+  >>> referenced 71 more times
+
+  ld.lld: error: undefined symbol: __cxa_free_exception
+  >>> referenced by ErrorUtils.h:22 (C:/Users/Daniel Lacerda/.gradle/caches/8.14.3/transforms/8dd563c36fdc8ed25724b885e60d3aa7/transformed/react-android-0.81.5-release/prefab/modules/reactnative/include/cxxreact/ErrorUtils.h:22)        
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(facebook::react::handleJSError(facebook::jsi::Runtime&, facebook::jsi::JSError const&, bool))        
+  >>> referenced by TypedArray.cpp:50 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/TypedArray.cpp:50)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(expo::TypedArray::getBuffer(facebook::jsi::Runtime&) const)
+  >>> referenced by stdexcept:249 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:249)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(std::__ndk1::__throw_out_of_range[abi:ne180000](char const*))
+  >>> referenced 37 more times
+
+  ld.lld: error: undefined symbol: std::__ndk1::__shared_weak_count::~__shared_weak_count()
+  >>> referenced by shared_ptr.h:263 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:263)
+  >>>               CMakeFiles/expo-modules-core.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/ObjectDeallocator.cpp.o:(expo::common::setDeallocator(facebook::jsi::Runtime&, std::__ndk1::shared_ptr<facebook::jsi::Object> const&, std::__ndk1::function<void ()>))
+  >>> referenced by shared_ptr.h:246 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:246)
+  >>>               CMakeFiles/expo-modules-core.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/ObjectDeallocator.cpp.o:(std::__ndk1::__shared_ptr_emplace<expo::common::ObjectDeallocator, std::__ndk1::allocator<expo::common::ObjectDeallocator>>::~__shared_ptr_emplace())
+  >>> referenced by shared_ptr.h:246 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:246)
+  >>>               CMakeFiles/expo-modules-core.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/ObjectDeallocator.cpp.o:(std::__ndk1::__shared_ptr_emplace<expo::common::ObjectDeallocator, std::__ndk1::allocator<expo::common::ObjectDeallocator>>::~__shared_ptr_emplace())
+  >>> referenced 151 more times
+
+  ld.lld: error: undefined symbol: __dynamic_cast
+  >>> referenced by shared_ptr.h:1245 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:1245)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/EventEmitter.cpp.o:(expo::EventEmitter::NativeState::get(facebook::jsi::Runtime&, facebook::jsi::Object const&, bool))   
+  >>> referenced by shared_ptr.h:1245 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:1245)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/LazyObject.cpp.o:(expo::LazyObject::unwrapObjectIfNecessary(facebook::jsi::Runtime&, facebook::jsi::Object const&))      
+  >>> referenced by shared_ptr.h:1245 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__memory/shared_ptr.h:1245)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/SharedObject.cpp.o:(std::__ndk1::__function::__func<expo::SharedObject::installBaseClass(facebook::jsi::Runtime&, std::__ndk1::function<void (long)> const&)::$_0, std::__ndk1::allocator<expo::SharedObject::installBaseClass(facebook::jsi::Runtime&, std::__ndk1::function<void (long)> const&)::$_0>, facebook::jsi::Value (facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*, unsigned long)>::operator()(facebook::jsi::Runtime&, facebook::jsi::Value const&, facebook::jsi::Value const*&&, unsigned long&&))
+  >>> referenced 1 more times
+
+  ld.lld: error: undefined symbol: vtable for __cxxabiv1::__si_class_type_info
+  >>> referenced by LazyObject.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/LazyObject.cpp.o:(typeinfo for expo::LazyObject)
+  >>> referenced by ObjectDeallocator.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/ObjectDeallocator.cpp.o:(typeinfo for std::__ndk1::__shared_ptr_emplace<expo::common::ObjectDeallocator, std::__ndk1::allocator<expo::common::ObjectDeallocator>>)
+  >>> referenced by ObjectDeallocator.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/ObjectDeallocator.cpp.o:(typeinfo for expo::common::ObjectDeallocator)
+  >>> referenced 197 more times
+  >>> the vtable symbol may be undefined because the class is missing its key function (see https://lld.llvm.org/missingkeyfunction)
+
+  ld.lld: error: undefined symbol: std::runtime_error::runtime_error(char const*)
+  >>> referenced by TypedArray.cpp:50 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/TypedArray.cpp:50)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(expo::TypedArray::getBuffer(facebook::jsi::Runtime&) const)
+  >>> referenced by Exceptions.cpp:111 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/android/src/main/cpp/Exceptions.cpp:111)
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/Exceptions.cpp.o:(expo::throwPendingJniExceptionAsCppException())
+  >>> referenced by JSIContext.cpp:149 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/android/src/main/cpp/JSIContext.cpp:149)
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/JSIContext.cpp.o:(expo::JSIContext::callGetJavaScriptModuleObjectMethod(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&) const)
+  >>> referenced 24 more times
+
+  ld.lld: error: undefined symbol: typeinfo for std::runtime_error
+  >>> referenced by TypedArray.cpp:50 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/TypedArray.cpp:50)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(expo::TypedArray::getBuffer(facebook::jsi::Runtime&) const)
+  >>> referenced by TypedArray.cpp:50 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/TypedArray.cpp:50)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(expo::TypedArray::getBuffer(facebook::jsi::Runtime&) const)
+  >>> referenced by Exceptions.cpp:111 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/android/src/main/cpp/Exceptions.cpp:111)
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/Exceptions.cpp.o:(expo::throwPendingJniExceptionAsCppException())
+  >>> referenced 52 more times
+
+  ld.lld: error: undefined symbol: std::runtime_error::~runtime_error()
+  >>> referenced by TypedArray.cpp:50 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/TypedArray.cpp:50)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(expo::TypedArray::getBuffer(facebook::jsi::Runtime&) const)
+  >>> referenced by TypedArray.cpp:50 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/common/cpp/TypedArray.cpp:50)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(expo::TypedArray::getBuffer(facebook::jsi::Runtime&) const)
+  >>> referenced by Exceptions.cpp:111 (C:/Users/Daniel Lacerda/Desktop/ACELERAFACILITIES/mobile/node_modules/expo-modules-core/android/src/main/cpp/Exceptions.cpp:111)
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/Exceptions.cpp.o:(expo::throwPendingJniExceptionAsCppException())
+  >>> referenced 51 more times
+
+  ld.lld: error: undefined symbol: std::__ndk1::__shared_weak_count::__get_deleter(std::type_info const&) const       
+  >>> referenced by ObjectDeallocator.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/ObjectDeallocator.cpp.o:(vtable for std::__ndk1::__shared_ptr_emplace<expo::common::ObjectDeallocator, std::__ndk1::allocator<expo::common::ObjectDeallocator>>)
+  >>> referenced by ExpoModulesHostObject.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/ExpoModulesHostObject.cpp.o:(vtable for std::__ndk1::__shared_ptr_emplace<expo::LazyObject, std::__ndk1::allocator<expo::LazyObject>>)
+  >>> referenced by JavaReferencesCache.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaReferencesCache.cpp.o:(vtable for std::__ndk1::__shared_ptr_emplace<expo::JCache, std::__ndk1::allocator<expo::JCache>>)
+  >>> referenced 49 more times
+
+  ld.lld: error: undefined symbol: std::__ndk1::__next_prime(unsigned long)
+  >>> referenced by __hash_table:1657 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__hash_table:1657)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(std::__ndk1::pair<std::__ndk1::__hash_iterator<std::__ndk1::__hash_node<std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>, void*>*>, bool> std::__ndk1::__hash_table<std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>, std::__ndk1::__unordered_map_hasher<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>, std::__ndk1::hash<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, std::__ndk1::equal_to<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, true>, std::__ndk1::__unordered_map_equal<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>, std::__ndk1::equal_to<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, std::__ndk1::hash<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, true>, std::__ndk1::allocator<std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>>>::__emplace_unique_key_args<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::pair<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const, expo::TypedArrayKind> const&>(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, std::__ndk1::pair<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const, expo::TypedArrayKind> const&))
+  >>> referenced by __hash_table:1665 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__hash_table:1665)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(std::__ndk1::pair<std::__ndk1::__hash_iterator<std::__ndk1::__hash_node<std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>, void*>*>, bool> std::__ndk1::__hash_table<std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>, std::__ndk1::__unordered_map_hasher<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>, std::__ndk1::hash<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, std::__ndk1::equal_to<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, true>, std::__ndk1::__unordered_map_equal<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>, std::__ndk1::equal_to<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, std::__ndk1::hash<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, true>, std::__ndk1::allocator<std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, expo::TypedArrayKind>>>::__emplace_unique_key_args<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::pair<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const, expo::TypedArrayKind> const&>(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, std::__ndk1::pair<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const, expo::TypedArrayKind> const&))
+  >>> referenced by __hash_table:1657 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/__hash_table:1657)
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/ExpoModulesHostObject.cpp.o:(std::__ndk1::pair<std::__ndk1::__hash_iterator<std::__ndk1::__hash_node<std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::unique_ptr<facebook::jsi::Object, std::__ndk1::default_delete<facebook::jsi::Object>>>, void*>*>, bool> std::__ndk1::__hash_table<std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::unique_ptr<facebook::jsi::Object, std::__ndk1::default_delete<facebook::jsi::Object>>>, std::__ndk1::__unordered_map_hasher<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::unique_ptr<facebook::jsi::Object, std::__ndk1::default_delete<facebook::jsi::Object>>>, std::__ndk1::hash<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, std::__ndk1::equal_to<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, true>, std::__ndk1::__unordered_map_equal<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::unique_ptr<facebook::jsi::Object, std::__ndk1::default_delete<facebook::jsi::Object>>>, std::__ndk1::equal_to<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, std::__ndk1::hash<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>>, true>, std::__ndk1::allocator<std::__ndk1::__hash_value_type<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::unique_ptr<facebook::jsi::Object, std::__ndk1::default_delete<facebook::jsi::Object>>>>>::__emplace_unique_key_args<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>>, std::__ndk1::piecewise_construct_t const&, std::__ndk1::tuple<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&>, std::__ndk1::tuple<>>(std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&, std::__ndk1::piecewise_construct_t const&, std::__ndk1::tuple<std::__ndk1::basic_string<char, std::__ndk1::char_traits<char>, std::__ndk1::allocator<char>> const&>&&, std::__ndk1::tuple<>&&))     
+  >>> referenced 31 more times
+
+  ld.lld: error: undefined symbol: typeinfo for std::__ndk1::__shared_weak_count
+  >>> referenced by ObjectDeallocator.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/ef37c2745d1477cab2866ea4d23fbf28/common/cpp/ObjectDeallocator.cpp.o:(typeinfo for std::__ndk1::__shared_ptr_emplace<expo::common::ObjectDeallocator, std::__ndk1::allocator<expo::common::ObjectDeallocator>>)
+  >>> referenced by ExpoModulesHostObject.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/ExpoModulesHostObject.cpp.o:(typeinfo for std::__ndk1::__shared_ptr_emplace<expo::LazyObject, std::__ndk1::allocator<expo::LazyObject>>)
+  >>> referenced by JavaReferencesCache.cpp
+  >>>               CMakeFiles/expo-modules-core.dir/src/main/cpp/JavaReferencesCache.cpp.o:(typeinfo for std::__ndk1::__shared_ptr_emplace<expo::JCache, std::__ndk1::allocator<expo::JCache>>)
+  >>> referenced 55 more times
+
+  ld.lld: error: undefined symbol: typeinfo for std::out_of_range
+  >>> referenced by stdexcept:249 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:249)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(std::__ndk1::__throw_out_of_range[abi:ne180000](char const*))
+  >>> referenced by stdexcept:249 (C:/Users/Daniel Lacerda/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/sysroot/usr/include/c++/v1/stdexcept:249)
+  >>>               CMakeFiles/expo-modules-core.dir/48a93ed9a1a385db2fb16cbd5aa32c9a/expo-modules-core/common/cpp/TypedArray.cpp.o:(std::__ndk1::__throw_out_of_range[abi:ne180000](char const*))
+
+  ld.lld: error: too many errors emitted, stopping now (use --error-limit=0 to see all errors)
+  CLANG_~1: error: linker command failed with exit code 1 (use -v to see invocation)
+  ninja: build stopped: subcommand failed.
+
+  C++ build system [build] failed while executing:
+      @echo off
+      "C:\\Users\\Daniel Lacerda\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe" ^
+        -C ^
+        "C:\\Users\\Daniel Lacerda\\Desktop\\ACELERAFACILITIES\\mobile\\node_modules\\expo-modules-core\\android\\.cxx\\RelWithDebInfo\\5f4x13t4\\arm64-v8a" ^
+        expo-modules-core
+    from C:\Users\Daniel Lacerda\Desktop\ACELERAFACILITIES\mobile\node_modules\expo-modules-core\android
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+3: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':app:createBundleReleaseJsAndAssets'.
+> Process 'command 'cmd'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 50s
+161 actionable tasks: 137 executed, 24 up-to-date

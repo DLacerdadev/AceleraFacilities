@@ -1,0 +1,113 @@
+modules = ["nodejs-20", "web", "java-graalvm22.3", "postgresql-16"]
+run = "npm run dev"
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["file", "postgresql"]
+
+[deployment]
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 35459
+externalPort = 5000
+
+[[ports]]
+localPort = 40187
+externalPort = 6800
+
+[[ports]]
+localPort = 41341
+externalPort = 8081
+
+[[ports]]
+localPort = 41721
+externalPort = 8000
+
+[[ports]]
+localPort = 42063
+externalPort = 5173
+
+[[ports]]
+localPort = 42157
+externalPort = 8080
+
+[[ports]]
+localPort = 43279
+externalPort = 9000
+
+[[ports]]
+localPort = 44099
+externalPort = 8099
+
+[[ports]]
+localPort = 44121
+externalPort = 3003
+
+[[ports]]
+localPort = 44599
+externalPort = 3001
+
+[[ports]]
+localPort = 44817
+externalPort = 3002
+
+[[ports]]
+localPort = 45215
+externalPort = 3000
+
+[[ports]]
+localPort = 45799
+externalPort = 6000
+
+[[ports]]
+localPort = 46181
+externalPort = 4200
+
+[[ports]]
+localPort = 46513
+externalPort = 8008
+
+[env]
+PORT = "5000"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[agent]
+integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0"]
+expertMode = true
+
+[userenv]
+
+[userenv.shared]
+ENCRYPTION_KEY = "83c1acd153c53d706a27fe8c33f11e8ee5e94a3b9c2f0354063b0e5e05b635f4"
+VITE_API_BASE_URL = "https://facilities.grupoopus.com"

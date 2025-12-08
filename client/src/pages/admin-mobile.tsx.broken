@@ -1,0 +1,1276 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useClient } from "@/contexts/ClientContext";
+import { 
+  Home, 
+  ClipboardList, 
+  Building, 
+  Users, 
+  QrCode, 
+  Calendar,
+  List,
+  BarChart3,
+  Plus,
+  Menu,
+  X,
+  LogOut,
+  User,
+  Settings,
+  ArrowLeft,
+  Cog,
+  TrendingUp,
+  Target,
+  Activity,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Zap,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  Timer
+} from "lucide-react";
+import { useLocation } from "wouter";
+import { getAuthState, logout } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import Sites from "@/pages/sites";
+import Services from "@/pages/services";
+import ServiceSettings from "@/pages/service-settings";
+import CleaningSchedule from "@/pages/cleaning-schedule";
+import QrCodes from "@/pages/qr-codes";
+import Checklists from "@/pages/checklists";
+import WorkOrders from "@/pages/work-orders";
+import UsersPage from "@/pages/users";
+import Reports from "@/pages/reports";
+import AdminDashboards from "@/pages/admin-dashboards";
+
+interface AdminMobileProps {
+  companyId: string;
+}
+
+export default function AdminMobile({ companyId }: AdminMobileProps) {
+  const [, setLocation] = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState<string>("dashboard");
+  const { toast } = useToast();
+  const { user } = getAuthState();
+  const { activeClientId, setActiveClientId } = useClient();
+  
+  // Usuários do tipo customer_user não podem alterar o cliente
+  const isCustomerUser = user?.customerId ? true : false;
+
+  // Get all customers from OPUS
+  const OPUS_COMPANY_ID = "company-admin-default";
+  const { data: customers } = useQuery({
+    queryKey: ["/api/companies", OPUS_COMPANY_ID, "customers"],
+    enabled: !isCustomerUser, // Só buscar se não for customer_user
+  });
+
+  const { data: selectedCustomer } = useQuery({
+    queryKey: ["/api/customers", activeClientId],
+    enabled: !!activeClientId,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ["/api/customers", activeClientId, "dashboard-stats/total/todos"],
+    enabled: !!activeClientId,
+  });
+
+  const { data: workOrders = [] } = useQuery({
+    queryKey: ["/api/customers", activeClientId, "work-orders"],
+    enabled: !!activeClientId,
+  });
+
+  const { data: sites = [] } = useQuery({
+    queryKey: ["/api/customers", activeClientId, "sites"],
+    enabled: !!activeClientId,
+  });
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setLocation("/login");
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro no logout",
+        description: "Houve um problema ao fazer logout.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const quickActions = [
+    { icon: ClipboardList, label: "Nova OS", page: "workorders", color: "bg-blue-500" },
+    { icon: Building, label: "Locais", page: "sites", color: "bg-green-500" },
+    { icon: Settings, label: "Serviços", page: "services", color: "bg-indigo-500" },
+    { icon: Cog, label: "Config", page: "service-settings", color: "bg-purple-500" },
+    { icon: QrCode, label: "QR Codes", page: "qrcodes", color: "bg-orange-500" },
+    { icon: Calendar, label: "Cronograma", page: "schedule", color: "bg-pink-500" },
+  ];
+
+  const recentOS = (workOrders as any[]).slice(0, 3);
+  const pendingOS = (workOrders as any[]).filter((os: any) => os.status === 'aberta' || os.status === 'vencida').length;
+  const completedToday = (workOrders as any[]).filter((os: any) => {
+    const today = new Date().toDateString();
+    const osDate = new Date(os.createdAt).toDateString();
+    return os.status === 'concluida' && osDate === today;
+  }).length;
+
+  const renderPageContent = () => {
+    switch (currentPage) {
+      case "sites":
+        return <Sites customerId={activeClientId} />;
+      case "services":
+        return <Services customerId={activeClientId} />;
+      case "service-settings":
+        return <ServiceSettings />;
+      case "schedule":
+        return <CleaningSchedule />;
+      case "qrcodes":
+        return <QrCodes />;
+      case "checklists":
+        return <Checklists />;
+      case "workorders":
+        return <WorkOrders />;
+      case "users":
+        return <UsersPage customerId={activeClientId} />;
+      case "reports":
+        return <Reports />;
+      case "dashboards":
+        return <AdminDashboards companyId={OPUS_COMPANY_ID} />;
+      default:
+        return renderDashboard();
+    }
+  };
+
+  const renderDashboard = () => (
+    <div className="p-4 space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="bg-white/80 backdrop-blur-sm border-white/20">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                <ClipboardList className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{pendingOS}</p>
+                <p className="text-sm text-slate-600">Pendentes</p>
+                        </div>
+                        <h3 className="font-medium text-slate-900 text-sm leading-tight">{workOrder.title}</h3>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Local:</span>
+                        <span className="font-medium text-slate-900 text-right">
+                          {(zones as any[]).find((z: any) => z.id === workOrder.zoneId)?.name || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Responsável:</span>
+                        <span className="font-medium text-slate-900 text-right">
+                          {(users as any[]).find((u: any) => u.id === workOrder.assignedUserId)?.name || 'Não atribuído'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Criada em:</span>
+                        <span className="font-medium text-slate-900">
+                          {new Date(workOrder.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-2">
+                        {getPriorityBadge(workOrder.priority)}
+                        {getStatusBadge(workOrder.status)}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Componente DashboardsBI para analytics móvel
+function DashboardsBI({ companyId }: { companyId: string }) {
+  const [period, setPeriod] = useState("hoje");
+  const [siteFilter, setSiteFilter] = useState("todos");
+
+  // Buscar dados do dashboard
+  const { data: dashStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["/api/companies", companyId, "dashboard-stats", period, siteFilter],
+    queryFn: () => fetch(`/api/companies/${companyId}/dashboard-stats/${period}/${siteFilter}`).then(r => r.json())
+  });
+
+  // Buscar analytics
+  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+    queryKey: ["/api/companies", companyId, "analytics", period, siteFilter],
+    queryFn: () => fetch(`/api/companies/${companyId}/analytics/${period}/${siteFilter}`).then(r => r.json())
+  });
+
+  // Buscar sites para filtro
+  const { data: sites } = useQuery({
+    queryKey: ["/api/companies", companyId, "sites"],
+    queryFn: () => fetch(`/api/companies/${companyId}/sites`).then(r => r.json())
+  });
+
+  if (statsLoading || analyticsLoading) {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded mb-2"></div>
+          <div className="grid grid-cols-2 gap-3">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const stats = dashStats || {};
+  const chartData = analytics || {};
+
+  return (
+    <div className="p-3 space-y-4 bg-slate-50 min-h-screen">
+      {/* Header */}
+      <div className="space-y-3">
+        <div>
+          <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-blue-600" />
+            Dashboards BI
+          </h1>
+          <p className="text-sm text-slate-600">Analytics em tempo real</p>
+        </div>
+
+        {/* Filtros */}
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {["hoje", "ontem", "semana", "mes"].map((p) => (
+            <button 
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap ${
+                period === p 
+                  ? "bg-blue-500 text-white" 
+                  : "bg-white text-gray-700 border"
+              }`}
+            >
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtro de Sites */}
+        <select 
+          value={siteFilter} 
+          onChange={(e) => setSiteFilter(e.target.value)}
+          className="w-full px-3 py-2 bg-white border rounded-lg text-sm"
+        >
+          <option value="todos">📍 Todos os Locais</option>
+          {(sites || []).map((site: any) => (
+            <option key={site.id} value={site.id}>📍 {site.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* KPIs Principais */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-xs">Total OS</p>
+                <p className="text-xl font-bold">
+                  {(stats.openWorkOrders || 0) + (stats.completedWorkOrders || 0) + (stats.inProgressWorkOrders || 0)}
+                </p>
+                <p className="text-xs text-blue-200">Todas ordens</p>
+              </div>
+              <ClipboardList className="w-8 h-8 text-blue-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-xs">Concluídas</p>
+                <p className="text-xl font-bold">{stats.completedWorkOrders || 0}</p>
+                <p className="text-xs text-green-200">{stats.efficiency || 0}% eficiência</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-xs">Abertas</p>
+                <p className="text-xl font-bold">{stats.openWorkOrders || 0}</p>
+                <p className="text-xs text-blue-200">Pendentes</p>
+              </div>
+              <Clock className="w-8 h-8 text-blue-200" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-red-100 text-xs">Vencidas</p>
+                <p className="text-xl font-bold">{stats.overdueWorkOrders || 0}</p>
+                <p className="text-xs text-red-200">Fora do prazo</p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-red-200" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Métricas de Performance */}
+      <Card className="bg-white border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-blue-600" />
+            Indicadores de Performance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <Target className="w-6 h-6 text-blue-600" />
+              </div>
+              <p className="text-xs text-slate-600">SLA</p>
+              <p className="text-lg font-bold text-slate-900">{stats.slaCompliance || 0}%</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <Zap className="w-6 h-6 text-green-600" />
+              </div>
+              <p className="text-xs text-slate-600">Qualidade</p>
+              <p className="text-lg font-bold text-slate-900">{stats.qualityIndex || 0}/10</p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                <Users className="w-6 h-6 text-purple-600" />
+              </div>
+              <p className="text-xs text-slate-600">Operadores</p>
+              <p className="text-lg font-bold text-slate-900">{stats.activeOperators || 0}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Área Limpa */}
+      <Card className="bg-white border-0 shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                <Building className="w-4 h-4 text-blue-600" />
+                Área Limpa (m²)
+              </p>
+              <p className="text-2xl font-bold text-blue-600">{stats.areaCleanedToday || 0}</p>
+              <p className="text-xs text-slate-600">
+                {stats.totalSites || 0} locais • {stats.totalZones || 0} zonas
+              </p>
+            </div>
+            <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center">
+              <span className="text-2xl">🏢</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tendência Semanal */}
+      {chartData.daily && chartData.daily.length > 0 && (
+        <Card className="bg-white border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-blue-600" />
+              Tendência (Últimos 7 dias)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {chartData.daily.slice(0, 7).map((day: any, index: number) => {
+                const efficiency = day.completed && day.total ? Math.round((day.completed / day.total) * 100) : 0;
+                return (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="w-16 text-xs text-slate-600">
+                      {new Date(day.date).toLocaleDateString('pt-BR', { 
+                        day: '2-digit', 
+                        month: '2-digit' 
+                      })}
+                    </div>
+                    <div className="flex-1">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${efficiency}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div className="w-12 text-xs text-slate-900 font-medium">
+                      {efficiency}%
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Status Breakdown */}
+      {chartData.statusBreakdown && (
+        <Card className="bg-white border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <List className="w-4 h-4 text-blue-600" />
+              Distribuição por Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              {chartData.statusBreakdown.map((status: any, index: number) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${
+                      status.status === 'concluida' ? 'bg-green-500' :
+                      status.status === 'vencida' ? 'bg-red-500' :
+                      status.status === 'cancelada' ? 'bg-gray-500' : 'bg-blue-500'
+                    }`}></div>
+                    <span className="text-sm text-slate-700 capitalize">
+                      {status.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{status.count}</span>
+                    <span className="text-xs text-slate-500">({status.percentage}%)</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Alertas e Notificações */}
+      <Card className="bg-white border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-orange-600" />
+            Alertas e Notificações
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="space-y-2">
+            {stats.overdueWorkOrders > 0 && (
+              <div className="p-3 bg-red-50 border-l-3 border-red-400 rounded-r">
+                <p className="text-sm font-medium text-red-800">⚠️ OS Vencidas</p>
+                <p className="text-xs text-red-700">{stats.overdueWorkOrders} ordens estão atrasadas</p>
+              </div>
+            )}
+            {stats.slaCompliance < 80 && (
+              <div className="p-3 bg-yellow-50 border-l-3 border-yellow-400 rounded-r">
+                <p className="text-sm font-medium text-yellow-800">📊 SLA Baixo</p>
+                <p className="text-xs text-yellow-700">Compliance atual: {stats.slaCompliance}%</p>
+              </div>
+            )}
+            {stats.efficiency > 85 && (
+              <div className="p-3 bg-green-50 border-l-3 border-green-400 rounded-r">
+                <p className="text-sm font-medium text-green-800">🎯 Excelente Performance</p>
+                <p className="text-xs text-green-700">Eficiência de {stats.efficiency}%</p>
+              </div>
+            )}
+            {stats.overdueWorkOrders === 0 && stats.slaCompliance >= 80 && stats.efficiency <= 85 && (
+              <div className="p-3 bg-blue-50 border-l-3 border-blue-400 rounded-r">
+                <p className="text-sm font-medium text-blue-800">ℹ️ Sistema Normal</p>
+                <p className="text-xs text-blue-700">Todas as métricas estão dentro dos parâmetros</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export default function AdminMobile({ companyId }: AdminMobileProps) {
+  const [, setLocation] = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState<string>("dashboard");
+  const { toast } = useToast();
+  const { user } = getAuthState();
+  const { activeClientId, setActiveClientId } = useClient();
+  
+  // Usuários do tipo customer_user não podem alterar o cliente
+  const isCustomerUser = user?.userType === 'customer_user';
+
+  // Get all customers from OPUS
+  const OPUS_COMPANY_ID = "company-admin-default";
+  const { data: customers } = useQuery({
+    queryKey: ["/api/companies", OPUS_COMPANY_ID, "customers"],
+    enabled: !isCustomerUser, // Só buscar se não for customer_user
+  });
+
+  const { data: selectedCustomer } = useQuery({
+    queryKey: ["/api/customers", activeClientId],
+    enabled: !!activeClientId,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ["/api/customers", activeClientId, "dashboard-stats/total/todos"],
+    enabled: !!activeClientId,
+  });
+
+  const { data: workOrders = [] } = useQuery({
+    queryKey: ["/api/customers", activeClientId, "work-orders"],
+    enabled: !!activeClientId,
+  });
+
+  const { data: sites = [] } = useQuery({
+    queryKey: ["/api/customers", activeClientId, "sites"],
+    enabled: !!activeClientId,
+  });
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setLocation("/login");
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro no logout",
+        description: "Houve um problema ao fazer logout.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const quickActions = [
+    { icon: ClipboardList, label: "Nova OS", page: "workorders", color: "bg-blue-500" },
+    { icon: Building, label: "Locais", page: "sites", color: "bg-green-500" },
+    { icon: Settings, label: "Serviços", page: "services", color: "bg-indigo-500" },
+    { icon: Cog, label: "Config", page: "service-settings", color: "bg-purple-500" },
+    { icon: QrCode, label: "QR Codes", page: "qrcodes", color: "bg-orange-500" },
+    { icon: Calendar, label: "Cronograma", page: "schedule", color: "bg-pink-500" },
+  ];
+
+  const recentOS = (workOrders as any[]).slice(0, 3);
+  const pendingOS = (workOrders as any[]).filter((os: any) => os.status === 'aberta' || os.status === 'vencida').length;
+  const completedToday = (workOrders as any[]).filter((os: any) => {
+    const today = new Date().toDateString();
+    const osDate = new Date(os.createdAt).toDateString();
+    return os.status === 'concluida' && osDate === today;
+  }).length;
+
+  const renderPageContent = () => {
+    switch (currentPage) {
+      case "sites":
+        return <Sites customerId={activeClientId} />;
+      case "services":
+        return <Services customerId={activeClientId} />;
+      case "service-settings":
+        return <ServiceSettings />;
+      case "schedule":
+        return <CleaningSchedule />;
+      case "qrcodes":
+        return <QrCodes />;
+      case "checklists":
+        return <Checklists />;
+      case "workorders":
+        return <WorkOrders />;
+      case "users":
+        return <UsersPage />;
+      case "reports":
+        return <Reports />;
+      case "dashboards":
+        return <AdminDashboards />;
+      default:
+        return renderDashboard();
+    }
+  };
+
+  const renderDashboard = () => (
+    <div className="p-4 space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="bg-white/80 backdrop-blur-sm border-white/20">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                <ClipboardList className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{pendingOS}</p>
+                <p className="text-sm text-slate-600">Pendentes</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/80 backdrop-blur-sm border-white/20">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{completedToday}</p>
+                <p className="text-sm text-slate-600">Concluídas Hoje</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/80 backdrop-blur-sm border-white/20">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <Building className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{(sites as any[]).length}</p>
+                <p className="text-sm text-slate-600">Locais</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/80 backdrop-blur-sm border-white/20">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <Users className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-900">{(stats as any)?.totalUsers || 0}</p>
+                <p className="text-sm text-slate-600">Usuários</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <Card className="bg-white/80 backdrop-blur-sm border-white/20">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            Ações Rápidas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {quickActions.map((action) => (
+              <Button
+                key={action.page}
+                variant="ghost"
+                className="h-16 flex flex-col space-y-1 bg-slate-50 hover:bg-slate-100"
+                onClick={() => setCurrentPage(action.page)}
+              >
+                <div className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center`}>
+                  <action.icon className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xs font-medium text-slate-700">{action.label}</span>
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Work Orders */}
+      <Card className="bg-white/80 backdrop-blur-sm border-white/20">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center justify-between">
+            <span>Ordens Recentes</span>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setCurrentPage("workorders")}
+            >
+              Ver Todas
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentOS.length === 0 ? (
+            <p className="text-center text-slate-500 py-4">Nenhuma ordem de serviço recente</p>
+          ) : (
+            <div className="space-y-3">
+              {recentOS.map((os: any) => (
+                <div key={os.id} className="p-3 border rounded-lg bg-slate-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-900">{os.title}</p>
+                      <p className="text-sm text-slate-600">{os.siteName}</p>
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={
+                        os.status === 'concluida' ? 'bg-green-100 text-green-800' :
+                        os.status === 'vencida' ? 'bg-red-100 text-red-800' :
+                        'bg-blue-100 text-blue-800'
+                      }
+                    >
+                      {os.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Site Overview */}
+      <Card className="bg-white/80 backdrop-blur-sm border-white/20">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center justify-between">
+            <span>Locais</span>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setCurrentPage("sites")}
+            >
+              Gerenciar
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {(sites as any[]).length === 0 ? (
+            <p className="text-center text-slate-500 py-4">Nenhum local cadastrado</p>
+          ) : (
+            <div className="space-y-3">
+              {(sites as any[]).slice(0, 3).map((site: any) => (
+                <div key={site.id} className="p-3 border rounded-lg bg-slate-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Building className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-900">{site.name}</p>
+                      <p className="text-sm text-slate-600">{site.address || 'Endereço não informado'}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 relative">
+      {/* Header Mobile */}
+      <div className="bg-white/90 backdrop-blur-lg border-b border-white/20 shadow-lg sticky top-0 z-50">
+        <div className="px-4 py-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {currentPage !== "dashboard" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentPage("dashboard")}
+                  className="p-2"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+              )}
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-lg">O</span>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-slate-900">OPUS CLEAN</h1>
+                <p className="text-sm text-slate-600">
+                  {currentPage === "dashboard" ? "Visão Geral" : 
+                   currentPage === "sites" ? "Locais" :
+                   currentPage === "services" ? "Serviços" :
+                   currentPage === "service-settings" ? "Configurações" :
+                   currentPage === "schedule" ? "Cronograma" :
+                   currentPage === "qrcodes" ? "QR Codes" :
+                   currentPage === "checklists" ? "Checklists" :
+                   currentPage === "workorders" ? "Ordens de Serviço" :
+                   currentPage === "users" ? "Usuários" :
+                   currentPage === "reports" ? "Relatórios" :
+                   currentPage === "dashboards" ? "Dashboards" : "Visão Geral"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="text-slate-600"
+              >
+                {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            </div>
+          </div>
+          
+          {/* Seletor de Cliente para Admin OPUS */}
+          {!isCustomerUser && (
+            <div className="w-full">
+              <Select value={activeClientId} onValueChange={setActiveClientId}>
+                <SelectTrigger className="w-full bg-white/50 text-sm h-10" data-testid="mobile-customer-selector">
+                  <SelectValue placeholder="Selecione um cliente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(customers as any[])?.map((customer: any) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {/* Nome do Cliente fixo para customer_user */}
+          {isCustomerUser && selectedCustomer && (
+            <div className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-600 font-medium">Cliente</p>
+              <p className="text-sm font-semibold text-blue-900">{selectedCustomer.name}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Slide Menu */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setIsMenuOpen(false)}>
+          <div className="absolute right-0 top-0 h-full w-80 bg-white shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-6 border-b flex-shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-slate-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">{user?.name}</p>
+                  <p className="text-sm text-slate-600">{user?.role}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Menu Items - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("dashboard"); setIsMenuOpen(false); }}
+              >
+                <Home className="w-5 h-5 mr-3" />
+                Visão Geral
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("dashboards"); setIsMenuOpen(false); }}
+              >
+                <BarChart3 className="w-5 h-5 mr-3" />
+                Dashboards
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("workorders"); setIsMenuOpen(false); }}
+              >
+                <ClipboardList className="w-5 h-5 mr-3" />
+                Ordens de Serviço
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("sites"); setIsMenuOpen(false); }}
+              >
+                <Building className="w-5 h-5 mr-3" />
+                Locais
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("services"); setIsMenuOpen(false); }}
+              >
+                <Settings className="w-5 h-5 mr-3" />
+                Serviços
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("service-settings"); setIsMenuOpen(false); }}
+              >
+                <Cog className="w-5 h-5 mr-3" />
+                Configurações
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("schedule"); setIsMenuOpen(false); }}
+              >
+                <Calendar className="w-5 h-5 mr-3" />
+                Cronograma
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("qrcodes"); setIsMenuOpen(false); }}
+              >
+                <QrCode className="w-5 h-5 mr-3" />
+                QR Codes
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("checklists"); setIsMenuOpen(false); }}
+              >
+                <List className="w-5 h-5 mr-3" />
+                Checklists
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("users"); setIsMenuOpen(false); }}
+              >
+                <Users className="w-5 h-5 mr-3" />
+                Usuários
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12" 
+                onClick={() => { setCurrentPage("reports"); setIsMenuOpen(false); }}
+              >
+                <BarChart3 className="w-5 h-5 mr-3" />
+                Relatórios
+              </Button>
+            </div>
+            
+            {/* Footer - Fixed */}
+            <div className="flex-shrink-0 p-4 border-t bg-gray-50">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start h-12 text-red-600 hover:text-red-700 hover:bg-red-50" 
+                onClick={handleLogout}
+              >
+                <LogOut className="w-5 h-5 mr-3" />
+                Sair
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {renderPageContent()}
+    </div>
+  );
+}
+
+// Componente CleaningScheduleMobile - Calendário otimizado para mobile
+function CleaningScheduleMobile({ companyId }: { companyId: string }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<"week" | "month">("month");
+
+  const { data: activities = [], isLoading } = useQuery({
+    queryKey: ["/api/companies", companyId, "cleaning-activities"],
+    enabled: !!companyId,
+  });
+
+  const { data: zones = [] } = useQuery({
+    queryKey: ["/api/companies", companyId, "zones"],
+    enabled: !!companyId,
+  });
+
+  // Funções para navegação de data
+  const goToPrevious = () => {
+    if (viewMode === "month") {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    } else {
+      setCurrentDate(new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000));
+    }
+  };
+
+  const goToNext = () => {
+    if (viewMode === "month") {
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    } else {
+      setCurrentDate(new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000));
+    }
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  // Função para obter as cores das frequências
+  const getFrequencyColor = (frequency: string) => {
+    switch (frequency) {
+      case "diaria":
+        return "bg-green-500 text-white";
+      case "semanal":
+        return "bg-blue-500 text-white";
+      case "mensal":
+        return "bg-purple-500 text-white";
+      case "turno":
+        return "bg-orange-500 text-white";
+      default:
+        return "bg-gray-500 text-white";
+    }
+  };
+
+  // Renderizar calendário mensal
+  const renderMonthCalendar = () => {
+    const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+    const days = [];
+    const currentDay = new Date(startDate);
+
+    for (let i = 0; i < 42; i++) {
+      const day = new Date(currentDay);
+      const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+      const isToday = day.toDateString() === new Date().toDateString();
+
+      days.push(
+        <div
+          key={i}
+          className={`p-2 min-h-[60px] border-r border-b border-gray-100 ${
+            !isCurrentMonth ? "bg-gray-50 text-gray-400" : "bg-white"
+          } ${isToday ? "bg-blue-50 border-blue-200" : ""}`}
+        >
+          <div className={`text-sm font-medium ${isToday ? "text-blue-600" : ""}`}>
+            {day.getDate()}
+          </div>
+          <div className="mt-1 space-y-1">
+            {(activities as any[])
+              .filter((activity: any) => {
+                // Simples lógica para mostrar atividades baseado na frequência
+                if (activity.frequency === "diaria") return true;
+                if (activity.frequency === "semanal") return day.getDay() === 1; // Segundas
+                if (activity.frequency === "mensal") return day.getDate() === 1; // Primeiro dia do mês
+                return false;
+              })
+              .slice(0, 2)
+              .map((activity: any, idx: number) => (
+                <div
+                  key={`${activity.id}-${idx}`}
+                  className={`text-xs px-1.5 py-0.5 rounded truncate ${getFrequencyColor(activity.frequency)}`}
+                >
+                  {activity.name}
+                </div>
+              ))}
+          </div>
+        </div>
+      );
+
+      currentDay.setDate(currentDay.getDate() + 1);
+    }
+
+    return (
+      <div className="bg-white rounded-lg border">
+        {/* Cabeçalho dos dias da semana */}
+        <div className="grid grid-cols-7 border-b">
+          {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"].map((day) => (
+            <div key={day} className="p-3 text-center text-sm font-medium text-gray-600 border-r last:border-r-0">
+              {day}
+            </div>
+          ))}
+        </div>
+        {/* Grid dos dias */}
+        <div className="grid grid-cols-7">{days}</div>
+      </div>
+    );
+  };
+
+  // Renderizar calendário semanal
+  const renderWeekCalendar = () => {
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      const isToday = day.toDateString() === new Date().toDateString();
+
+      days.push(
+        <div key={i} className="flex-1 min-h-[200px] p-3 border-r last:border-r-0">
+          <div className={`text-center pb-2 border-b mb-3 ${isToday ? "text-blue-600 font-bold" : ""}`}>
+            <div className="text-xs text-gray-500">
+              {day.toLocaleDateString("pt-BR", { weekday: "short" })}
+            </div>
+            <div className="text-lg font-semibold">{day.getDate()}</div>
+          </div>
+          <div className="space-y-2">
+            {(activities as any[])
+              .filter((activity: any) => {
+                if (activity.frequency === "diaria") return true;
+                if (activity.frequency === "semanal") return day.getDay() === 1;
+                if (activity.frequency === "mensal") return day.getDate() === 1;
+                return false;
+              })
+              .map((activity: any, idx: number) => (
+                <div
+                  key={`${activity.id}-${idx}`}
+                  className={`text-xs p-2 rounded-lg ${getFrequencyColor(activity.frequency)}`}
+                >
+                  <div className="font-medium truncate">{activity.name}</div>
+                  {(zones as any[]).find((z: any) => z.id === activity.zoneId) && (
+                    <div className="text-xs opacity-75 mt-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {(zones as any[]).find((z: any) => z.id === activity.zoneId)?.name}
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white rounded-lg border">
+        <div className="flex">{days}</div>
+      </div>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
+          <div className="h-40 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3 space-y-4 bg-slate-50 min-h-screen">
+      {/* Header com controles */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            Plano de Limpeza
+          </h1>
+          <Button size="sm" variant="outline" onClick={goToToday}>
+            Hoje
+          </Button>
+        </div>
+
+        {/* Navegação de data */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={goToPrevious}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="text-base font-semibold text-gray-900 min-w-[140px] text-center">
+              {viewMode === "month"
+                ? currentDate.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+                : `${currentDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`}
+            </div>
+            <Button size="sm" variant="outline" onClick={goToNext}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Toggle de visualização */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <Button
+              size="sm"
+              variant={viewMode === "week" ? "default" : "ghost"}
+              className="text-xs px-3"
+              onClick={() => setViewMode("week")}
+            >
+              Semana
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === "month" ? "default" : "ghost"}
+              className="text-xs px-3"
+              onClick={() => setViewMode("month")}
+            >
+              Mês
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Calendário */}
+      {viewMode === "month" ? renderMonthCalendar() : renderWeekCalendar()}
+
+      {/* Lista de atividades abaixo do calendário */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <List className="w-4 h-4" />
+            Atividades Programadas ({(activities as any[]).length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(activities as any[]).slice(0, 5).map((activity: any) => (
+            <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${getFrequencyColor(activity.frequency).split(' ')[0]}`}></div>
+                  <span className="text-sm font-medium text-gray-900">{activity.name}</span>
+                </div>
+                <div className="flex items-center gap-4 mt-1">
+                  <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <MapPin className="w-3 h-3" />
+                    {(zones as any[]).find((z: any) => z.id === activity.zoneId)?.name || "Local não encontrado"}
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <Timer className="w-3 h-3" />
+                    {activity.frequency === "diaria" ? "Diário" : 
+                     activity.frequency === "semanal" ? "Semanal" :
+                     activity.frequency === "mensal" ? "Mensal" : "Por Turno"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {(activities as any[]).length === 0 && (
+            <div className="text-center py-6 text-gray-500">
+              <Calendar className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">Nenhuma atividade programada</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

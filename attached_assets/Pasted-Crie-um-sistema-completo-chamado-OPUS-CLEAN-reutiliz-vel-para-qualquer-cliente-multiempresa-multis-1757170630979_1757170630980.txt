@@ -1,0 +1,119 @@
+Crie um sistema completo chamado OPUS CLEAN, reutilizável para qualquer cliente (multiempresa/multisite). Entregue Web (admin/gestão) e Mobile (operadores). O foco é gestão de limpeza/facilities com plano de limpeza, OS corretivas, SLAs, indicadores, QR Codes e integração com WhatsApp (via n8n).
+
+Módulos e regras essenciais
+
+Multiempresa e locais
+
+Cadastros: Clientes (tenant), Sites e Zonas/Locais (ex.: banheiros, escritórios, produção, externos), com metragem (m²) e capacidade opcional.
+
+Cadastro de Pontos de QR Code (onde o adesivo ficará). Cada ponto pertence a um Site/Zona e tem tipo de QR (ver item 3).
+
+Usuários e perfis
+
+Perfis: admin, gestor_cliente, supervisor_site, operador, auditor.
+
+Login por Microsoft (SSO/Entra ID) e e-mail/senha.
+
+Permissões: operador só vê suas OS; gestor/supervisor veem do site; admin vê tudo.
+
+QR Codes – dois tipos
+
+QR de Execução (Interno): para a equipe de limpeza. Ao escanear no app mobile:
+
+Se existir atividade programada naquele horário/local → abre OS programada com checklist.
+
+Se não existir → opção “Abrir OS corretiva interna”.
+
+Preenche checklist (itens booleano/número/texto/foto/select), podendo anexar fotos; impede concluir sem itens obrigatórios.
+
+QR de Atendimento (Público): para usuário da área (qualquer pessoa). Ao escanear no celular:
+
+Abre uma página pública leve (web) para solicitar atendimento (OS corretiva): campos local já preenchido, descrição, opcional foto; captcha simples/limite de requisições para evitar abuso.
+
+Ao enviar, cria OS corretiva com origem “Público/QR Atendimento” e dispara webhook n8n (WhatsApp) se configurado.
+
+O sistema deve gerar os dois tipos de QR (PDF/PNG para impressão), com IDs únicos que apontem para as rotas corretas (execução vs atendimento).
+
+Plano de Limpeza (programadas)
+
+CRUD de atividades por Zona com frequência: diária/semana/mês/turno ou custom.
+
+Cada atividade associa Template de Checklist e SLA (tempo para iniciar/concluir).
+
+Calendário e lista com filtros (cliente/site/zona/turno/status).
+
+OS (ordens de serviço)
+
+Programadas (do plano) e Corretivas (internas/públicas).
+
+Campos: prioridade, local, responsável, origem (agenda, QR Execução, QR Atendimento, WhatsApp), status (aberta, em andamento, pausada, concluída, cancelada, vencida), horários, anexos, observações.
+
+SLA e notificações
+
+SLA por categoria/atividade (min para atender/concluir).
+
+Sinalizar no prazo / em risco / vencido; escalonar para supervisor/gestor.
+
+Enviar eventos via webhook n8n: OS aberta/concluída, SLA estourado; permitir integração WhatsApp.
+
+Indicadores e mapa
+
+Mapa/planta do site (imagem) com as Zonas posicionadas e cores por status.
+
+KPIs: % concluídas no prazo, TMA/TMR, OS abertas/atrasadas, produtividade por m², corretivas por causa, ranking de zonas críticas, curva por turno.
+
+Exportar CSV/PDF simples.
+
+Jardinagem
+
+Mesmo mecanismo (categoria “Jardinagem”): cronograma, checklist, OS e indicadores.
+
+Contador de fluxo (banheiros)
+
+Em cada banheiro, parametrizar limite de uso (ex.: 80).
+
+Operador pode incrementar pelo app; ao atingir o limite, abrir OS automática; reset por turno ou manual.
+
+Mobile (operador) – offline
+
+Offline first: baixar plano do turno, abrir/concluir OS e checklists sem internet; sincronizar depois.
+
+Ações rápidas: Ler QR, Minhas OS, Histórico, Anexar foto.
+
+Web (gestão)
+
+Login/SSO, Dashboard, Cadastros (Cliente/Site/Zona/Pontos de QR/Usuários), Gerar QRs (Execução e Atendimento), Plano de Limpeza, OS, Mapa/Indicadores, Relatórios.
+
+Comportamentos-chave
+
+Checklist pode exigir foto/assinatura para conclusão (configurável no template).
+
+Trilhas de auditoria básicas (quem fez o quê/quando).
+
+Campos de m² sempre presentes para KPIs de produtividade/custo futuro.
+
+Páginas públicas (QR Atendimento) responsivas e leves, sem login.
+
+Integrações (simples)
+
+SSO Microsoft para login corporativo.
+
+n8n/WhatsApp: configurar URLs de webhook; sistema envia JSON com cliente/site/zona/OS/status/timestamps; no QR Atendimento, também pode abrir link que chama um fluxo no n8n.
+
+Critérios para 1ª entrega
+
+Consigo cadastrar cliente/site/zonas (com m²) e pontos de QR.
+
+Consigo gerar e imprimir os dois QRs (Execução e Atendimento).
+
+No mobile, ao ler o QR de Execução: abrir OS/Checklist e concluir com foto.
+
+No celular do público, ao ler o QR de Atendimento: abrir formulário público e criar OS corretiva.
+
+Plano de limpeza funcionando; OS programadas aparecem e podem ser concluídas.
+
+SLAs sinalizando em listas e notificação via webhook.
+
+Dashboard com mapa e KPIs principais.
+
+Modo offline no mobile sincronizando depois.

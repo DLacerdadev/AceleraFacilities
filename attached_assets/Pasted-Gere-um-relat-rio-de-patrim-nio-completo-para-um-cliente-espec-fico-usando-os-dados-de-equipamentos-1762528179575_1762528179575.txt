@@ -1,0 +1,71 @@
+Gere um relatório de patrimônio completo para um cliente específico, usando os dados de equipamentos cadastrados no sistema.
+
+O relatório deve mostrar, de forma hierárquica, todos os locais, zonas e equipamentos pertencentes a esse cliente, incluindo o valor total de cada parte.
+
+Siga estas instruções cuidadosamente:
+
+1. Filtre os dados para considerar apenas os equipamentos que pertencem ao cliente informado.
+
+2. Estruture o relatório nesta ordem:
+
+Mostre o nome do cliente no topo.
+
+Liste cada local do cliente.
+
+Dentro de cada local, mostre as zonas.
+
+Dentro de cada zona, liste todos os equipamentos com:
+
+nome do equipamento
+
+valor unitário
+
+quantidade (se existir)
+
+valor total (valor unitário × quantidade, ou apenas o valor unitário se não tiver quantidade)
+
+3. Calcule e exiba os totais:
+
+No final de cada zona, mostre o total da zona (soma de todos os equipamentos daquela zona).
+
+No final de cada local, mostre o total do local (soma de todas as zonas).
+
+No final do relatório, mostre o total geral do cliente (soma de todos os locais).
+
+4. Formatação esperada da resposta:
+
+Organize o resultado em uma estrutura visual hierárquica, assim:
+
+Cliente: [Nome do cliente]
+Total geral: R$ [valor total]
+
+Local: [Nome do local] — Total do local: R$ [valor]
+  Zona: [Nome da zona] — Total da zona: R$ [valor]
+    • [Nome do equipamento] — Valor unitário: R$ [valor] — Qtde: [x] — Total: R$ [valor]
+    • [Próximo equipamento...]
+
+  Zona: [Outra zona] — Total: R$ [valor]
+    • ...
+
+
+Use formato de moeda brasileira (R$) e duas casas decimais.
+
+Mantenha a hierarquia clara com recuos (indentação) ou bullets.
+
+Não deixe zonas ou locais vazios aparecerem.
+
+5. Verifique coerência:
+
+O total de cada local deve ser igual à soma das zonas.
+
+O total geral deve ser igual à soma dos locais.
+
+6. Caso algum campo esteja faltando (por exemplo, quantidade), apenas ignore e mostre “Qtde: —”.
+
+7. No final, adicione uma linha de conferência:
+
+“✅ Conferido: todos os totais batem corretamente.”
+
+Entrada esperada: lista de registros contendo nome do cliente, local, zona, nome do equipamento, valor unitário e quantidade (se houver).
+
+Saída esperada: um relatório textual completo e organizado, pronto para ser exibido ou copiado para um documento.

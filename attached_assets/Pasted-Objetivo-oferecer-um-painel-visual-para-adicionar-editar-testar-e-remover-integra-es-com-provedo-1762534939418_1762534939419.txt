@@ -1,0 +1,95 @@
+Objetivo: oferecer um painel visual para adicionar, editar, testar e remover integrações com provedores de IA (como OpenAI, Anthropic, Google, etc.), além de definir qual modelo o sistema deve usar nas automações.
+
+🧩 Estrutura esperada da tela:
+
+1. Cabeçalho da seção:
+
+Título: “Integrações de Inteligência Artificial”
+
+Descrição curta: “Configure aqui suas conexões com provedores de IA generativa.”
+
+2. Lista de integrações existentes:
+
+Mostrar cada integração ativa com:
+
+Nome do provedor (ex: OpenAI, Anthropic, Google Gemini, etc.)
+
+Modelo configurado (ex: GPT-5, Claude 3, Gemini 1.5)
+
+Status de conexão (Ativa / Inativa)
+
+Botões: Editar, Testar, Remover
+
+3. Botão “+ Nova Integração”
+
+Ao clicar, abrir um formulário com os seguintes campos:
+
+Nome da integração (campo de texto)
+
+Provedor / API (menu suspenso com opções como OpenAI, Anthropic, Google, Personalizado)
+
+Modelo padrão (campo de texto ou seleção dinâmica conforme o provedor)
+
+API Key / Chave de acesso (campo de texto com opção “ocultar/mostrar”)
+
+Endpoint personalizado (opcional)
+
+Botão “Testar conexão” → retorna mensagem “Conexão bem-sucedida” ou “Erro ao conectar”.
+
+Botão “Salvar” para registrar a integração.
+
+4. Segurança:
+
+As chaves devem ser armazenadas de forma criptografada.
+
+Não exibir o valor completo da API Key depois de salva (mostrar apenas os últimos 4 caracteres).
+
+Permitir atualizar ou substituir a chave quando necessário.
+
+5. Configurações adicionais (opcionais):
+
+Campo para definir IA padrão do sistema (usada em respostas automáticas, relatórios, etc.).
+
+Opção para ativar/desativar logs das requisições.
+
+Opção para definir limite de tokens por requisição.
+
+6. Visual esperado:
+
+Layout limpo e moderno, com tons azul-marinho e branco (cores principais do Grupo Opus).
+
+Botões de ação em azul com texto branco.
+
+Espaçamento confortável e ícones simples representando cada provedor de IA.
+
+7. Resultado esperado:
+Uma tela funcional onde o administrador possa:
+
+Adicionar integrações com provedores de IA.
+
+Inserir e testar a API Key.
+
+Escolher o modelo generativo padrão.
+
+Editar ou remover integrações existentes.
+
+Testar a conexão e receber retorno em tempo real.
+
+Importante: a IA deve gerar o layout e a lógica pensando em uma interface intuitiva e segura para o usuário, permitindo fácil manutenção das chaves e controle das conexões.
+
+🧭 Fluxo esperado da função
+[Menu Configurações]
+     ↓
+[Integrações de Inteligência Artificial]
+     ↓
+[Listar integrações existentes]
+     ↓
+[+ Nova Integração]
+     ↓
+[Formulário para inserir API Key, modelo e provedor]
+     ↓
+[Testar conexão]
+     ↓
+[Salvar integração criptografada]
+     ↓
+[Exibir status “Conectado”]

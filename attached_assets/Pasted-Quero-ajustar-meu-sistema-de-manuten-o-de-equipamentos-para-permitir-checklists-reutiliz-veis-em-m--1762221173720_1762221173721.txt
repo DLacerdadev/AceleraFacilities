@@ -1,0 +1,35 @@
+Quero ajustar meu sistema de manutenção de equipamentos para permitir checklists reutilizáveis em múltiplos locais e zonas, mantendo a possibilidade de vincular equipamentos de forma geral ou específica.
+
+Atualmente, ao criar um checklist, preciso escolher um único local, zona e equipamento, o que me impede de usar o mesmo checklist para diferentes unidades.
+
+O objetivo é transformar a estrutura de forma que:
+
+Um checklist template (modelo de checklist) possa ser criado uma única vez, sem precisar definir local, zona ou equipamento no momento da criação.
+
+Esse checklist possa ser vinculado posteriormente a múltiplos locais e zonas por meio de uma nova estrutura intermediária.
+
+Eu possa vincular esse checklist a um tipo de equipamento genérico (ex: Ar Condicionado, Bomba, Gerador) ou a um equipamento específico quando necessário.
+
+Na hora da execução da manutenção, o sistema identifique automaticamente qual checklist deve ser usado com base no local, zona e tipo de equipamento.
+
+Implemente isso criando ou ajustando as entidades e relacionamentos da seguinte forma:
+
+ChecklistTemplate: representa o modelo base do checklist. Contém nome, versão, descrição e itens.
+
+LocalChecklist (nova entidade): faz a ligação entre um ChecklistTemplate e múltiplos Locais e Zonas. Deve permitir também vincular um Tipo de Equipamento (genérico) e opcionalmente um Equipamento específico.
+
+EquipamentoTipo: define os tipos de equipamento (ex.: Ar Condicionado, Gerador, Bomba).
+
+Equipamento: mantém a relação com EquipamentoTipo, Local e Zona.
+
+Regras de comportamento:
+
+Na tela de criação de checklist, os campos de Local, Zona e Equipamento devem ser opcionais ou removidos.
+
+Crie uma nova tela ou aba chamada “Associações”, onde o usuário poderá vincular o checklist a múltiplos Locais, Zonas e Tipos de Equipamento.
+
+Na execução, o sistema deve buscar automaticamente o checklist correspondente ao Local, Zona e Tipo de Equipamento selecionados.
+
+Todas as instâncias de manutenção devem continuar rastreáveis por equipamento e local.
+
+O resultado esperado é um sistema onde um único checklist template pode ser aplicado a vários locais e zonas diferentes, mantendo a flexibilidade de vincular equipamentos genéricos ou específicos sem precisar duplicar templates.

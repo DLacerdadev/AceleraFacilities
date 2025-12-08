@@ -1,0 +1,174 @@
+Agora eu quero adicionar uma melhoria ao sistema:
+
+Criar um módulo de Estoque de Peças
+
+Ajustar o fluxo de criação de O.S. e planos de manutenção para considerar o uso de peças
+
+Melhoria específica que quero implementar
+
+CRUD de categorias de equipamento existente em Configurações
+
+O sistema já tem categorias de equipamento (ou algo parecido).
+Quero que você:
+
+Garanta que o CRUD de categorias de equipamento esteja na área de Configurações.
+
+Campos esperados (ajuste aos nomes atuais do projeto se necessário):
+
+id
+
+nome
+
+descricao (opcional)
+
+ativo (boolean)
+
+Se o CRUD já existir:
+
+Apenas organize/melhore onde for preciso (ex.: mover pro menu Configurações, ajustar rotas, componentes, etc.).
+
+Novo módulo: Estoque de Peças (com CRUD de peças)
+
+No sidebar, quero um novo item de menu: Estoque de Peças.
+
+Dentro desse módulo, preciso de um CRUD de peças com os campos:
+
+id
+
+nome da peça (ex.: "Gás refrigerador")
+
+categoria_equipamento_id
+
+Deve estar vinculado a uma categoria de equipamento já existente (ex.: “Ar condicionado”).
+
+quantidade_atual
+
+quantidade_minima_viavel
+
+Regras importantes:
+
+Toda peça deve estar sempre associada a uma categoria de equipamento.
+
+Criar tela para:
+
+Listar peças
+
+Criar nova peça
+
+Editar peça
+
+Excluir ou arquivar peça
+
+Se o sistema já tiver alguma estrutura de estoque, você deve aproveitar ao máximo o que já existe, adaptando ao novo modelo.
+
+Uso de peças em O.S., checklist e plano de manutenção
+
+Já existe fluxo para criar O.S. manual, gerar O.S. por checklist e criar plano de manutenção.
+
+Quero que você evolua esses fluxos para incluir peças:
+
+Sempre que o usuário for:
+
+Criar uma O.S. manualmente, ou
+
+Gerar uma O.S. a partir de um checklist, ou
+
+Criar um plano de manutenção que gera várias O.S.,
+
+O sistema deve permitir selecionar quais peças serão usadas e em qual quantidade.
+
+Comportamento desejado:
+
+Antes de confirmar a criação das O.S. (ou do plano que gera várias O.S.):
+
+O sistema deve calcular se existe estoque suficiente para todas as peças selecionadas.
+
+Se não houver peças suficientes:
+
+Mostrar um alerta claro informando:
+
+Qual peça está em falta
+
+Quantidade disponível
+
+Quantidade necessária
+
+Idealmente, impedir a confirmação ou exigir uma ação explícita do usuário (dependendo do padrão atual do sistema).
+
+Quando a O.S. for confirmada:
+
+Descontar do estoque a quantidade de peças usadas.
+
+Alerta de estoque mínimo
+
+No cadastro de peças temos o campo quantidade_minima_viavel.
+
+Sempre que quantidade_atual ficar abaixo desse mínimo:
+
+O sistema deve marcar essa peça como estoque baixo.
+
+Mostrar alertas visuais:
+
+Na tela de Estoque de Peças (ex.: linha destacada, badge de alerta, etc.)
+
+E, se fizer sentido para a arquitetura atual, algum alerta global (banner, ícone com badge no menu, etc.).
+
+Como você deve trabalhar no código (Replit / vibe coding)
+
+Respeitar a stack e estrutura já existentes
+
+Antes de propor algo novo, adapte-se à stack que o projeto já está usando (Node, Python, etc.).
+
+Siga o padrão de:
+
+Organização de pastas
+
+Nome de arquivos
+
+Estilo de código (TypeScript vs JS, etc.)
+
+Se for sugerir refactors, faça isso aos poucos, explicando o impacto.
+
+Backend
+
+Adicionar/ajustar modelos de dados (tabelas ou schemas) para:
+
+pecas
+
+Ligações entre O.S. / planos de manutenção e peças (ex.: os_pecas, plano_manutencao_pecas), usando o padrão atual do projeto.
+
+Criar/ajustar endpoints REST ou controllers para:
+
+CRUD de peças.
+
+Validação de estoque ao criar O.S. ou plano.
+
+Atualização de estoque quando a O.S. é confirmada.
+
+Frontend
+
+Criar/ajustar componentes de UI para:
+
+Menu Estoque de Peças no sidebar.
+
+Tela de listagem + formulário de peças.
+
+Seleção de peças ao criar O.S. / planos (ex.: dropdown com quantidade).
+
+Alertas de:
+
+Estoque insuficiente
+
+Estoque abaixo do mínimo viável
+
+Explicações
+
+Sempre que sugerir alterações:
+
+Mostre os arquivos completos que precisarem de mudança (ou pelo menos blocos significativos).
+
+Explique onde cada arquivo fica (ex.: backend/src/routes/pecas.ts, frontend/src/pages/EstoquePecas.tsx).
+
+Descreva os pontos de integração com o que já existe no sistema (rotas, componentes, serviços).
+
+Comece analisando a arquitetura atual (pode me pedir para colar arquivos chave, como rotas, models e componentes principais) e, a partir disso, proponha as mudanças mínimas porém bem estruturadas para implementar esse módulo de estoque de peças e a validação de estoque nas O.S. e planos de manutenção.

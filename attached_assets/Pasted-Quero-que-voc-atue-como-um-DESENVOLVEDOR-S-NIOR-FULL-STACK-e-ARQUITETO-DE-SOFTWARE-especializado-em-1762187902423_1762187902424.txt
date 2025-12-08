@@ -1,0 +1,256 @@
+Quero que você atue como um DESENVOLVEDOR SÊNIOR FULL-STACK e ARQUITETO DE SOFTWARE especializado em sistemas de manutenção (CMMS) e aplicativos web/mobile.
+
+---
+
+1. CONTEXTO DO PROJETO – OPUS
+
+---
+
+Nesse nosso sistema chamado **OPUS**, com arquitetura modular, que hoje possui pelo menos dois módulos:
+
+- OPUS Clean (limpeza)
+- OPUS Manutenção (manutenção)
+
+O sistema já é multi-tenant e usa a hierarquia:
+company → customer → site → zone
+
+A arquitetura atual (frontend + backend + banco) está documentada no arquivo Fluxo do Sistema OPUS. 
+
+Pontos importantes dessa arquitetura que você DEVE RESPEITAR:
+
+- Frontend:
+    - React + TypeScript + TanStack Query + Wouter para roteamento
+    - Componentes shadcn/ui
+    - Contextos: ModuleProvider, ClientProvider, etc.
+- Backend:
+    - Express.js + TypeScript
+    - Rotas REST em `server/routes.ts`
+    - Middleware de autenticação JWT
+    - Storage Layer em `server/storage.ts`
+- Banco:
+    - PostgreSQL + Drizzle ORM em `shared/schema.ts`
+    - Tabelas discriminadas por campo `module` (ex: 'clean' | 'maintenance')
+    - Multi-tenancy via company/customer/site/zone
+
+Você deve usar essa arquitetura como base para QUALQUER código proposto.
+
+---
+
+1. OBJETIVO ESPECÍFICO DA MANUTENÇÃO
+
+---
+
+Quero reestruturar a parte de MANUTENÇÃO do OPUS de forma que:
+
+1. O **plano de manutenção** seja uma entidade diferente e independente do **plano de limpeza**.
+    - OPUS Clean continua funcionando como está hoje (rotas, tabelas e telas de limpeza NÃO devem ser quebradas).
+    - OPUS Manutenção passa a ter seu próprio fluxo.
+2. O sistema de manutenção DEIXE de depender de checklist por LOCAL/ZONA
+e passe a usar **CHECKLIST POR EQUIPAMENTO**.
+3. O fluxo de cadastro/uso seja:
+    
+    a. Selecionar o **cliente (customer)** já existente no OPUS.
+    
+    b. Escolher o **site** do cliente (pode ser visto como “área física”).
+    
+    c. Escolher ou cadastrar uma **zone** (local/zona) dentro do site.
+    
+    d. Criar um **equipamento**, vinculado a uma zone (e, por consequência, ao site → customer).
+    e. Criar **checklists por equipamento** (ou por tipo de equipamento, se você julgar melhor).
+    f. Executar esses checklists por equipamento (histórico de manutenções).
+    g. Configurar **planos de manutenção** que disparam/organizam essas execuções (preventiva, inspeção, etc.).
+    
+4. O **plano de limpeza** continua existindo e operando no módulo `clean`, com suas telas atuais
+(`/schedule`, `/checklists`, etc.), separado do fluxo de manutenção.
+
+---
+
+1. MODELO DE DADOS ESPERADO (ALVO) NO CONTEXTO DO OPUS
+
+---
+
+Partindo do que já existe no OPUS (customers, sites, zones, work_orders, module, etc.), quero que você:
+
+1. IDENTIFIQUE as entidades atuais relacionadas a:
+    - cliente, site, zone, work orders, checklists de limpeza
+    - quaisquer campos já relacionados a manutenção, como `maintenanceActivityId` ou `equipmentId` se existirem.
+2. PROPONHA e IMPLEMENTE um modelo de dados para manutenção parecido com:
+- Tabelas já existentes que devem ser reaproveitadas:
+    - `customers` (cliente)
+    - `sites` (local macro / área)
+    - `zones` (local/zona dentro do site)
+    - `work_orders` (ordens de serviço), com campo `module` para distinguir 'clean' vs 'maintenance'
+- Novas entidades focadas em manutenção (nomes podem ser ajustados, mas explique as decisões):
+    - `equipment` (ou similar)
+        - id
+        - customerId (FK)
+        - siteId (FK)
+        - zoneId (FK)
+        - name
+        - internalCode
+        - equipmentType
+        - manufacturer
+        - model
+        - serialNumber
+        - isActive
+        - module = 'maintenance'
+    - `maintenance_checklist_templates`
+        - id
+        - customerId (FK)
+        - name
+        - description
+        - equipmentId (opcional) OU equipmentTypeId (se for por tipo)
+        - version
+        - isActive
+        - module = 'maintenance'
+    - `maintenance_checklist_items`
+        - id
+        - checklistTemplateId (FK)
+        - order
+        - description
+        - answerType (ok_nok, text, number, select, etc.)
+        - isRequired
+    - `maintenance_checklist_executions`
+        - id
+        - checklistTemplateId (FK)
+        - equipmentId (FK)
+        - workOrderId (FK opcional)
+        - startedAt
+        - finishedAt
+        - status (in_progress, done, cancelled)
+        - executedByUserId
+        - notes
+    - `maintenance_checklist_execution_items`
+        - id
+        - executionId (FK)
+        - checklistItemId (FK)
+        - value
+        - status (ok, nok, not_applicable)
+        - notes
+    - `maintenance_plans`
+        - id
+        - customerId (FK)
+        - name
+        - description
+        - type (preventive, corrective, inspection, etc.)
+        - periodicity (daily, weekly, monthly, custom)
+        - isActive
+    - `maintenance_plan_equipments`
+        - id
+        - planId (FK)
+        - equipmentId (FK)
+        - checklistTemplateId (FK opcional)
+        - nextExecutionAt
+        - lastExecutionAt
+        - isActive
+
+Se você achar que faz mais sentido reutilizar tabelas genéricas de checklist já existentes, faça isso,
+mas SEM quebrar o módulo de limpeza e SEM misturar os dados dos dois módulos.
+Explique claramente a sua escolha.
+
+---
+
+1. STACK DE TECNOLOGIA (OBRIGATÓRIO SEGUIR)
+
+---
+
+Use exatamente o stack do OPUS, de acordo com o documento:
+
+- Frontend:
+    - React + TypeScript
+    - TanStack Query para chamadas à API e cache
+    - Wouter para roteamento
+    - shadcn/ui como biblioteca de UI
+    - Contextos existentes: ModuleProvider, ClientProvider, etc.
+- Backend:
+    - Express.js + TypeScript
+    - Rotas em `server/routes.ts`
+    - Middleware JWT já existente
+- Banco:
+    - PostgreSQL
+    - Drizzle ORM (schema em `shared/schema.ts`)
+
+Não use NestJS, Prisma ou outros frameworks que não existam no projeto.
+Integre-se à estrutura atual (routes.ts, storage.ts, schema.ts, contexts, pages).
+
+---
+
+1. O QUE VOCÊ PRECISA ENTREGAR (NA ORDEM)
+
+---
+
+1. Análise do estado atual
+    - Liste as tabelas e entidades atuais relevantes:
+        - customers, sites, zones, work_orders, checklists (se existirem), etc.
+    - Mostre onde hoje o fluxo de limpeza está acoplado (ex.: páginas `/schedule`, `/checklists`).
+    - Aponte se existe algo de manutenção já iniciado (ex.: campos maintenanceActivityId, equipmentId).
+2. Novo modelo de dados para manutenção
+    - Desenhe o modelo em texto (entidades + campos + relacionamentos) usando Drizzle.
+    - Aponte:
+        - quais tabelas são novas
+        - quais tabelas existentes precisam ganhar novos campos (ex.: work_orders.equipmentId)
+        - como o campo `module` será usado (quando faz sentido) para isolar dados de manutenção.
+3. Migração de dados (alto nível)
+    - Descreva como fazer a migração do estado atual para:
+        - ter equipamentos cadastrados por zone/site/customer
+        - sair de “checklist por local” (se já existir) para “checklist por equipamento”
+    - Como manter o HISTÓRICO de execuções existentes (limpeza) sem quebrar nada.
+    - Se necessário, como manter, por um tempo, compatibilidade entre modelo antigo e novo.
+4. Código de backend (Express + Drizzle)
+    - Atualização de `shared/schema.ts` com as novas tabelas/campos.
+    - Funções na camada de storage (`server/storage.ts`) para:
+        - CRUD de equipment
+        - CRUD de maintenance_checklist_templates e maintenance_checklist_items
+        - Execução de checklists de manutenção
+        - CRUD de maintenance_plans e maintenance_plan_equipments
+    - Rotas REST em `server/routes.ts` seguindo o padrão atual:
+        - Ex: `GET /api/customers/:customerId/equipment`
+        - Ex: `POST /api/customers/:customerId/equipment`
+        - Ex: `POST /api/customers/:customerId/maintenance-plans`
+    - Inclua exemplos de requests/responses JSON.
+5. Código de frontend (React + TanStack Query + Wouter)
+    - Páginas novas ou adaptadas no módulo **OPUS Manutenção**:
+        - Listagem e cadastro de Equipamentos (filtrando por customer/site/zone).
+        - Cadastro de Checklists de manutenção por equipamento.
+        - Tela de Execução de checklist (desktop e, se fizer sentido, mobile).
+        - Tela de Planos de Manutenção e vínculo com equipamentos.
+    - Integração com:
+        - ModuleProvider (mostrar essas telas apenas quando currentModule === 'maintenance').
+        - ClientProvider (filtrar por cliente ativo).
+    - Atualizar Sidebar para mostrar itens de menu específicos de manutenção quando:
+        - `currentModule === 'maintenance'`.
+6. Regras de negócio
+    - Definir validações obrigatórias, como:
+        - Não permitir checklist de manutenção sem equipamento.
+        - Não permitir excluir equipamento com histórico sem uma regra de arquivamento.
+    - Comportamento ao mover um equipamento de uma zone para outra.
+    - Estratégia de versionamento dos checklists (campo version, impacto em execuções antigas).
+7. Integração com permissões e mobile
+    - Mostrar como as novas telas/rotas respeitam o sistema de permissões existente (roles e usePermissions).
+    - Descrever (e se possível exemplificar) como o fluxo de execução de checklist de manutenção
+    pode ser acessado via rotas mobile (`MobileRouter`), por exemplo:
+        - vincular uma work order de manutenção a um equipamento e checklist.
+8. Testes
+    - Exemplos de testes automatizados (unitários/integrados) para:
+        - Criação de equipment vinculado a site/zone/customer.
+        - Criação e execução de checklist de manutenção para um equipamento.
+        - Criação de plano de manutenção vinculando múltiplos equipamentos.
+9. Passo-a-passo de implantação
+    - Estratégia de rollout:
+        - Criação/migração de tabelas com Drizzle (migrations ou db push).
+        - Smoke tests em ambiente de staging.
+        - Feature flags se necessário (ex.: ativar módulo de manutenção apenas para certos clientes).
+        - Plano de rollback em caso de erro.
+
+---
+
+1. REGRAS GERAIS PARA VOCÊ
+
+---
+
+- Use SEMPRE a estrutura, padrões de nome e estilo de código do OPUS,
+conforme o documento fornecido.
+- Só faça perguntas se algo for realmente bloqueante;
+caso contrário, tome decisões razoáveis, documente-as e siga em frente.
+- Explique o racional por trás de decisões de modelagem e arquitetura.
+- Priorize exemplos de código executáveis e coerentes com o projeto atual.
