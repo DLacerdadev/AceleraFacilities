@@ -6,6 +6,7 @@ import { setupWebSocket } from "./websocket";
 import helmet from "helmet";
 import cors from "cors";
 import path from "path";
+import cron from 'node-cron';
 
 const app = express();
 
@@ -144,17 +145,15 @@ app.use((req, res, next) => {
 })();
 
 // Monthly maintenance scheduler - runs on the last day of each month at 23:00
+// Cron: "0 23 28-31 * *" = At 23:00 on days 28-31 (we check if it's actually last day)
 function scheduleMonthlyMaintenance() {
-  function checkAndRun() {
+  cron.schedule('0 23 28-31 * *', () => {
     const now = new Date();
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    // Check if tomorrow is a new month (meaning today is last day of month)
-    const isLastDayOfMonth = tomorrow.getMonth() !== now.getMonth();
-    
-    // Run at 23:00 on the last day of month
-    if (isLastDayOfMonth && now.getHours() === 23 && now.getMinutes() === 0) {
+    // Only run if tomorrow is a new month (meaning today is last day of month)
+    if (tomorrow.getMonth() !== now.getMonth()) {
       log('[MONTHLY SCHEDULER] Executando geração automática de OSs para próximo mês');
       
       fetch(`http://localhost:${parseInt(process.env.PORT || '5000', 10)}/api/scheduler/regenerate-monthly-maintenance`, {
@@ -169,37 +168,29 @@ function scheduleMonthlyMaintenance() {
           console.error('[MONTHLY SCHEDULER] ❌ Erro na geração automática:', error);
         });
     }
-  }
+  });
   
-  // Check every hour
-  setInterval(checkAndRun, 60 * 60 * 1000);
-  log('[MONTHLY SCHEDULER] Agendamento mensal ativado - roda todo último dia do mês às 23:00');
+  log('[MONTHLY SCHEDULER] Agendamento mensal ativado via node-cron - roda todo último dia do mês às 23:00');
 }
 
-// Daily overdue scheduler - runs every day at 23:59 to mark overdue work orders
+// Daily overdue scheduler - runs every day at 23:55 to mark overdue work orders
+// Cron: "55 23 * * *" = At 23:55 every day
 function scheduleDailyOverdueCheck() {
-  function checkAndRun() {
-    const now = new Date();
+  cron.schedule('55 23 * * *', () => {
+    log('[DAILY OVERDUE SCHEDULER] Executando marcação de O.S. vencidas');
     
-    // Run at 23:59 every day
-    if (now.getHours() === 23 && now.getMinutes() === 59) {
-      log('[DAILY OVERDUE SCHEDULER] Executando marcação de O.S. vencidas');
-      
-      fetch(`http://localhost:${parseInt(process.env.PORT || '5000', 10)}/api/scheduler/mark-overdue-work-orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+    fetch(`http://localhost:${parseInt(process.env.PORT || '5000', 10)}/api/scheduler/mark-overdue-work-orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    })
+      .then(res => res.json())
+      .then(data => {
+        log(`[DAILY OVERDUE SCHEDULER] ✅ ${data.updated} O.S. marcadas como vencidas`);
       })
-        .then(res => res.json())
-        .then(data => {
-          log(`[DAILY OVERDUE SCHEDULER] ✅ ${data.updated} O.S. marcadas como vencidas`);
-        })
-        .catch(error => {
-          console.error('[DAILY OVERDUE SCHEDULER] ❌ Erro ao marcar O.S. vencidas:', error);
-        });
-    }
-  }
+      .catch(error => {
+        console.error('[DAILY OVERDUE SCHEDULER] ❌ Erro ao marcar O.S. vencidas:', error);
+      });
+  });
   
-  // Check every minute
-  setInterval(checkAndRun, 60 * 1000);
-  log('[DAILY OVERDUE SCHEDULER] Agendamento diário ativado - roda todo dia às 23:59');
+  log('[DAILY OVERDUE SCHEDULER] Agendamento diário ativado via node-cron - roda todo dia às 23:55');
 }
