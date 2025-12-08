@@ -102,3 +102,5 @@
 [x] 419. Dropped and recreated schema to ensure clean import
 [x] 420. Successfully imported all data: 37 users, 10 customers, 2 companies, 23 sites, 63 zones, 3093 work orders, 48 QR points
 [x] 421. Application restarted and running with restored database
+[x] 422. Fixed popup auto-closing issue - useAuth hook was causing re-renders every 5 seconds
+[x] 423. Modified updateAuthState to only update when state actually changes (prevents unnecessary re-renders)

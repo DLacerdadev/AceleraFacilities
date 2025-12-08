@@ -70,7 +70,15 @@ export function useAuth() {
 
   const updateAuthState = useCallback(() => {
     const newState = getAuthState();
-    setAuthState(newState);
+    // Só atualiza se o estado realmente mudou para evitar re-renders desnecessários
+    setAuthState(prevState => {
+      const prevJson = JSON.stringify(prevState);
+      const newJson = JSON.stringify(newState);
+      if (prevJson === newJson) {
+        return prevState; // Mantém a mesma referência se não mudou
+      }
+      return newState;
+    });
   }, []);
 
   useEffect(() => {

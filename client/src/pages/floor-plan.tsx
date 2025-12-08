@@ -475,6 +475,7 @@ export default function FloorPlanPage() {
                   }
                 }}
                 className={isHeatmapMode ? theme.buttons.primary : ''}
+                style={isHeatmapMode ? theme.buttons.primaryStyle : undefined}
                 data-testid="button-heatmap-mode"
               >
                 <Thermometer className="w-4 h-4 mr-1" />
@@ -524,6 +525,7 @@ export default function FloorPlanPage() {
                       onClick={() => saveFloorPlanMutation.mutate()}
                       disabled={saveFloorPlanMutation.isPending}
                       className={theme.buttons.primary}
+                      style={theme.buttons.primaryStyle}
                       data-testid="button-save-floor-plan"
                     >
                       <Save className="w-4 h-4 mr-1" />
@@ -534,7 +536,7 @@ export default function FloorPlanPage() {
               )}
 
               {hasUnsavedChanges && (
-                <div className="flex items-center text-orange-600 ml-2">
+                <div className="flex items-center ml-2" style={{ color: 'var(--module-primary)' }}>
                   <AlertCircle className="w-4 h-4 mr-1" />
                   <span className="text-sm">Mudanças não salvas</span>
                 </div>

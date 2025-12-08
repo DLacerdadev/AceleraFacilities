@@ -1106,6 +1106,8 @@ export default function MaintenancePlans() {
                       setShowDayDetailsModal(false);
                       setShowCreateModal(true);
                     }}
+                    className={theme.buttons.primary}
+                    style={theme.buttons.primaryStyle}
                     data-testid="button-add-more-activities"
                   >
                     <Plus className="w-4 h-4 mr-1" />
