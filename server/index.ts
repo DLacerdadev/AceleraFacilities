@@ -137,6 +137,9 @@ app.use((req, res, next) => {
     
     // Schedule monthly maintenance work order generation
     scheduleMonthlyMaintenance();
+    
+    // Schedule daily overdue work order marking
+    scheduleDailyOverdueCheck();
   });
 })();
 
@@ -171,4 +174,32 @@ function scheduleMonthlyMaintenance() {
   // Check every hour
   setInterval(checkAndRun, 60 * 60 * 1000);
   log('[MONTHLY SCHEDULER] Agendamento mensal ativado - roda todo último dia do mês às 23:00');
+}
+
+// Daily overdue scheduler - runs every day at 23:59 to mark overdue work orders
+function scheduleDailyOverdueCheck() {
+  function checkAndRun() {
+    const now = new Date();
+    
+    // Run at 23:59 every day
+    if (now.getHours() === 23 && now.getMinutes() === 59) {
+      log('[DAILY OVERDUE SCHEDULER] Executando marcação de O.S. vencidas');
+      
+      fetch(`http://localhost:${parseInt(process.env.PORT || '5000', 10)}/api/scheduler/mark-overdue-work-orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+        .then(res => res.json())
+        .then(data => {
+          log(`[DAILY OVERDUE SCHEDULER] ✅ ${data.updated} O.S. marcadas como vencidas`);
+        })
+        .catch(error => {
+          console.error('[DAILY OVERDUE SCHEDULER] ❌ Erro ao marcar O.S. vencidas:', error);
+        });
+    }
+  }
+  
+  // Check every minute
+  setInterval(checkAndRun, 60 * 1000);
+  log('[DAILY OVERDUE SCHEDULER] Agendamento diário ativado - roda todo dia às 23:59');
 }

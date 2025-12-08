@@ -5279,6 +5279,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark overdue work orders - runs daily at end of day via scheduler
+  app.post("/api/scheduler/mark-overdue-work-orders", async (req, res) => {
+    try {
+      console.log(`[DAILY OVERDUE SCHEDULER] Iniciando marcação de O.S. vencidas`);
+      
+      const result = await storage.markOverdueWorkOrders();
+      
+      console.log(`[DAILY OVERDUE SCHEDULER] ✅ ${result.updated} O.S. marcadas como vencidas`);
+      
+      res.json({
+        message: `Overdue work orders marked successfully`,
+        updated: result.updated,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error marking overdue work orders:", error);
+      res.status(500).json({ message: "Failed to mark overdue work orders" });
+    }
+  });
+
   // === SYSTEM USERS MANAGEMENT ===
   
   // Listar usuários do sistema OPUS (type: opus_user)

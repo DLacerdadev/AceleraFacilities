@@ -116,6 +116,9 @@ export interface IStorage {
   // Customer-filtered data methods
   getZonesByCustomer(customerId: string, module?: 'clean' | 'maintenance'): Promise<Zone[]>;
   getWorkOrdersByCustomer(customerId: string, module?: 'clean' | 'maintenance'): Promise<WorkOrder[]>;
+  
+  // Scheduler methods
+  markOverdueWorkOrders(): Promise<{ updated: number }>;
   getDashboardStatsByCustomer(customerId: string, period: string, site: string, module?: 'clean' | 'maintenance'): Promise<any>;
   getAnalyticsByCustomer(customerId: string, period: string, site: string, module?: 'clean' | 'maintenance'): Promise<any>;
   
@@ -614,6 +617,28 @@ export class DatabaseStorage implements IStorage {
       zone: r.zone || null,
       site: r.site || null
     })) as any;
+  }
+
+  async markOverdueWorkOrders(): Promise<{ updated: number }> {
+    const now = new Date();
+    
+    // Update all work orders that:
+    // - Have status 'aberta' (open)
+    // - Have a dueDate that has passed
+    const result = await db.update(workOrders)
+      .set({ 
+        status: 'vencida',
+        updatedAt: now
+      })
+      .where(and(
+        eq(workOrders.status, 'aberta'),
+        lt(workOrders.dueDate, now)
+      ))
+      .returning({ id: workOrders.id });
+    
+    console.log(`[OVERDUE SCHEDULER] Marked ${result.length} work orders as overdue`);
+    
+    return { updated: result.length };
   }
 
   async getScheduledWorkOrdersForCache(customerId: string, module?: 'clean' | 'maintenance'): Promise<WorkOrder[]> {
