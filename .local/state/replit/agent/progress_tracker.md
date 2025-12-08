@@ -96,3 +96,9 @@
 [x] 415. Updated login page to use navigateTo for all navigation (preserves subdomain)
 [x] 416. Updated module-selection page to prioritize subdomain customer when selecting module
 [x] 417. Added detailed console logging for subdomain detection and client context setup
+
+## DATABASE RESTORE FROM BACKUP (08/12/2025)
+[x] 418. Loaded database dump from attached_assets/database_backup_20251204_042351_1765214203610.sql
+[x] 419. Dropped and recreated schema to ensure clean import
+[x] 420. Successfully imported all data: 37 users, 10 customers, 2 companies, 23 sites, 63 zones, 3093 work orders, 48 QR points
+[x] 421. Application restarted and running with restored database
