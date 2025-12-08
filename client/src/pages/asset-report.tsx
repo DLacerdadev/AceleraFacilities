@@ -368,7 +368,10 @@ export default function AssetReport({ customerId }: AssetReportProps) {
                         {site.equipmentCount} equipamento(s)
                       </p>
                     </div>
-                    <Badge className="inline-flex items-center rounded-full font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary text-primary-foreground hover:bg-primary/80 text-lg px-4 py-2 border pl-[20px] pr-[20px] ml-[10px] mr-[10px]">
+                    <Badge 
+                      className="inline-flex items-center rounded-full font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent text-white text-lg px-4 py-2 border pl-[20px] pr-[20px] ml-[10px] mr-[10px]"
+                      style={{ background: 'linear-gradient(135deg, var(--module-primary), var(--module-secondary))' }}
+                    >
                       {formatCurrency(site.totalValue)}
                     </Badge>
                   </div>
