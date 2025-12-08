@@ -5773,6 +5773,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteEquipment(id: string): Promise<void> {
+    // Define open work order statuses
+    const openStatuses = ['aberta', 'em_execucao', 'pausada', 'vencida'] as const;
+    
+    // Find all open work orders for this equipment
+    const openWorkOrders = await db.select({ id: workOrders.id })
+      .from(workOrders)
+      .where(and(
+        eq(workOrders.equipmentId, id),
+        inArray(workOrders.status, [...openStatuses])
+      ));
+    
+    if (openWorkOrders.length > 0) {
+      const workOrderIds = openWorkOrders.map(wo => wo.id);
+      
+      // Delete work order comments (no cascade configured)
+      await db.delete(workOrderComments)
+        .where(inArray(workOrderComments.workOrderId, workOrderIds));
+      
+      // Delete work order parts used
+      await db.delete(workOrderParts)
+        .where(inArray(workOrderParts.workOrderId, workOrderIds));
+      
+      // Set partMovements.workOrderId to NULL (keep the movement history)
+      await db.update(partMovements)
+        .set({ workOrderId: null })
+        .where(inArray(partMovements.workOrderId, workOrderIds));
+      
+      // Set bathroomCounterLogs.workOrderId to NULL (keep the log history)
+      await db.update(bathroomCounterLogs)
+        .set({ workOrderId: null })
+        .where(inArray(bathroomCounterLogs.workOrderId, workOrderIds));
+      
+      // Delete maintenance checklist executions for these work orders
+      await db.delete(maintenanceChecklistExecutions)
+        .where(inArray(maintenanceChecklistExecutions.workOrderId, workOrderIds));
+      
+      // Delete the open work orders (attachments will cascade automatically)
+      await db.delete(workOrders)
+        .where(inArray(workOrders.id, workOrderIds));
+    }
+    
+    // Finally delete the equipment
     await db.delete(equipment).where(eq(equipment.id, id));
   }
 
