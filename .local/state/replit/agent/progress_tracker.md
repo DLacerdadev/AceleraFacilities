@@ -1,7 +1,7 @@
 [x] 1. Install the required packages
-[ ] 2. Restart the workflow to see if the project is working
-[ ] 3. Verify the project is working using the feedback tool
-[ ] 4. Inform user the import is completed and they can start building, mark the import as completed using the complete_project_import tool
+[x] 2. Restart the workflow to see if the project is working
+[x] 3. Verify the project is working using the feedback tool
+[x] 4. Inform user the import is completed and they can start building, mark the import as completed using the complete_project_import tool
 [x] 5. Database populated successfully with 687 work orders, 19 users, 4 customers, 7 sites, 28 zones
 [x] 6. Application restarted and running correctly with database connection
 [x] 7. Project import and database setup completed - ready for development
