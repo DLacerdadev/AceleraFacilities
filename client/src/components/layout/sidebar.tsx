@@ -28,7 +28,8 @@ import {
   FileBarChart,
   Brain,
   Package,
-  AlertTriangle
+  AlertTriangle,
+  Monitor
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -138,6 +139,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
     
     // Relatórios
     ...(can.viewReports(activeClientId) ? [{ path: "/reports", label: "Relatórios", icon: ChartBar }] : []),
+    
+    // Modo TV - para exibição em monitores
+    ...(can.viewDashboard(activeClientId) ? [{ path: "/tv-mode", label: "Modo TV", icon: Monitor }] : []),
     
     // Usuários do Sistema (apenas para quem tem permissão)
     ...(can.viewOpusUsers() ? [{ path: "/users", label: "Usuários do Sistema", icon: Users }] : []),
