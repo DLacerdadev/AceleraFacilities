@@ -465,6 +465,43 @@ export interface IStorage {
   // Parts with low stock
   getPartsWithLowStock(customerId: string): Promise<Part[]>;
   
+  // Monthly Cost Report
+  getMonthlyCostReport(customerId: string, year: number, month: number): Promise<{
+    summary: {
+      totalMaintenances: number;
+      totalPartsUsed: number;
+      totalCost: number;
+      uniqueEquipment: number;
+    };
+    equipmentCosts: {
+      equipmentId: string;
+      equipmentName: string;
+      maintenanceCount: number;
+      partsCount: number;
+      totalCost: number;
+      workOrders: {
+        workOrderId: string;
+        workOrderNumber: string;
+        completedAt: Date | null;
+        parts: {
+          partId: string;
+          partName: string;
+          quantity: number;
+          unitCost: number;
+          totalCost: number;
+        }[];
+      }[];
+    }[];
+    partsUsage: {
+      partId: string;
+      partName: string;
+      partCode: string;
+      totalQuantity: number;
+      unitCost: number;
+      totalCost: number;
+    }[];
+  }>;
+  
   // Work Order Parts
   getWorkOrderParts(workOrderId: string): Promise<WorkOrderPart[]>;
   createWorkOrderPart(workOrderPart: InsertWorkOrderPart): Promise<WorkOrderPart>;
@@ -6077,6 +6114,234 @@ export class DatabaseStorage implements IStorage {
         sql`${parts.currentQuantity} < ${parts.minimumQuantity}`
       ))
       .orderBy(parts.name);
+  }
+
+  // Monthly Cost Report
+  async getMonthlyCostReport(customerId: string, year: number, month: number): Promise<{
+    summary: {
+      totalMaintenances: number;
+      totalPartsUsed: number;
+      totalCost: number;
+      uniqueEquipment: number;
+    };
+    equipmentCosts: {
+      equipmentId: string;
+      equipmentName: string;
+      maintenanceCount: number;
+      partsCount: number;
+      totalCost: number;
+      workOrders: {
+        workOrderId: string;
+        workOrderNumber: string;
+        completedAt: Date | null;
+        parts: {
+          partId: string;
+          partName: string;
+          quantity: number;
+          unitCost: number;
+          totalCost: number;
+        }[];
+      }[];
+    }[];
+    partsUsage: {
+      partId: string;
+      partName: string;
+      partCode: string;
+      totalQuantity: number;
+      unitCost: number;
+      totalCost: number;
+    }[];
+  }> {
+    // Calculate date range for the month
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    // Get all sites for the customer to filter work orders
+    const customerSites = await db.select().from(sites)
+      .where(eq(sites.customerId, customerId));
+    const siteIds = customerSites.map(s => s.id);
+    
+    if (siteIds.length === 0) {
+      return {
+        summary: { totalMaintenances: 0, totalPartsUsed: 0, totalCost: 0, uniqueEquipment: 0 },
+        equipmentCosts: [],
+        partsUsage: []
+      };
+    }
+
+    // Get zones for those sites
+    const customerZones = await db.select().from(zones)
+      .where(inArray(zones.siteId, siteIds));
+    const zoneIds = customerZones.map(z => z.id);
+
+    if (zoneIds.length === 0) {
+      return {
+        summary: { totalMaintenances: 0, totalPartsUsed: 0, totalCost: 0, uniqueEquipment: 0 },
+        equipmentCosts: [],
+        partsUsage: []
+      };
+    }
+
+    // Get work orders for the month that have equipment and are completed
+    const monthlyWorkOrders = await db.select().from(workOrders)
+      .where(and(
+        inArray(workOrders.zoneId, zoneIds),
+        eq(workOrders.module, 'maintenance'),
+        sql`${workOrders.completedAt} >= ${startDate}`,
+        sql`${workOrders.completedAt} <= ${endDate}`,
+        isNotNull(workOrders.equipmentId)
+      ));
+
+    if (monthlyWorkOrders.length === 0) {
+      return {
+        summary: { totalMaintenances: 0, totalPartsUsed: 0, totalCost: 0, uniqueEquipment: 0 },
+        equipmentCosts: [],
+        partsUsage: []
+      };
+    }
+
+    const workOrderIds = monthlyWorkOrders.map(wo => wo.id);
+
+    // Get all work order parts for these work orders
+    const allWorkOrderParts = await db.select({
+      wop: workOrderParts,
+      part: parts
+    })
+      .from(workOrderParts)
+      .leftJoin(parts, eq(workOrderParts.partId, parts.id))
+      .where(inArray(workOrderParts.workOrderId, workOrderIds));
+
+    // Get equipment data
+    const equipmentIds = [...new Set(monthlyWorkOrders.filter(wo => wo.equipmentId).map(wo => wo.equipmentId!))];
+    const equipmentData = equipmentIds.length > 0 
+      ? await db.select().from(equipment).where(inArray(equipment.id, equipmentIds))
+      : [];
+    const equipmentMap = new Map(equipmentData.map(e => [e.id, e]));
+
+    // Build equipment costs structure
+    const equipmentCostsMap = new Map<string, {
+      equipmentId: string;
+      equipmentName: string;
+      maintenanceCount: number;
+      partsCount: number;
+      totalCost: number;
+      workOrders: Map<string, {
+        workOrderId: string;
+        workOrderNumber: string;
+        completedAt: Date | null;
+        parts: {
+          partId: string;
+          partName: string;
+          quantity: number;
+          unitCost: number;
+          totalCost: number;
+        }[];
+      }>;
+    }>();
+
+    // Build parts usage structure
+    const partsUsageMap = new Map<string, {
+      partId: string;
+      partName: string;
+      partCode: string;
+      totalQuantity: number;
+      unitCost: number;
+      totalCost: number;
+    }>();
+
+    let totalPartsUsed = 0;
+    let totalCost = 0;
+
+    // Process work order parts
+    for (const wop of allWorkOrderParts) {
+      const workOrder = monthlyWorkOrders.find(wo => wo.id === wop.wop.workOrderId);
+      if (!workOrder || !workOrder.equipmentId) continue;
+
+      const equip = equipmentMap.get(workOrder.equipmentId);
+      if (!equip) continue;
+
+      const quantityUsed = parseFloat(wop.wop.quantityUsed || wop.wop.quantityPlanned || '0');
+      const unitCost = parseFloat(wop.wop.unitCost || wop.part?.unitCost || '0');
+      const partTotalCost = quantityUsed * unitCost;
+
+      totalPartsUsed += quantityUsed;
+      totalCost += partTotalCost;
+
+      // Update equipment costs
+      if (!equipmentCostsMap.has(workOrder.equipmentId)) {
+        equipmentCostsMap.set(workOrder.equipmentId, {
+          equipmentId: workOrder.equipmentId,
+          equipmentName: equip.name,
+          maintenanceCount: 0,
+          partsCount: 0,
+          totalCost: 0,
+          workOrders: new Map()
+        });
+      }
+      const equipCost = equipmentCostsMap.get(workOrder.equipmentId)!;
+      equipCost.partsCount += quantityUsed;
+      equipCost.totalCost += partTotalCost;
+
+      // Update work order in equipment
+      if (!equipCost.workOrders.has(workOrder.id)) {
+        equipCost.workOrders.set(workOrder.id, {
+          workOrderId: workOrder.id,
+          workOrderNumber: workOrder.orderNumber || workOrder.id.substring(0, 8),
+          completedAt: workOrder.completedAt,
+          parts: []
+        });
+      }
+      equipCost.workOrders.get(workOrder.id)!.parts.push({
+        partId: wop.wop.partId,
+        partName: wop.part?.name || 'Peça desconhecida',
+        quantity: quantityUsed,
+        unitCost: unitCost,
+        totalCost: partTotalCost
+      });
+
+      // Update parts usage
+      if (!partsUsageMap.has(wop.wop.partId)) {
+        partsUsageMap.set(wop.wop.partId, {
+          partId: wop.wop.partId,
+          partName: wop.part?.name || 'Peça desconhecida',
+          partCode: wop.part?.code || '',
+          totalQuantity: 0,
+          unitCost: unitCost,
+          totalCost: 0
+        });
+      }
+      const partUsage = partsUsageMap.get(wop.wop.partId)!;
+      partUsage.totalQuantity += quantityUsed;
+      partUsage.totalCost += partTotalCost;
+    }
+
+    // Count maintenances per equipment
+    for (const wo of monthlyWorkOrders) {
+      if (wo.equipmentId && equipmentCostsMap.has(wo.equipmentId)) {
+        const uniqueWoIds = new Set([...equipmentCostsMap.get(wo.equipmentId)!.workOrders.keys()]);
+        equipmentCostsMap.get(wo.equipmentId)!.maintenanceCount = uniqueWoIds.size;
+      }
+    }
+
+    // Convert maps to arrays
+    const equipmentCosts = Array.from(equipmentCostsMap.values()).map(ec => ({
+      ...ec,
+      workOrders: Array.from(ec.workOrders.values())
+    })).sort((a, b) => b.totalCost - a.totalCost);
+
+    const partsUsage = Array.from(partsUsageMap.values())
+      .sort((a, b) => b.totalCost - a.totalCost);
+
+    return {
+      summary: {
+        totalMaintenances: monthlyWorkOrders.length,
+        totalPartsUsed: totalPartsUsed,
+        totalCost: totalCost,
+        uniqueEquipment: equipmentCostsMap.size
+      },
+      equipmentCosts,
+      partsUsage
+    };
   }
 
   // Work Order Parts

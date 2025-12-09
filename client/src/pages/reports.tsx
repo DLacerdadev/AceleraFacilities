@@ -78,6 +78,8 @@ export default function Reports() {
   const [selectedReportType, setSelectedReportType] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -143,6 +145,13 @@ export default function Reports() {
     enabled: !!activeClientId && currentModule === 'maintenance', // Only for maintenance module
   });
 
+  // Monthly Cost Report Query
+  const { data: monthlyCostReport, isLoading: isLoadingMonthlyCost, refetch: refetchMonthlyCost } = useQuery({
+    queryKey: ["/api/customers", activeClientId, "reports", "monthly-cost", { year: selectedYear, month: selectedMonth }],
+    queryFn: () => fetch(`/api/customers/${activeClientId}/reports/monthly-cost?year=${selectedYear}&month=${selectedMonth}`).then(res => res.json()),
+    enabled: !!activeClientId && currentModule === 'maintenance',
+  });
+
   // Helper function to safely access nested properties
   const safeGet = (obj: any, key: string, defaultValue: any = 0) => {
     return obj && typeof obj === 'object' && key in obj ? obj[key] : defaultValue;
@@ -164,9 +173,10 @@ export default function Reports() {
         refetchTemporal()
       ];
       
-      // Only refetch assets for maintenance module
+      // Only refetch assets and monthly cost for maintenance module
       if (currentModule === 'maintenance') {
         refetchPromises.push(refetchAssets());
+        refetchPromises.push(refetchMonthlyCost());
       }
       
       await Promise.all(refetchPromises);
@@ -264,6 +274,20 @@ export default function Reports() {
             reportType: `Relatório de Patrimônio - ${moduleSuffix}`,
             module: currentModule
           };
+          break;
+        case 'custos-mensais':
+          const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                              'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+          reportData = {
+            ...(monthlyCostReport || {}),
+            period: `${monthNames[selectedMonth - 1]} ${selectedYear}`,
+            generatedAt: new Date().toISOString(),
+            reportType: `Relatório de Custos Mensais - ${moduleSuffix}`,
+            module: currentModule,
+            year: selectedYear,
+            month: selectedMonth
+          };
+          filename = `relatorio-custos-${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
           break;
       }
 
@@ -372,6 +396,55 @@ export default function Reports() {
         csv += "Período,OS Concluídas,SLA (%),Eficiência (%)\n";
         data.temporal.historicalTrends.forEach((trend: any) => {
           csv += `${trend.period},${trend.workOrders},${trend.sla},${trend.efficiency}\n`;
+        });
+      }
+    }
+
+    // Relatório de Custos Mensais
+    if (data.summary && data.equipmentCosts) {
+      csv += "RESUMO GERAL\n";
+      csv += `Total de Manutenções,${data.summary.totalMaintenances || 0}\n`;
+      csv += `Equipamentos Mantidos,${data.summary.uniqueEquipment || 0}\n`;
+      csv += `Total de Peças Utilizadas,${data.summary.totalPartsUsed || 0}\n`;
+      csv += `Custo Total,"R$ ${(data.summary.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}"\n\n`;
+
+      csv += "CUSTOS POR EQUIPAMENTO\n";
+      csv += "Equipamento,Manutenções,Peças Utilizadas,Custo Total\n";
+      if (Array.isArray(data.equipmentCosts)) {
+        data.equipmentCosts.forEach((eq: any) => {
+          const costFormatted = `R$ ${(eq.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          csv += `"${eq.equipmentName}",${eq.maintenanceCount},${eq.partsCount},"${costFormatted}"\n`;
+        });
+      }
+      csv += "\n";
+
+      csv += "PEÇAS UTILIZADAS\n";
+      csv += "Código,Nome da Peça,Quantidade,Custo Unitário,Custo Total\n";
+      if (Array.isArray(data.partsUsage)) {
+        data.partsUsage.forEach((part: any) => {
+          const unitCostFormatted = `R$ ${(part.unitCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          const totalCostFormatted = `R$ ${(part.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          csv += `"${part.partCode || '-'}","${part.partName}",${part.totalQuantity},"${unitCostFormatted}","${totalCostFormatted}"\n`;
+        });
+      }
+      csv += "\n";
+
+      csv += "DETALHES POR MANUTENÇÃO\n";
+      csv += "Equipamento,OS,Data Conclusão,Peça,Quantidade,Custo Unitário,Custo Total\n";
+      if (Array.isArray(data.equipmentCosts)) {
+        data.equipmentCosts.forEach((eq: any) => {
+          if (Array.isArray(eq.workOrders)) {
+            eq.workOrders.forEach((wo: any) => {
+              const completedDate = wo.completedAt ? new Date(wo.completedAt).toLocaleDateString('pt-BR') : '-';
+              if (Array.isArray(wo.parts)) {
+                wo.parts.forEach((part: any) => {
+                  const unitCostFormatted = `R$ ${(part.unitCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                  const totalCostFormatted = `R$ ${(part.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                  csv += `"${eq.equipmentName}","${wo.workOrderNumber}","${completedDate}","${part.partName}",${part.quantity},"${unitCostFormatted}","${totalCostFormatted}"\n`;
+                });
+              }
+            });
+          }
         });
       }
     }
@@ -553,6 +626,92 @@ export default function Reports() {
       
       const summarySheet = XLSX.utils.aoa_to_sheet([['Relatório por Locais']]);
       XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumo");
+    }
+    // Relatório de Custos Mensais
+    else if (data.summary && data.equipmentCosts) {
+      const summaryData: any[][] = [
+        [`GRUPO OPUS - RELATÓRIO DE CUSTOS MENSAIS`],
+        [''],
+        ['Período', data.period || ''],
+        [''],
+        ['RESUMO GERAL'],
+        ['Total de Manutenções', data.summary.totalMaintenances || 0],
+        ['Equipamentos Mantidos', data.summary.uniqueEquipment || 0],
+        ['Total de Peças Utilizadas', data.summary.totalPartsUsed || 0],
+        ['Custo Total', `R$ ${(data.summary.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]
+      ];
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumo");
+
+      // Equipment costs sheet
+      const equipmentData: any[][] = [
+        ['CUSTOS POR EQUIPAMENTO'],
+        [''],
+        ['Equipamento', 'Manutenções', 'Peças Utilizadas', 'Custo Total']
+      ];
+      if (Array.isArray(data.equipmentCosts)) {
+        data.equipmentCosts.forEach((eq: any) => {
+          equipmentData.push([
+            eq.equipmentName,
+            eq.maintenanceCount,
+            eq.partsCount,
+            `R$ ${(eq.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          ]);
+        });
+      }
+      const equipmentSheet = XLSX.utils.aoa_to_sheet(equipmentData);
+      XLSX.utils.book_append_sheet(workbook, equipmentSheet, "Custos por Equipamento");
+
+      // Parts usage sheet
+      const partsData: any[][] = [
+        ['PEÇAS UTILIZADAS'],
+        [''],
+        ['Código', 'Nome da Peça', 'Quantidade', 'Custo Unitário', 'Custo Total']
+      ];
+      if (Array.isArray(data.partsUsage)) {
+        data.partsUsage.forEach((part: any) => {
+          partsData.push([
+            part.partCode || '-',
+            part.partName,
+            part.totalQuantity,
+            `R$ ${(part.unitCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            `R$ ${(part.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          ]);
+        });
+      }
+      const partsSheet = XLSX.utils.aoa_to_sheet(partsData);
+      XLSX.utils.book_append_sheet(workbook, partsSheet, "Peças Utilizadas");
+
+      // Detailed breakdown sheet
+      const detailsData: any[][] = [
+        ['DETALHES POR MANUTENÇÃO'],
+        [''],
+        ['Equipamento', 'OS', 'Data Conclusão', 'Peça', 'Quantidade', 'Custo Unitário', 'Custo Total']
+      ];
+      if (Array.isArray(data.equipmentCosts)) {
+        data.equipmentCosts.forEach((eq: any) => {
+          if (Array.isArray(eq.workOrders)) {
+            eq.workOrders.forEach((wo: any) => {
+              const completedDate = wo.completedAt ? new Date(wo.completedAt).toLocaleDateString('pt-BR') : '-';
+              if (Array.isArray(wo.parts)) {
+                wo.parts.forEach((part: any) => {
+                  detailsData.push([
+                    eq.equipmentName,
+                    wo.workOrderNumber,
+                    completedDate,
+                    part.partName,
+                    part.quantity,
+                    `R$ ${(part.unitCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                    `R$ ${(part.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  ]);
+                });
+              }
+            });
+          }
+        });
+      }
+      const detailsSheet = XLSX.utils.aoa_to_sheet(detailsData);
+      XLSX.utils.book_append_sheet(workbook, detailsSheet, "Detalhes");
     }
     // Relatório de Patrimônio - Formato Hierárquico
     else if (data.summary && data.sites) {
@@ -753,6 +912,84 @@ export default function Reports() {
       });
     }
 
+    // Relatório de Custos Mensais
+    if (data.summary && data.equipmentCosts) {
+      // Summary section
+      doc.setFontSize(16);
+      doc.setTextColor(30, 58, 138);
+      doc.text('RESUMO GERAL', 20, yPosition);
+      yPosition += 10;
+      
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Período: ${data.period || ''}`, 20, yPosition);
+      yPosition += 8;
+      doc.text(`Total de Manutenções: ${data.summary.totalMaintenances || 0}`, 20, yPosition);
+      yPosition += 8;
+      doc.text(`Equipamentos Mantidos: ${data.summary.uniqueEquipment || 0}`, 20, yPosition);
+      yPosition += 8;
+      doc.text(`Total de Peças Utilizadas: ${data.summary.totalPartsUsed || 0}`, 20, yPosition);
+      yPosition += 8;
+      doc.setTextColor(0, 128, 0);
+      doc.text(`Custo Total: R$ ${(data.summary.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, yPosition);
+      yPosition += 15;
+
+      // Equipment costs table
+      if (Array.isArray(data.equipmentCosts) && data.equipmentCosts.length > 0) {
+        doc.setTextColor(30, 58, 138);
+        doc.setFontSize(14);
+        doc.text('CUSTOS POR EQUIPAMENTO', 20, yPosition);
+        yPosition += 8;
+
+        const equipmentTableData = data.equipmentCosts.map((eq: any) => [
+          eq.equipmentName,
+          String(eq.maintenanceCount),
+          String(eq.partsCount),
+          `R$ ${(eq.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        ]);
+
+        autoTable(doc, {
+          startY: yPosition,
+          head: [['Equipamento', 'Manutenções', 'Peças', 'Custo Total']],
+          body: equipmentTableData,
+          headStyles: { fillColor: [30, 58, 138] },
+          margin: { left: 20 },
+          styles: { fontSize: 9 }
+        });
+        yPosition = (doc as any).lastAutoTable.finalY + 15;
+      }
+
+      // Parts usage table
+      if (Array.isArray(data.partsUsage) && data.partsUsage.length > 0) {
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 20;
+        }
+        
+        doc.setTextColor(30, 58, 138);
+        doc.setFontSize(14);
+        doc.text('PEÇAS UTILIZADAS', 20, yPosition);
+        yPosition += 8;
+
+        const partsTableData = data.partsUsage.map((part: any) => [
+          part.partCode || '-',
+          part.partName,
+          String(part.totalQuantity),
+          `R$ ${(part.unitCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          `R$ ${(part.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        ]);
+
+        autoTable(doc, {
+          startY: yPosition,
+          head: [['Código', 'Peça', 'Qtd', 'Custo Unit.', 'Custo Total']],
+          body: partsTableData,
+          headStyles: { fillColor: [30, 58, 138] },
+          margin: { left: 20 },
+          styles: { fontSize: 9 }
+        });
+      }
+    }
+
     // Relatório de Patrimônio - Formato Hierárquico
     if (data.summary && data.sites) {
       // Cliente e Total Geral
@@ -911,7 +1148,7 @@ export default function Reports() {
     }
   ];
 
-  // Add patrimonio report only for maintenance module
+  // Add patrimonio and monthly cost reports only for maintenance module
   const reportTypes = currentModule === 'maintenance' 
     ? [
         ...baseReportTypes,
@@ -922,6 +1159,14 @@ export default function Reports() {
           icon: Package,
           color: "bg-emerald-500",
           gradient: "from-emerald-50 to-emerald-100"
+        },
+        {
+          id: "custos-mensais",
+          title: "Custos Mensais",
+          description: "Peças utilizadas, máquinas mantidas e custos por equipamento",
+          icon: TrendingUp,
+          color: "bg-amber-500",
+          gradient: "from-amber-50 to-amber-100"
         }
       ]
     : baseReportTypes;
@@ -1502,6 +1747,150 @@ export default function Reports() {
     </ModernCard>
   );
 
+  // Monthly Cost Report View
+  const MonthlyCostReportView = ({ data, month, year, isLoading }: { data: any; month: number; year: number; isLoading: boolean }) => {
+    const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    if (isLoading) {
+      return (
+        <ModernCard variant="glass">
+          <CardContent className="py-8">
+            <div className="flex items-center justify-center space-x-3">
+              <RefreshCw className="w-6 h-6 animate-spin text-amber-600" />
+              <span className="text-slate-600">Carregando dados de custos...</span>
+            </div>
+          </CardContent>
+        </ModernCard>
+      );
+    }
+
+    const summary = data?.summary || {};
+    const equipmentCosts = data?.equipmentCosts || [];
+    const partsUsage = data?.partsUsage || [];
+
+    return (
+      <ModernCard variant="glass">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <TrendingUp className="w-5 h-5 text-amber-600" />
+            <span>Custos de Manutenção - {monthNames[month - 1]} {year}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-amber-50 p-4 rounded-lg">
+              <div className="text-sm text-amber-700 font-medium">Total de Manutenções</div>
+              <div className="text-2xl font-bold text-amber-900">{summary.totalMaintenances || 0}</div>
+            </div>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="text-sm text-blue-700 font-medium">Equipamentos Mantidos</div>
+              <div className="text-2xl font-bold text-blue-900">{summary.uniqueEquipment || 0}</div>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="text-sm text-purple-700 font-medium">Peças Utilizadas</div>
+              <div className="text-2xl font-bold text-purple-900">{(summary.totalPartsUsed || 0).toLocaleString('pt-BR')}</div>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="text-sm text-green-700 font-medium">Custo Total</div>
+              <div className="text-2xl font-bold text-green-900">
+                {(summary.totalCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </div>
+            </div>
+          </div>
+
+          {equipmentCosts.length === 0 && partsUsage.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <Wrench className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>Nenhuma manutenção com uso de peças registrada neste período.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Equipment Costs */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <Building2 className="w-5 h-5 text-amber-600" />
+                  Custos por Equipamento
+                </h3>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {equipmentCosts.map((eq: any, index: number) => (
+                    <div key={index} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium text-slate-800">{eq.equipmentName}</span>
+                        <span className="font-bold text-green-700">
+                          {(eq.totalCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </span>
+                      </div>
+                      <div className="flex gap-4 text-sm text-slate-600">
+                        <span>{eq.maintenanceCount} manutenções</span>
+                        <span>{eq.partsCount} peças</span>
+                      </div>
+                      {eq.workOrders && eq.workOrders.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-200 space-y-2">
+                          {eq.workOrders.map((wo: any, woIndex: number) => (
+                            <div key={woIndex} className="text-xs bg-white p-2 rounded border border-slate-100">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-medium">OS: {wo.workOrderNumber}</span>
+                                <span className="text-slate-500">
+                                  {wo.completedAt ? new Date(wo.completedAt).toLocaleDateString('pt-BR') : '-'}
+                                </span>
+                              </div>
+                              {wo.parts && wo.parts.length > 0 && (
+                                <div className="space-y-1">
+                                  {wo.parts.map((part: any, partIndex: number) => (
+                                    <div key={partIndex} className="flex justify-between text-slate-600">
+                                      <span>{part.partName} (x{part.quantity})</span>
+                                      <span>{(part.totalCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Parts Usage */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <Package className="w-5 h-5 text-purple-600" />
+                  Peças Utilizadas
+                </h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {partsUsage.map((part: any, index: number) => (
+                    <div key={index} className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium text-slate-800">{part.partName}</div>
+                          {part.partCode && (
+                            <div className="text-xs text-slate-500">Código: {part.partCode}</div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-green-700">
+                            {(part.totalCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {part.totalQuantity}x @ {(part.unitCost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </ModernCard>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50/30 to-white">
       <div className="w-full px-6 py-6">
@@ -1646,6 +2035,51 @@ export default function Reports() {
                     
                     {isSelected && (
                       <div className="space-y-3 mt-4 pt-4 border-t border-slate-200">
+                        {/* Month/Year selector for custos-mensais report */}
+                        {report.id === 'custos-mensais' && (
+                          <div className="mb-4 space-y-2" onClick={(e) => e.stopPropagation()}>
+                            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                              Selecione o período:
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Select 
+                                value={String(selectedMonth)} 
+                                onValueChange={(v) => setSelectedMonth(parseInt(v))}
+                              >
+                                <SelectTrigger data-testid="select-month">
+                                  <SelectValue placeholder="Mês" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="1">Janeiro</SelectItem>
+                                  <SelectItem value="2">Fevereiro</SelectItem>
+                                  <SelectItem value="3">Março</SelectItem>
+                                  <SelectItem value="4">Abril</SelectItem>
+                                  <SelectItem value="5">Maio</SelectItem>
+                                  <SelectItem value="6">Junho</SelectItem>
+                                  <SelectItem value="7">Julho</SelectItem>
+                                  <SelectItem value="8">Agosto</SelectItem>
+                                  <SelectItem value="9">Setembro</SelectItem>
+                                  <SelectItem value="10">Outubro</SelectItem>
+                                  <SelectItem value="11">Novembro</SelectItem>
+                                  <SelectItem value="12">Dezembro</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Select 
+                                value={String(selectedYear)} 
+                                onValueChange={(v) => setSelectedYear(parseInt(v))}
+                              >
+                                <SelectTrigger data-testid="select-year">
+                                  <SelectValue placeholder="Ano" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                                    <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
                         <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
                           Escolha o formato:
                         </p>
@@ -1734,6 +2168,14 @@ export default function Reports() {
               )}
               {selectedReportType === 'temporal' && temporalAnalysis && (
                 <TemporalAnalysisView data={temporalAnalysis} />
+              )}
+              {selectedReportType === 'custos-mensais' && monthlyCostReport && (
+                <MonthlyCostReportView 
+                  data={monthlyCostReport} 
+                  month={selectedMonth} 
+                  year={selectedYear}
+                  isLoading={isLoadingMonthlyCost}
+                />
               )}
             </div>
           )}

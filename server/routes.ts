@@ -1177,6 +1177,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Monthly Cost Report - Custos mensais de manutenção
+  app.get("/api/customers/:customerId/reports/monthly-cost", async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const year = parseInt(req.query.year as string) || new Date().getFullYear();
+      const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
+      
+      console.log(`[MONTHLY COST] Getting report for customer ${customerId}, ${year}/${month}`);
+      
+      const costReport = await storage.getMonthlyCostReport(customerId, year, month);
+      res.json(costReport);
+    } catch (error) {
+      console.error("[MONTHLY COST] Error:", error);
+      res.status(500).json({ message: "Failed to get monthly cost report" });
+    }
+  });
+
   app.get("/api/sites/:siteId/zones", async (req, res) => {
     try {
       const module = req.query.module as 'clean' | 'maintenance' | undefined;
