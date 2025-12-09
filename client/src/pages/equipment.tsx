@@ -30,7 +30,13 @@ import {
   AlertCircle,
   Camera,
   X,
-  Image
+  Image,
+  History,
+  Info,
+  Building2,
+  MapPin,
+  Tag,
+  FileText
 } from "lucide-react";
 
 interface EquipmentProps {
@@ -150,6 +156,8 @@ export default function Equipment({ customerId }: EquipmentProps) {
   const [editingEquipment, setEditingEquipment] = useState<any>(null);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const [selectedEquipmentForHistory, setSelectedEquipmentForHistory] = useState<any>(null);
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
+  const [selectedEquipmentForInfo, setSelectedEquipmentForInfo] = useState<any>(null);
   
   // Form states
   const [selectedSiteId, setSelectedSiteId] = useState("");
@@ -454,6 +462,11 @@ export default function Equipment({ customerId }: EquipmentProps) {
   const handleViewHistory = (equip: any) => {
     setSelectedEquipmentForHistory(equip);
     setIsHistoryDialogOpen(true);
+  };
+
+  const handleViewInfo = (equip: any) => {
+    setSelectedEquipmentForInfo(equip);
+    setIsInfoDialogOpen(true);
   };
 
   const handleRefresh = async () => {
@@ -842,29 +855,40 @@ export default function Equipment({ customerId }: EquipmentProps) {
                       <TableCell>{equip.manufacturer || "-"}</TableCell>
                       <TableCell>{equip.model || "-"}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
                           <Button
                             variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewHistory(equip)}
-                            data-testid={`button-view-history-${equip.id}`}
-                            title="Visualizar histórico"
+                            size="icon"
+                            onClick={() => handleViewInfo(equip)}
+                            data-testid={`button-view-info-${equip.id}`}
+                            title="Ver informações"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
+                            onClick={() => handleViewHistory(equip)}
+                            data-testid={`button-view-history-${equip.id}`}
+                            title="Ver histórico de OS"
+                          >
+                            <History className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => handleEdit(equip)}
                             data-testid={`button-edit-${equip.id}`}
+                            title="Editar equipamento"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
                             onClick={() => handleDelete(equip.id)}
                             data-testid={`button-delete-${equip.id}`}
+                            title="Excluir equipamento"
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -1074,7 +1098,7 @@ export default function Equipment({ customerId }: EquipmentProps) {
           <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5" />
+                <History className="h-5 w-5" />
                 Histórico de Ordens de Serviço
               </DialogTitle>
               <DialogDescription>
@@ -1232,6 +1256,215 @@ export default function Equipment({ customerId }: EquipmentProps) {
                 variant="outline"
                 onClick={() => setIsHistoryDialogOpen(false)}
                 data-testid="button-close-history"
+              >
+                Fechar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Equipment Info Dialog */}
+        <Dialog open={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Info className="h-5 w-5" />
+                Informações do Equipamento
+              </DialogTitle>
+              <DialogDescription>
+                Detalhes completos e foto do equipamento
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedEquipmentForInfo && (
+              <div className="space-y-6">
+                {/* Equipment Photo */}
+                <div className="flex justify-center">
+                  {selectedEquipmentForInfo.photoUrl ? (
+                    <div className="relative">
+                      <img
+                        src={selectedEquipmentForInfo.photoUrl}
+                        alt={selectedEquipmentForInfo.name}
+                        className="max-w-full max-h-64 rounded-lg border shadow-sm object-contain"
+                        data-testid="img-equipment-photo"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full max-w-md h-48 bg-muted rounded-lg border-2 border-dashed flex flex-col items-center justify-center text-muted-foreground">
+                      <Camera className="h-12 w-12 mb-2 opacity-50" />
+                      <p className="text-sm">Sem foto do equipamento</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Equipment Details Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Name */}
+                  <div className="col-span-2 bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Tag className="h-4 w-4" />
+                      Nome do Equipamento
+                    </div>
+                    <p className="font-semibold text-lg" data-testid="text-equipment-name">
+                      {selectedEquipmentForInfo.name}
+                    </p>
+                  </div>
+
+                  {/* Serial Number */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <FileText className="h-4 w-4" />
+                      Número de Série
+                    </div>
+                    <p className="font-mono font-medium" data-testid="text-serial-number">
+                      {selectedEquipmentForInfo.serialNumber || "-"}
+                    </p>
+                  </div>
+
+                  {/* Value */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Tag className="h-4 w-4" />
+                      Valor
+                    </div>
+                    <p className="font-semibold text-green-700" data-testid="text-value">
+                      {selectedEquipmentForInfo.value 
+                        ? new Intl.NumberFormat('pt-BR', { 
+                            style: 'currency', 
+                            currency: 'BRL' 
+                          }).format(parseFloat(selectedEquipmentForInfo.value)) 
+                        : "-"}
+                    </p>
+                  </div>
+
+                  {/* Manufacturer */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Building2 className="h-4 w-4" />
+                      Fabricante
+                    </div>
+                    <p className="font-medium" data-testid="text-manufacturer">
+                      {selectedEquipmentForInfo.manufacturer || "-"}
+                    </p>
+                  </div>
+
+                  {/* Model */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Settings className="h-4 w-4" />
+                      Modelo
+                    </div>
+                    <p className="font-medium" data-testid="text-model">
+                      {selectedEquipmentForInfo.model || "-"}
+                    </p>
+                  </div>
+
+                  {/* Site */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Building2 className="h-4 w-4" />
+                      Local
+                    </div>
+                    <p className="font-medium" data-testid="text-site">
+                      {getSiteName(selectedEquipmentForInfo.siteId)}
+                    </p>
+                  </div>
+
+                  {/* Zone */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <MapPin className="h-4 w-4" />
+                      Zona
+                    </div>
+                    <p className="font-medium" data-testid="text-zone">
+                      {getZoneName(selectedEquipmentForInfo.zoneId)}
+                    </p>
+                  </div>
+
+                  {/* Status */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <AlertCircle className="h-4 w-4" />
+                      Status
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                      selectedEquipmentForInfo.status === 'operacional' ? 'bg-green-100 text-green-800' :
+                      selectedEquipmentForInfo.status === 'em_manutencao' ? 'bg-yellow-100 text-yellow-800' :
+                      selectedEquipmentForInfo.status === 'inoperante' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`} data-testid="text-status">
+                      {selectedEquipmentForInfo.status === 'operacional' ? 'Operacional' :
+                       selectedEquipmentForInfo.status === 'em_manutencao' ? 'Em Manutenção' :
+                       selectedEquipmentForInfo.status === 'inoperante' ? 'Inoperante' :
+                       'Aposentado'}
+                    </span>
+                  </div>
+
+                  {/* Installation Date */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Calendar className="h-4 w-4" />
+                      Data de Instalação
+                    </div>
+                    <p className="font-medium" data-testid="text-installation-date">
+                      {selectedEquipmentForInfo.installationDate 
+                        ? new Date(selectedEquipmentForInfo.installationDate).toLocaleDateString('pt-BR')
+                        : "-"}
+                    </p>
+                  </div>
+
+                  {/* Warranty Expiry */}
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Clock className="h-4 w-4" />
+                      Validade da Garantia
+                    </div>
+                    <p className={`font-medium ${
+                      selectedEquipmentForInfo.warrantyExpiry && 
+                      new Date(selectedEquipmentForInfo.warrantyExpiry) < new Date() 
+                        ? 'text-red-600' 
+                        : ''
+                    }`} data-testid="text-warranty">
+                      {selectedEquipmentForInfo.warrantyExpiry 
+                        ? new Date(selectedEquipmentForInfo.warrantyExpiry).toLocaleDateString('pt-BR')
+                        : "-"}
+                    </p>
+                  </div>
+
+                  {/* Description */}
+                  {selectedEquipmentForInfo.description && (
+                    <div className="col-span-2 bg-muted/50 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                        <FileText className="h-4 w-4" />
+                        Descrição
+                      </div>
+                      <p className="text-sm" data-testid="text-description">
+                        {selectedEquipmentForInfo.description}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (selectedEquipmentForInfo) {
+                    handleEdit(selectedEquipmentForInfo);
+                    setIsInfoDialogOpen(false);
+                  }
+                }}
+                data-testid="button-edit-from-info"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsInfoDialogOpen(false)}
+                data-testid="button-close-info"
               >
                 Fechar
               </Button>
