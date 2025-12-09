@@ -5973,7 +5973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload equipment photo
+  // Upload equipment photo (converts all formats to optimized WEBP)
   app.post("/api/customers/:customerId/equipment-photo", requireAuth, async (req, res) => {
     try {
       const { imageData, fileName } = req.body;
@@ -5988,13 +5988,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? imageData.split(',')[1] 
         : imageData;
       
-      // Determine format from fileName or data URL
-      let format = 'jpg';
-      if (fileName.toLowerCase().endsWith('.png')) format = 'png';
-      else if (fileName.toLowerCase().endsWith('.webp')) format = 'webp';
-      else if (imageData.includes('image/png')) format = 'png';
-      else if (imageData.includes('image/webp')) format = 'webp';
-      
       const buffer = Buffer.from(base64Data, 'base64');
       
       // Check file size (max 5MB)
@@ -6002,9 +5995,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(413).json({ message: "A foto deve ter no máximo 5MB" });
       }
       
-      // Save file with unique name
+      // Convert to WEBP using sharp for storage optimization
+      const sharp = (await import('sharp')).default;
+      const webpBuffer = await sharp(buffer)
+        .webp({ quality: 80 })
+        .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+        .toBuffer();
+      
+      // Save file with unique name (always .webp)
       const timestamp = Date.now();
-      const safeFileName = `equipment_${customerId}_${timestamp}.${format}`;
+      const safeFileName = `equipment_${customerId}_${timestamp}.webp`;
       const filePath = `attached_assets/equipment_photos/${safeFileName}`;
       
       // Ensure directory exists
@@ -6013,10 +6013,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dir = path.dirname(filePath);
       await fs.mkdir(dir, { recursive: true });
       
-      // Write file
-      await fs.writeFile(filePath, buffer);
+      // Write optimized WEBP file
+      await fs.writeFile(filePath, webpBuffer);
       
-      console.log(`[EQUIPMENT PHOTO] Saved: ${filePath}`);
+      const originalSize = (buffer.length / 1024).toFixed(1);
+      const optimizedSize = (webpBuffer.length / 1024).toFixed(1);
+      console.log(`[EQUIPMENT PHOTO] Saved: ${filePath} (${originalSize}KB → ${optimizedSize}KB WEBP)`);
+      
       res.json({ photoUrl: `/${filePath}` });
     } catch (error) {
       console.error("Error uploading equipment photo:", error);

@@ -101,6 +101,7 @@
     "react-select": "^5.10.2",
     "react-simple-pull-to-refresh": "^1.3.3",
     "recharts": "^2.15.4",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.2.5",
