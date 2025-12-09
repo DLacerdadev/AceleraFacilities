@@ -613,6 +613,7 @@ export const equipment = pgTable("equipment", {
   technicalSpecs: jsonb("technical_specs"),
   maintenanceNotes: text("maintenance_notes"),
   qrCodeUrl: varchar("qr_code_url"),
+  photoUrl: varchar("photo_url"),
   module: moduleEnum("module").notNull().default('maintenance'),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),

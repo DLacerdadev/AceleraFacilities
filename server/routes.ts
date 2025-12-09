@@ -5973,6 +5973,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload equipment photo
+  app.post("/api/customers/:customerId/equipment-photo", requireAuth, async (req, res) => {
+    try {
+      const { imageData, fileName } = req.body;
+      const customerId = req.params.customerId;
+      
+      if (!imageData || !fileName) {
+        return res.status(400).json({ message: "imageData and fileName are required" });
+      }
+      
+      // Extract base64 data
+      const base64Data = imageData.includes(',') 
+        ? imageData.split(',')[1] 
+        : imageData;
+      
+      // Determine format from fileName or data URL
+      let format = 'jpg';
+      if (fileName.toLowerCase().endsWith('.png')) format = 'png';
+      else if (fileName.toLowerCase().endsWith('.webp')) format = 'webp';
+      else if (imageData.includes('image/png')) format = 'png';
+      else if (imageData.includes('image/webp')) format = 'webp';
+      
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // Check file size (max 5MB)
+      if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(413).json({ message: "A foto deve ter no máximo 5MB" });
+      }
+      
+      // Save file with unique name
+      const timestamp = Date.now();
+      const safeFileName = `equipment_${customerId}_${timestamp}.${format}`;
+      const filePath = `attached_assets/equipment_photos/${safeFileName}`;
+      
+      // Ensure directory exists
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const dir = path.dirname(filePath);
+      await fs.mkdir(dir, { recursive: true });
+      
+      // Write file
+      await fs.writeFile(filePath, buffer);
+      
+      console.log(`[EQUIPMENT PHOTO] Saved: ${filePath}`);
+      res.json({ photoUrl: `/${filePath}` });
+    } catch (error) {
+      console.error("Error uploading equipment photo:", error);
+      res.status(500).json({ message: "Erro ao fazer upload da foto" });
+    }
+  });
+
   // Update equipment
   app.put("/api/equipment/:id", async (req, res) => {
     try {

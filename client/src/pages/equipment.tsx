@@ -27,7 +27,10 @@ import {
   Eye,
   Calendar,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Camera,
+  X,
+  Image
 } from "lucide-react";
 
 interface EquipmentProps {
@@ -162,6 +165,9 @@ export default function Equipment({ customerId }: EquipmentProps) {
   const [status, setStatus] = useState("operacional");
   const [description, setDescription] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   const { toast } = useToast();
 
@@ -292,9 +298,70 @@ export default function Equipment({ customerId }: EquipmentProps) {
     setValue("");
     setStatus("operacional");
     setDescription("");
+    setPhotoPreview(null);
+    setPhotoFile(null);
   };
 
-  const handleCreate = () => {
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Arquivo muito grande",
+          description: "A foto deve ter no máximo 5MB",
+          variant: "destructive"
+        });
+        return;
+      }
+      setPhotoFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPhotoPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePhoto = () => {
+    setPhotoPreview(null);
+    setPhotoFile(null);
+  };
+
+  const uploadPhoto = async (): Promise<string | null> => {
+    if (!photoFile) return null;
+    
+    setIsUploadingPhoto(true);
+    try {
+      const reader = new FileReader();
+      return new Promise((resolve, reject) => {
+        reader.onload = async (e) => {
+          try {
+            const base64 = e.target?.result as string;
+            const response = await apiRequest("POST", `/api/customers/${customerId}/equipment-photo`, {
+              imageData: base64,
+              fileName: photoFile.name
+            });
+            const data = await response.json();
+            resolve(data.photoUrl);
+          } catch (error) {
+            reject(error);
+          } finally {
+            setIsUploadingPhoto(false);
+          }
+        };
+        reader.onerror = () => {
+          setIsUploadingPhoto(false);
+          reject(new Error("Erro ao ler arquivo"));
+        };
+        reader.readAsDataURL(photoFile);
+      });
+    } catch (error) {
+      setIsUploadingPhoto(false);
+      return null;
+    }
+  };
+
+  const handleCreate = async () => {
     const companyId = (customer as any)?.companyId;
     if (!companyId || !selectedSiteId) {
       toast({ 
@@ -302,6 +369,20 @@ export default function Equipment({ customerId }: EquipmentProps) {
         variant: "destructive" 
       });
       return;
+    }
+
+    let photoUrl = null;
+    if (photoFile) {
+      try {
+        photoUrl = await uploadPhoto();
+      } catch (error) {
+        toast({
+          title: "Erro ao fazer upload da foto",
+          description: "Tente novamente",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     createEquipmentMutation.mutate({
@@ -320,6 +401,7 @@ export default function Equipment({ customerId }: EquipmentProps) {
       status,
       description: description || null,
       module: currentModule,
+      photoUrl,
     });
   };
 
@@ -632,6 +714,51 @@ export default function Equipment({ customerId }: EquipmentProps) {
                       rows={3}
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Foto do Equipamento</Label>
+                    <div className="flex items-start gap-4">
+                      {photoPreview ? (
+                        <div className="relative">
+                          <img 
+                            src={photoPreview} 
+                            alt="Preview" 
+                            className="w-32 h-32 object-cover rounded-md border"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute -top-2 -right-2 h-6 w-6"
+                            onClick={removePhoto}
+                            data-testid="button-remove-photo"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <label 
+                          htmlFor="photo-upload"
+                          className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed rounded-md cursor-pointer hover:border-primary transition-colors"
+                        >
+                          <Camera className="w-8 h-8 text-muted-foreground mb-2" />
+                          <span className="text-xs text-muted-foreground">Adicionar foto</span>
+                          <input
+                            id="photo-upload"
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handlePhotoSelect}
+                            data-testid="input-photo"
+                          />
+                        </label>
+                      )}
+                      <div className="text-xs text-muted-foreground">
+                        <p>Formatos: JPG, PNG, WEBP</p>
+                        <p>Tamanho máximo: 5MB</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2">
@@ -645,12 +772,12 @@ export default function Equipment({ customerId }: EquipmentProps) {
                   <Button
                     variant="default"
                     onClick={handleCreate}
-                    disabled={createEquipmentMutation.isPending}
+                    disabled={createEquipmentMutation.isPending || isUploadingPhoto}
                     data-testid="button-save"
                     className={theme.buttons.primary}
                     style={theme.buttons.primaryStyle}
                   >
-                    {createEquipmentMutation.isPending ? "Criando..." : "Criar Equipamento"}
+                    {isUploadingPhoto ? "Enviando foto..." : createEquipmentMutation.isPending ? "Criando..." : "Criar Equipamento"}
                   </Button>
                 </div>
               </DialogContent>
