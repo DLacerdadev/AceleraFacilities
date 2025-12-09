@@ -289,6 +289,13 @@ function invalidateQueriesByResource(resource: string, message: WebSocketMessage
     case 'workorder':
       queryClient.invalidateQueries({ queryKey: ['/api/workorders'] });
       queryClient.invalidateQueries({ queryKey: ['/api/customers'] });
+      // Also invalidate TV mode stats (depends on work orders)
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey;
+          return Array.isArray(key) && key[0] === '/api/tv-mode/stats';
+        }
+      });
       if (message.customerId) {
         queryClient.invalidateQueries({ queryKey: [`/api/customers/${message.customerId}/workorders`] });
       }
@@ -409,6 +416,16 @@ function invalidateQueriesByResource(resource: string, message: WebSocketMessage
     case 'maintenance-checklist':
       queryClient.invalidateQueries({ queryKey: ['/api/maintenance-checklists'] });
       queryClient.invalidateQueries({ queryKey: ['/api/workorders'] });
+      break;
+
+    // TV Mode Stats (real-time dashboard)
+    case 'tv-mode-stats':
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey;
+          return Array.isArray(key) && key[0] === '/api/tv-mode/stats';
+        }
+      });
       break;
 
     // Generic invalidation for unknown resources

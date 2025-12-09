@@ -1,12 +1,14 @@
+import { useState, useEffect } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { useModule } from "@/contexts/ModuleContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactApexChart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Medal, Award, TrendingUp, Activity } from "lucide-react";
+import { Trophy, Medal, Award, TrendingUp, Activity, Wifi, WifiOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface TvModeStats {
   workOrdersStats: {
@@ -25,20 +27,39 @@ interface TvModeStats {
 export default function TvMode() {
   const { activeClientId } = useClient();
   const { currentModule } = useModule();
+  const queryClient = useQueryClient();
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [updateCount, setUpdateCount] = useState(0);
+
+  // WebSocket for real-time updates
+  const { isConnected, connectionStatus } = useWebSocket({
+    enabled: true,
+    onMessage: (message) => {
+      // Update TV mode when work orders change
+      if (message.resource === 'workorders' || message.resource === 'workorder' || message.resource === 'tv-mode-stats') {
+        console.log('[TV MODE] 📡 Real-time update received:', message.type, message.resource);
+        queryClient.invalidateQueries({ 
+          queryKey: ["/api/tv-mode/stats", { customerId: activeClientId, module: currentModule }] 
+        });
+        setLastUpdate(new Date());
+        setUpdateCount(prev => prev + 1);
+      }
+    },
+  });
 
   console.log("[TV MODE] activeClientId:", activeClientId);
   console.log("[TV MODE] currentModule:", currentModule);
+  console.log("[TV MODE] WebSocket:", connectionStatus);
 
-  // Fetch TV Mode stats - using standard queryClient pattern
+  // Fetch TV Mode stats - with WebSocket real-time updates
   const { data: stats, isError, error } = useQuery<TvModeStats>({
     queryKey: [
       "/api/tv-mode/stats",
       { customerId: activeClientId, module: currentModule },
     ],
     enabled: !!activeClientId && !!currentModule,
-    refetchInterval: 10000, // Auto-refresh every 10 seconds
-    refetchIntervalInBackground: true, // Continue refetching even when window is not focused
-    staleTime: 0, // Always consider data stale so it refetches
+    staleTime: Infinity, // Don't auto-refetch - WebSocket handles updates
+    refetchOnWindowFocus: false, // WebSocket keeps it updated
   });
 
   console.log("[TV MODE] stats:", stats);
@@ -141,12 +162,35 @@ export default function TvMode() {
           Dashboard TV Mode
         </h1>
         <p className="text-xl text-slate-300">
-          Atualização automática a cada 10 segundos
+          Atualização em tempo real via WebSocket
         </p>
-        <Badge variant="outline" className="mt-4 text-lg px-4 py-2 border-green-400 text-green-400">
-          <Activity className="w-4 h-4 mr-2 animate-pulse" />
-          Ao Vivo
-        </Badge>
+        <div className="flex items-center justify-center gap-4 mt-4">
+          <Badge 
+            variant="outline" 
+            className={`text-lg px-4 py-2 ${
+              isConnected 
+                ? 'border-green-400 text-green-400' 
+                : 'border-yellow-400 text-yellow-400'
+            }`}
+          >
+            {isConnected ? (
+              <>
+                <Wifi className="w-4 h-4 mr-2 animate-pulse" />
+                Conectado
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 mr-2" />
+                Reconectando...
+              </>
+            )}
+          </Badge>
+          {updateCount > 0 && (
+            <Badge variant="secondary" className="text-sm px-3 py-1">
+              {updateCount} atualiza{updateCount === 1 ? 'ção' : 'ções'}
+            </Badge>
+          )}
+        </div>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
@@ -297,7 +341,7 @@ export default function TvMode() {
         className="text-center mt-8"
       >
         <p className="text-slate-500 text-sm">
-          Última atualização: {new Date().toLocaleTimeString("pt-BR")}
+          Última atualização: {lastUpdate.toLocaleTimeString("pt-BR")}
         </p>
       </motion.div>
     </div>
