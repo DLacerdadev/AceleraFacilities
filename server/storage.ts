@@ -2682,17 +2682,17 @@ export class DatabaseStorage implements IStorage {
         gte(workOrders.completedAt, today)
       ));
 
-    // Count parts used in work orders for this zone today (count of part records)
-    const partsResult = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(workOrderParts)
-      .innerJoin(workOrders, eq(workOrderParts.workOrderId, workOrders.id))
-      .where(and(
-        eq(workOrders.zoneId, qrPoint.zoneId),
-        eq(workOrders.customerId, site.customerId),
-        eq(workOrders.module, qrPoint.module),
-        gte(workOrders.createdAt, today)
-      ));
+    // Count parts used in work orders for this zone today (using raw SQL for reliability)
+    const partsCountResult = await db.execute(sql`
+      SELECT COUNT(*)::int as count 
+      FROM work_order_parts wop
+      INNER JOIN work_orders wo ON wop.work_order_id = wo.id
+      WHERE wo.zone_id = ${qrPoint.zoneId}
+        AND wo.customer_id = ${site.customerId}
+        AND wo.module = ${qrPoint.module}
+        AND wo.created_at >= ${today}
+    `);
+    const partsCount = partsCountResult.rows?.[0]?.count || 0;
 
     // Get work orders for this zone today (limited info for public display)
     const todayWorkOrders = await db
@@ -2727,7 +2727,7 @@ export class DatabaseStorage implements IStorage {
       stats: {
         openToday: openResult[0]?.count || 0,
         completedToday: completedResult[0]?.count || 0,
-        partsUsedToday: partsResult[0]?.count || 0,
+        partsUsedToday: partsCount,
       },
       workOrders: todayWorkOrders,
     };
