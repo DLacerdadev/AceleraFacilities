@@ -7393,11 +7393,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== SUPPLIER-CUSTOMER RELATIONSHIPS =====
 
-  // Get customers served by supplier
+  // Get customers served by supplier (with customer details)
   app.get('/api/suppliers/:id/customers', requireAuth, async (req, res) => {
     try {
-      const customers = await storage.getSupplierCustomers(req.params.id);
-      res.json(customers);
+      const supplierCustomers = await storage.getSupplierCustomers(req.params.id);
+      
+      const customersWithDetails = await Promise.all(
+        supplierCustomers.map(async (sc) => {
+          const customer = await storage.getCustomerById(sc.customerId);
+          return {
+            ...sc,
+            customer: customer ? { id: customer.id, name: customer.name, tradeName: customer.tradeName } : null
+          };
+        })
+      );
+      
+      res.json(customersWithDetails);
     } catch (error) {
       console.error('Error fetching supplier customers:', error);
       res.status(500).json({ message: 'Erro ao buscar clientes do fornecedor' });
@@ -7500,12 +7511,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get supplier for a user
+  app.get('/api/users/:userId/supplier', requireAuth, async (req, res) => {
+    try {
+      const supplier = await storage.getUserSupplier(req.params.userId);
+      if (!supplier) {
+        return res.status(404).json({ message: 'Usuário não está vinculado a nenhum fornecedor' });
+      }
+      res.json(supplier);
+    } catch (error) {
+      console.error('Error fetching user supplier:', error);
+      res.status(500).json({ message: 'Erro ao buscar fornecedor do usuário' });
+    }
+  });
+
   // ===== MAINTENANCE PLAN PROPOSALS =====
 
   // Get proposals by supplier
   app.get('/api/suppliers/:supplierId/proposals', requireAuth, async (req, res) => {
     try {
-      const proposals = await storage.getProposalsBySupplier(req.params.supplierId);
+      const proposals = await storage.getProposalsBySupplierId(req.params.supplierId);
       res.json(proposals);
     } catch (error) {
       console.error('Error fetching supplier proposals:', error);
@@ -7675,7 +7700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get batches by supplier
   app.get('/api/suppliers/:supplierId/part-batches', requireAuth, async (req, res) => {
     try {
-      const batches = await storage.getPartBatchesBySupplier(req.params.supplierId);
+      const batches = await storage.getPartBatchesBySupplierId(req.params.supplierId);
       res.json(batches);
     } catch (error) {
       console.error('Error fetching supplier part batches:', error);

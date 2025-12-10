@@ -33,6 +33,8 @@ import AiIntegrations from "@/pages/ai-integrations";
 import TvMode from "@/pages/tv-mode";
 import PublicZoneTv from "@/pages/public-zone-tv";
 import BrandingSettings from "@/pages/branding-settings";
+import SupplierPortal from "@/pages/supplier-portal";
+import SupplierProposals from "@/pages/supplier-proposals";
 import { useIsMobile } from "@/hooks/use-mobile";
 import QrExecution from "@/pages/qr-execution";
 import QrPublic from "@/pages/qr-public";
@@ -280,6 +282,10 @@ function AuthenticatedAdminRouter() {
           
           {/* TV Mode Dashboard */}
           <Route path="/tv-mode" component={() => <TvMode />} />
+          
+          {/* Supplier Portal Routes */}
+          <Route path="/supplier-portal" component={() => <SupplierPortal />} />
+          <Route path="/supplier-proposals" component={() => <SupplierProposals />} />
           
           {/* Public Zone TV (can be accessed by authenticated users too) */}
           <Route path="/public/tv/:slug" component={PublicZoneTv} />
