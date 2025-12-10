@@ -111,3 +111,10 @@
 [x] 426. Application fully operational with schedulers (monthly and daily) activated
 [x] 427. Migration to new Replit environment completed successfully
 [x] 428. Database restored from backup: 37 users, 10 customers, 2 companies, 23 sites, 63 zones, 3093 work orders, 52 QR points
+
+## SUPPLIER USERS CREATION (10/12/2025 11:24 PM)
+[x] 429. Modified POST /api/suppliers/:id/users to CREATE new user instead of linking existing
+[x] 430. New users are created with userType='supplier_user', role='operador', modules=['maintenance']
+[x] 431. Proper validation: email and username uniqueness checks using storage.getUserByEmail/Username
+[x] 432. Frontend updated to show creation form (name, email, username, password, phone) instead of dropdown
+[x] 433. Removed unused query for allUsers and availableUsers in frontend

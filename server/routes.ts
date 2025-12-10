@@ -7500,27 +7500,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add user to supplier
+  // Create new user for supplier
   app.post('/api/suppliers/:id/users', requireAuth, requirePermission('suppliers_edit'), async (req, res) => {
     try {
-      const { userId } = req.body;
-      if (!userId) {
-        return res.status(400).json({ message: 'userId é obrigatório' });
+      const { name, email, username, password, phone } = req.body;
+      
+      // Validate required fields
+      if (!name || !email || !username || !password) {
+        return res.status(400).json({ 
+          message: 'Campos obrigatórios: nome, email, usuário e senha' 
+        });
       }
-      const supplierUserData = insertSupplierUserSchema.parse({
+      
+      // Get supplier to get company_id
+      const supplier = await storage.getSupplierById(req.params.id);
+      if (!supplier) {
+        return res.status(404).json({ message: 'Fornecedor não encontrado' });
+      }
+      
+      // Check if email or username already exists
+      const existingByEmail = await storage.getUserByEmail(email);
+      if (existingByEmail) {
+        return res.status(400).json({ message: 'Email já está em uso' });
+      }
+      
+      const existingByUsername = await storage.getUserByUsername(username);
+      if (existingByUsername) {
+        return res.status(400).json({ message: 'Nome de usuário já está em uso' });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Create new user with userType = 'supplier_user'
+      const userId = nanoid();
+      const newUser = await storage.createUser({
+        id: userId,
+        companyId: supplier.companyId,
+        name,
+        email,
+        username,
+        password: hashedPassword,
+        userType: 'supplier_user',
+        role: 'operador',
+        modules: ['maintenance'],
+        isActive: true,
+      });
+      
+      // Link user to supplier
+      const supplierUserRelation = {
         id: nanoid(),
         supplierId: req.params.id,
-        userId
+        userId: newUser.id
+      };
+      const relation = await storage.addSupplierUser(supplierUserRelation);
+      
+      // Broadcast both updates
+      broadcast({ type: 'create', resource: 'supplierUsers', data: relation });
+      broadcast({ type: 'create', resource: 'users', data: sanitizeUser(newUser) });
+      
+      // Return the supplier user relation with user data
+      res.status(201).json({
+        ...relation,
+        user: sanitizeUser(newUser)
       });
-      const newRelation = await storage.createSupplierUser(supplierUserData);
-      broadcast({ type: 'create', resource: 'supplierUsers', data: newRelation });
-      res.status(201).json(newRelation);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
       }
-      console.error('Error adding user to supplier:', error);
-      res.status(500).json({ message: 'Erro ao adicionar usuário ao fornecedor' });
+      console.error('Error creating supplier user:', error);
+      res.status(500).json({ message: 'Erro ao criar usuário do fornecedor' });
     }
   });
 

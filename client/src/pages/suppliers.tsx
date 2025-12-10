@@ -43,12 +43,6 @@ type SupplierUser = {
   };
 };
 
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  userType: string;
-};
 
 export default function Suppliers() {
   const { toast } = useToast();
@@ -76,8 +70,13 @@ export default function Suppliers() {
   });
 
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserRole, setNewUserRole] = useState("viewer");
+  const [newUserData, setNewUserData] = useState({
+    name: "",
+    email: "",
+    username: "",
+    password: "",
+    phone: "",
+  });
 
   const companyId = activeClient?.companyId;
   const hasViewPermission = can.viewSuppliers();
@@ -97,10 +96,6 @@ export default function Suppliers() {
     enabled: !!selectedSupplier?.id && isUsersDialogOpen,
   });
 
-  const { data: allUsers = [] } = useQuery<User[]>({
-    queryKey: ['/api/users'],
-    enabled: isAddUserDialogOpen,
-  });
 
   const createSupplierMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -178,19 +173,19 @@ export default function Suppliers() {
   });
 
   const addUserMutation = useMutation({
-    mutationFn: async (data: { userId: string; role: string }) => {
+    mutationFn: async (data: { name: string; email: string; username: string; password: string; phone?: string }) => {
       const response = await apiRequest("POST", `/api/suppliers/${selectedSupplier?.id}/users`, data);
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Usuário adicionado com sucesso" });
+      toast({ title: "Usuário criado com sucesso" });
       queryClient.invalidateQueries({ queryKey: ['/api/suppliers', selectedSupplier?.id, 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       setIsAddUserDialogOpen(false);
-      setNewUserEmail("");
-      setNewUserRole("viewer");
+      setNewUserData({ name: "", email: "", username: "", password: "", phone: "" });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro ao adicionar usuário", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao criar usuário", description: error.message, variant: "destructive" });
     },
   });
 
@@ -272,9 +267,6 @@ export default function Suppliers() {
 
   const linkedCustomerIds = supplierCustomers.map(sc => sc.customerId);
   const availableCustomers = customers.filter(c => !linkedCustomerIds.includes(c.id));
-
-  const existingUserIds = supplierUsers.map(su => su.userId);
-  const availableUsers = allUsers.filter(u => !existingUserIds.includes(u.id));
 
   if (!hasViewPermission) {
     return (
@@ -668,35 +660,55 @@ export default function Suppliers() {
       <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar Usuário ao Fornecedor</DialogTitle>
+            <DialogTitle>Criar Novo Usuário do Fornecedor</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Selecione o Usuário</Label>
-              <Select onValueChange={setNewUserEmail}>
-                <SelectTrigger data-testid="select-new-supplier-user">
-                  <SelectValue placeholder="Selecione um usuário..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUsers.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name} ({user.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Nome *</Label>
+              <Input
+                value={newUserData.name}
+                onChange={(e) => setNewUserData({ ...newUserData, name: e.target.value })}
+                placeholder="Nome completo"
+                data-testid="input-new-user-name"
+              />
             </div>
             <div className="space-y-2">
-              <Label>Função</Label>
-              <Select value={newUserRole} onValueChange={setNewUserRole}>
-                <SelectTrigger data-testid="select-user-role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="viewer">Visualizador</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>E-mail *</Label>
+              <Input
+                type="email"
+                value={newUserData.email}
+                onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                placeholder="email@exemplo.com"
+                data-testid="input-new-user-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nome de Usuário *</Label>
+              <Input
+                value={newUserData.username}
+                onChange={(e) => setNewUserData({ ...newUserData, username: e.target.value })}
+                placeholder="usuario123"
+                data-testid="input-new-user-username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Senha *</Label>
+              <Input
+                type="password"
+                value={newUserData.password}
+                onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                placeholder="Digite a senha"
+                data-testid="input-new-user-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Telefone</Label>
+              <Input
+                value={newUserData.phone}
+                onChange={(e) => setNewUserData({ ...newUserData, phone: e.target.value })}
+                placeholder="(11) 99999-9999"
+                data-testid="input-new-user-phone"
+              />
             </div>
           </div>
           <DialogFooter>
@@ -705,17 +717,17 @@ export default function Suppliers() {
             </Button>
             <Button
               onClick={() => {
-                if (newUserEmail) {
-                  addUserMutation.mutate({ userId: newUserEmail, role: newUserRole });
+                if (newUserData.name && newUserData.email && newUserData.username && newUserData.password) {
+                  addUserMutation.mutate(newUserData);
                 }
               }}
-              disabled={!newUserEmail || addUserMutation.isPending}
+              disabled={!newUserData.name || !newUserData.email || !newUserData.username || !newUserData.password || addUserMutation.isPending}
               className={theme.buttons.primary}
               style={theme.buttons.primaryStyle}
               data-testid="button-confirm-add-user"
             >
               {addUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Adicionar
+              Criar Usuário
             </Button>
           </DialogFooter>
         </DialogContent>
