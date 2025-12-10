@@ -9028,7 +9028,7 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
         status: workOrders.status,
         assignedUserId: workOrders.assignedUserId,
         completedAt: workOrders.completedAt,
-        expectedCompletionDate: workOrders.expectedCompletionDate,
+        dueDate: workOrders.dueDate,
       })
       .from(workOrders)
       .where(
@@ -9043,18 +9043,18 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
     // Count resolved (concluida)
     const resolved = allWorkOrders.filter(wo => wo.status === 'concluida').length;
     
-    // Count overdue (not resolved + expectedCompletionDate in the past)
+    // Count overdue (not resolved + dueDate in the past)
     const overdue = allWorkOrders.filter(wo => {
       if (wo.status === 'concluida') return false;
-      if (!wo.expectedCompletionDate) return false;
-      return new Date(wo.expectedCompletionDate) < now;
+      if (!wo.dueDate) return false;
+      return new Date(wo.dueDate) < now;
     }).length;
     
     // Count open (not resolved and not overdue)
     const open = allWorkOrders.filter(wo => {
       if (wo.status === 'concluida') return false;
-      if (!wo.expectedCompletionDate) return true; // No due date = open
-      return new Date(wo.expectedCompletionDate) >= now;
+      if (!wo.dueDate) return true; // No due date = open
+      return new Date(wo.dueDate) >= now;
     }).length;
 
     // Get leaderboard: top collaborators by completed work orders
