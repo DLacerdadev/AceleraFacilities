@@ -20,6 +20,8 @@ import {
   insertAiIntegrationSchema,
   insertPartSchema, insertWorkOrderPartSchema, insertMaintenancePlanPartSchema,
   insertMaintenanceActivityPartSchema, insertPartMovementSchema,
+  insertSupplierSchema, insertSupplierCustomerSchema, insertSupplierUserSchema,
+  insertMaintenancePlanProposalSchema, insertSupplierPartBatchSchema, insertNotificationSchema,
   syncBatchRequestSchema,
   customers,
   type User, type InsertUser
@@ -7279,6 +7281,647 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // ============================================================================
+  // SUPPLIER MODULE API ROUTES
+  // ============================================================================
+
+  // Helper function to create notification for a user
+  async function createNotificationForUser(
+    userId: string,
+    type: string,
+    title: string,
+    message: string,
+    data?: Record<string, any>
+  ) {
+    try {
+      const notification = await storage.createNotification({
+        userId,
+        type,
+        title,
+        message,
+        data: data || null,
+        isRead: false
+      });
+      broadcast({ type: 'create', resource: 'notifications', data: notification, userId });
+      return notification;
+    } catch (error) {
+      console.error('Error creating notification:', error);
+    }
+  }
+
+  // ===== SUPPLIERS CRUD =====
+
+  // List suppliers for company
+  app.get('/api/suppliers', requireAuth, async (req, res) => {
+    try {
+      if (!req.user?.companyId) {
+        return res.status(403).json({ message: 'Não autorizado' });
+      }
+      const suppliers = await storage.getSuppliers(req.user.companyId);
+      res.json(suppliers);
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+      res.status(500).json({ message: 'Erro ao buscar fornecedores' });
+    }
+  });
+
+  // Get supplier by ID
+  app.get('/api/suppliers/:id', requireAuth, async (req, res) => {
+    try {
+      const supplier = await storage.getSupplier(req.params.id);
+      if (!supplier) {
+        return res.status(404).json({ message: 'Fornecedor não encontrado' });
+      }
+      res.json(supplier);
+    } catch (error) {
+      console.error('Error fetching supplier:', error);
+      res.status(500).json({ message: 'Erro ao buscar fornecedor' });
+    }
+  });
+
+  // Create supplier
+  app.post('/api/suppliers', requireAuth, requirePermission('suppliers_create'), async (req, res) => {
+    try {
+      if (!req.user?.companyId) {
+        return res.status(403).json({ message: 'Não autorizado' });
+      }
+      const supplierData = insertSupplierSchema.parse({
+        ...req.body,
+        id: nanoid(),
+        companyId: req.user.companyId
+      });
+      const newSupplier = await storage.createSupplier(supplierData);
+      broadcast({ type: 'create', resource: 'suppliers', data: newSupplier });
+      res.status(201).json(newSupplier);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Error creating supplier:', error);
+      res.status(500).json({ message: 'Erro ao criar fornecedor' });
+    }
+  });
+
+  // Update supplier
+  app.patch('/api/suppliers/:id', requireAuth, requirePermission('suppliers_edit'), async (req, res) => {
+    try {
+      const supplierData = insertSupplierSchema.partial().parse(req.body);
+      const updatedSupplier = await storage.updateSupplier(req.params.id, supplierData);
+      broadcast({ type: 'update', resource: 'suppliers', data: updatedSupplier });
+      res.json(updatedSupplier);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Error updating supplier:', error);
+      res.status(500).json({ message: 'Erro ao atualizar fornecedor' });
+    }
+  });
+
+  // Delete supplier
+  app.delete('/api/suppliers/:id', requireAuth, requirePermission('suppliers_delete'), async (req, res) => {
+    try {
+      await storage.deleteSupplier(req.params.id);
+      broadcast({ type: 'delete', resource: 'suppliers', data: { id: req.params.id } });
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      res.status(500).json({ message: 'Erro ao excluir fornecedor' });
+    }
+  });
+
+  // ===== SUPPLIER-CUSTOMER RELATIONSHIPS =====
+
+  // Get customers served by supplier
+  app.get('/api/suppliers/:id/customers', requireAuth, async (req, res) => {
+    try {
+      const customers = await storage.getSupplierCustomers(req.params.id);
+      res.json(customers);
+    } catch (error) {
+      console.error('Error fetching supplier customers:', error);
+      res.status(500).json({ message: 'Erro ao buscar clientes do fornecedor' });
+    }
+  });
+
+  // Add customer to supplier
+  app.post('/api/suppliers/:id/customers', requireAuth, requirePermission('suppliers_edit'), async (req, res) => {
+    try {
+      const { customerId } = req.body;
+      if (!customerId) {
+        return res.status(400).json({ message: 'customerId é obrigatório' });
+      }
+      const supplierCustomerData = insertSupplierCustomerSchema.parse({
+        id: nanoid(),
+        supplierId: req.params.id,
+        customerId
+      });
+      const newRelation = await storage.createSupplierCustomer(supplierCustomerData);
+      broadcast({ type: 'create', resource: 'supplierCustomers', data: newRelation });
+      res.status(201).json(newRelation);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Error adding customer to supplier:', error);
+      res.status(500).json({ message: 'Erro ao adicionar cliente ao fornecedor' });
+    }
+  });
+
+  // Remove customer from supplier
+  app.delete('/api/suppliers/:id/customers/:customerId', requireAuth, requirePermission('suppliers_edit'), async (req, res) => {
+    try {
+      await storage.deleteSupplierCustomer(req.params.id, req.params.customerId);
+      broadcast({ type: 'delete', resource: 'supplierCustomers', data: { supplierId: req.params.id, customerId: req.params.customerId } });
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error removing customer from supplier:', error);
+      res.status(500).json({ message: 'Erro ao remover cliente do fornecedor' });
+    }
+  });
+
+  // Get suppliers serving a customer
+  app.get('/api/customers/:customerId/suppliers', requireAuth, async (req, res) => {
+    try {
+      const suppliers = await storage.getCustomerSuppliers(req.params.customerId);
+      res.json(suppliers);
+    } catch (error) {
+      console.error('Error fetching customer suppliers:', error);
+      res.status(500).json({ message: 'Erro ao buscar fornecedores do cliente' });
+    }
+  });
+
+  // ===== SUPPLIER USERS =====
+
+  // Get users of a supplier
+  app.get('/api/suppliers/:id/users', requireAuth, async (req, res) => {
+    try {
+      const users = await storage.getSupplierUsers(req.params.id);
+      res.json(sanitizeUsers(users));
+    } catch (error) {
+      console.error('Error fetching supplier users:', error);
+      res.status(500).json({ message: 'Erro ao buscar usuários do fornecedor' });
+    }
+  });
+
+  // Add user to supplier
+  app.post('/api/suppliers/:id/users', requireAuth, requirePermission('suppliers_edit'), async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: 'userId é obrigatório' });
+      }
+      const supplierUserData = insertSupplierUserSchema.parse({
+        id: nanoid(),
+        supplierId: req.params.id,
+        userId
+      });
+      const newRelation = await storage.createSupplierUser(supplierUserData);
+      broadcast({ type: 'create', resource: 'supplierUsers', data: newRelation });
+      res.status(201).json(newRelation);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Error adding user to supplier:', error);
+      res.status(500).json({ message: 'Erro ao adicionar usuário ao fornecedor' });
+    }
+  });
+
+  // Remove user from supplier
+  app.delete('/api/suppliers/:id/users/:userId', requireAuth, requirePermission('suppliers_edit'), async (req, res) => {
+    try {
+      await storage.deleteSupplierUser(req.params.id, req.params.userId);
+      broadcast({ type: 'delete', resource: 'supplierUsers', data: { supplierId: req.params.id, userId: req.params.userId } });
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error removing user from supplier:', error);
+      res.status(500).json({ message: 'Erro ao remover usuário do fornecedor' });
+    }
+  });
+
+  // ===== MAINTENANCE PLAN PROPOSALS =====
+
+  // Get proposals by supplier
+  app.get('/api/suppliers/:supplierId/proposals', requireAuth, async (req, res) => {
+    try {
+      const proposals = await storage.getProposalsBySupplier(req.params.supplierId);
+      res.json(proposals);
+    } catch (error) {
+      console.error('Error fetching supplier proposals:', error);
+      res.status(500).json({ message: 'Erro ao buscar propostas do fornecedor' });
+    }
+  });
+
+  // Get proposals for customer
+  app.get('/api/customers/:customerId/proposals', requireAuth, async (req, res) => {
+    try {
+      const proposals = await storage.getProposalsByCustomer(req.params.customerId);
+      res.json(proposals);
+    } catch (error) {
+      console.error('Error fetching customer proposals:', error);
+      res.status(500).json({ message: 'Erro ao buscar propostas do cliente' });
+    }
+  });
+
+  // Create proposal (supplier action)
+  app.post('/api/suppliers/:supplierId/proposals', requireAuth, requirePermission('maintenance_plan_propose'), async (req, res) => {
+    try {
+      const proposalData = insertMaintenancePlanProposalSchema.parse({
+        ...req.body,
+        id: nanoid(),
+        supplierId: req.params.supplierId,
+        createdByUserId: req.user?.id,
+        status: 'em_espera'
+      });
+      const newProposal = await storage.createProposal(proposalData);
+      broadcast({ type: 'create', resource: 'proposals', data: newProposal });
+      
+      // Notify customer admins about new proposal
+      const customerAdmins = await storage.getCustomerAdmins(proposalData.customerId);
+      for (const admin of customerAdmins) {
+        await createNotificationForUser(
+          admin.id,
+          'proposal_created',
+          'Nova proposta de plano de manutenção',
+          `Uma nova proposta de plano de manutenção foi criada pelo fornecedor.`,
+          { proposalId: newProposal.id }
+        );
+      }
+      
+      res.status(201).json(newProposal);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Error creating proposal:', error);
+      res.status(500).json({ message: 'Erro ao criar proposta' });
+    }
+  });
+
+  // Update proposal
+  app.patch('/api/proposals/:id', requireAuth, async (req, res) => {
+    try {
+      const proposalData = insertMaintenancePlanProposalSchema.partial().parse(req.body);
+      const updatedProposal = await storage.updateProposal(req.params.id, proposalData);
+      broadcast({ type: 'update', resource: 'proposals', data: updatedProposal });
+      res.json(updatedProposal);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Error updating proposal:', error);
+      res.status(500).json({ message: 'Erro ao atualizar proposta' });
+    }
+  });
+
+  // Approve proposal (admin action)
+  app.patch('/api/proposals/:id/approve', requireAuth, requirePermission('maintenance_plan_approve'), async (req, res) => {
+    try {
+      const proposal = await storage.getProposal(req.params.id);
+      if (!proposal) {
+        return res.status(404).json({ message: 'Proposta não encontrada' });
+      }
+      
+      // Update proposal status
+      const updatedProposal = await storage.updateProposal(req.params.id, {
+        status: 'aprovado',
+        approvedByUserId: req.user?.id,
+        approvedAt: new Date()
+      });
+      
+      // Create the actual maintenance plan from proposal
+      if (proposal.proposedPlanData) {
+        const planData = proposal.proposedPlanData as Record<string, any>;
+        const maintenancePlan = await storage.createMaintenancePlan({
+          ...planData,
+          id: nanoid(),
+          customerId: proposal.customerId,
+          createdFromProposalId: proposal.id
+        });
+        broadcast({ type: 'create', resource: 'maintenancePlans', data: maintenancePlan });
+      }
+      
+      broadcast({ type: 'update', resource: 'proposals', data: updatedProposal });
+      
+      // Notify supplier about approval
+      if (proposal.createdByUserId) {
+        await createNotificationForUser(
+          proposal.createdByUserId,
+          'proposal_approved',
+          'Proposta aprovada',
+          `Sua proposta de plano de manutenção foi aprovada.`,
+          { proposalId: proposal.id }
+        );
+      }
+      
+      res.json(updatedProposal);
+    } catch (error) {
+      console.error('Error approving proposal:', error);
+      res.status(500).json({ message: 'Erro ao aprovar proposta' });
+    }
+  });
+
+  // Reject proposal (admin action)
+  app.patch('/api/proposals/:id/reject', requireAuth, requirePermission('maintenance_plan_approve'), async (req, res) => {
+    try {
+      const proposal = await storage.getProposal(req.params.id);
+      if (!proposal) {
+        return res.status(404).json({ message: 'Proposta não encontrada' });
+      }
+      
+      const { rejectionReason } = req.body;
+      const updatedProposal = await storage.updateProposal(req.params.id, {
+        status: 'recusado',
+        rejectedByUserId: req.user?.id,
+        rejectedAt: new Date(),
+        rejectionReason
+      });
+      
+      broadcast({ type: 'update', resource: 'proposals', data: updatedProposal });
+      
+      // Notify supplier about rejection
+      if (proposal.createdByUserId) {
+        await createNotificationForUser(
+          proposal.createdByUserId,
+          'proposal_rejected',
+          'Proposta recusada',
+          `Sua proposta de plano de manutenção foi recusada.${rejectionReason ? ` Motivo: ${rejectionReason}` : ''}`,
+          { proposalId: proposal.id, rejectionReason }
+        );
+      }
+      
+      res.json(updatedProposal);
+    } catch (error) {
+      console.error('Error rejecting proposal:', error);
+      res.status(500).json({ message: 'Erro ao recusar proposta' });
+    }
+  });
+
+  // Delete proposal
+  app.delete('/api/proposals/:id', requireAuth, async (req, res) => {
+    try {
+      await storage.deleteProposal(req.params.id);
+      broadcast({ type: 'delete', resource: 'proposals', data: { id: req.params.id } });
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting proposal:', error);
+      res.status(500).json({ message: 'Erro ao excluir proposta' });
+    }
+  });
+
+  // ===== SUPPLIER PART BATCHES =====
+
+  // Get batches by supplier
+  app.get('/api/suppliers/:supplierId/part-batches', requireAuth, async (req, res) => {
+    try {
+      const batches = await storage.getPartBatchesBySupplier(req.params.supplierId);
+      res.json(batches);
+    } catch (error) {
+      console.error('Error fetching supplier part batches:', error);
+      res.status(500).json({ message: 'Erro ao buscar lotes de peças do fornecedor' });
+    }
+  });
+
+  // Get batches for customer
+  app.get('/api/customers/:customerId/part-batches', requireAuth, async (req, res) => {
+    try {
+      const batches = await storage.getPartBatchesByCustomer(req.params.customerId);
+      res.json(batches);
+    } catch (error) {
+      console.error('Error fetching customer part batches:', error);
+      res.status(500).json({ message: 'Erro ao buscar lotes de peças do cliente' });
+    }
+  });
+
+  // Create batch
+  app.post('/api/suppliers/:supplierId/part-batches', requireAuth, requirePermission('supplier_parts_manage'), async (req, res) => {
+    try {
+      const batchData = insertSupplierPartBatchSchema.parse({
+        ...req.body,
+        id: nanoid(),
+        supplierId: req.params.supplierId,
+        createdByUserId: req.user?.id,
+        status: 'planejado'
+      });
+      const newBatch = await storage.createPartBatch(batchData);
+      broadcast({ type: 'create', resource: 'partBatches', data: newBatch });
+      res.status(201).json(newBatch);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Error creating part batch:', error);
+      res.status(500).json({ message: 'Erro ao criar lote de peças' });
+    }
+  });
+
+  // Update batch
+  app.patch('/api/part-batches/:id', requireAuth, requirePermission('supplier_parts_manage'), async (req, res) => {
+    try {
+      const batchData = insertSupplierPartBatchSchema.partial().parse(req.body);
+      const updatedBatch = await storage.updatePartBatch(req.params.id, batchData);
+      broadcast({ type: 'update', resource: 'partBatches', data: updatedBatch });
+      res.json(updatedBatch);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      }
+      console.error('Error updating part batch:', error);
+      res.status(500).json({ message: 'Erro ao atualizar lote de peças' });
+    }
+  });
+
+  // Mark batch as shipped
+  app.patch('/api/part-batches/:id/ship', requireAuth, requirePermission('supplier_parts_manage'), async (req, res) => {
+    try {
+      const updatedBatch = await storage.updatePartBatch(req.params.id, {
+        status: 'enviado',
+        shippedAt: new Date(),
+        shippedByUserId: req.user?.id
+      });
+      broadcast({ type: 'update', resource: 'partBatches', data: updatedBatch });
+      
+      // Notify customer about shipment
+      const batch = await storage.getPartBatch(req.params.id);
+      if (batch) {
+        const customerAdmins = await storage.getCustomerAdmins(batch.customerId);
+        for (const admin of customerAdmins) {
+          await createNotificationForUser(
+            admin.id,
+            'batch_shipped',
+            'Lote de peças enviado',
+            `Um lote de peças foi enviado pelo fornecedor.`,
+            { batchId: batch.id }
+          );
+        }
+      }
+      
+      res.json(updatedBatch);
+    } catch (error) {
+      console.error('Error shipping part batch:', error);
+      res.status(500).json({ message: 'Erro ao marcar lote como enviado' });
+    }
+  });
+
+  // Mark batch as received
+  app.patch('/api/part-batches/:id/receive', requireAuth, async (req, res) => {
+    try {
+      const batch = await storage.getPartBatch(req.params.id);
+      if (!batch) {
+        return res.status(404).json({ message: 'Lote não encontrado' });
+      }
+      
+      const updatedBatch = await storage.updatePartBatch(req.params.id, {
+        status: 'recebido',
+        receivedAt: new Date(),
+        receivedByUserId: req.user?.id
+      });
+      broadcast({ type: 'update', resource: 'partBatches', data: updatedBatch });
+      
+      // Create part movements to update stock
+      const items = batch.items as Array<{ partId: string; quantity: string }>;
+      if (items && Array.isArray(items)) {
+        for (const item of items) {
+          const part = await storage.getPart(item.partId);
+          if (part) {
+            const previousQuantity = parseFloat(part.currentQuantity);
+            const addedQuantity = parseFloat(item.quantity);
+            const newQuantity = previousQuantity + addedQuantity;
+            
+            // Update part stock
+            await storage.updatePart(item.partId, {
+              currentQuantity: String(newQuantity)
+            });
+            
+            // Create movement record
+            const movement = insertPartMovementSchema.parse({
+              partId: item.partId,
+              movementType: 'entrada',
+              quantity: String(addedQuantity),
+              previousQuantity: String(previousQuantity),
+              newQuantity: String(newQuantity),
+              reason: `Recebimento lote #${batch.id.substring(0, 8)}`,
+              supplierPartBatchId: batch.id,
+              performedByUserId: req.user?.id || null
+            });
+            await storage.createPartMovement(movement);
+            
+            broadcast({ type: 'update', resource: 'parts', data: { id: item.partId } });
+          }
+        }
+      }
+      
+      // Notify supplier about receipt
+      if (batch.createdByUserId) {
+        await createNotificationForUser(
+          batch.createdByUserId,
+          'batch_received',
+          'Lote de peças recebido',
+          `O lote de peças foi recebido pelo cliente.`,
+          { batchId: batch.id }
+        );
+      }
+      
+      res.json(updatedBatch);
+    } catch (error) {
+      console.error('Error receiving part batch:', error);
+      res.status(500).json({ message: 'Erro ao marcar lote como recebido' });
+    }
+  });
+
+  // Delete batch
+  app.delete('/api/part-batches/:id', requireAuth, requirePermission('supplier_parts_manage'), async (req, res) => {
+    try {
+      await storage.deletePartBatch(req.params.id);
+      broadcast({ type: 'delete', resource: 'partBatches', data: { id: req.params.id } });
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting part batch:', error);
+      res.status(500).json({ message: 'Erro ao excluir lote de peças' });
+    }
+  });
+
+  // ===== NOTIFICATIONS =====
+
+  // Get user's notifications
+  app.get('/api/notifications', requireAuth, async (req, res) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ message: 'Não autenticado' });
+      }
+      const notifications = await storage.getNotificationsByUser(req.user.id);
+      res.json(notifications);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      res.status(500).json({ message: 'Erro ao buscar notificações' });
+    }
+  });
+
+  // Mark notification as read
+  app.patch('/api/notifications/:id/read', requireAuth, async (req, res) => {
+    try {
+      const updatedNotification = await storage.updateNotification(req.params.id, {
+        isRead: true,
+        readAt: new Date()
+      });
+      broadcast({ type: 'update', resource: 'notifications', data: updatedNotification, userId: req.user?.id });
+      res.json(updatedNotification);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      res.status(500).json({ message: 'Erro ao marcar notificação como lida' });
+    }
+  });
+
+  // Mark all notifications as read
+  app.patch('/api/notifications/read-all', requireAuth, async (req, res) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ message: 'Não autenticado' });
+      }
+      await storage.markAllNotificationsAsRead(req.user.id);
+      broadcast({ type: 'update', resource: 'notifications', data: { allRead: true }, userId: req.user.id });
+      res.json({ message: 'Todas as notificações foram marcadas como lidas' });
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      res.status(500).json({ message: 'Erro ao marcar todas as notificações como lidas' });
+    }
+  });
+
+  // Delete notification
+  app.delete('/api/notifications/:id', requireAuth, async (req, res) => {
+    try {
+      await storage.deleteNotification(req.params.id);
+      broadcast({ type: 'delete', resource: 'notifications', data: { id: req.params.id }, userId: req.user?.id });
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      res.status(500).json({ message: 'Erro ao excluir notificação' });
+    }
+  });
+
+  // ===== SUPPLIER INVENTORY VIEW =====
+
+  // View customer's parts inventory (read-only for suppliers)
+  app.get('/api/suppliers/:supplierId/customers/:customerId/parts', requireAuth, requirePermission('supplier_inventory_view'), async (req, res) => {
+    try {
+      // Verify supplier has access to this customer
+      const hasAccess = await storage.supplierHasCustomerAccess(req.params.supplierId, req.params.customerId);
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Fornecedor não tem acesso a este cliente' });
+      }
+      
+      const parts = await storage.getPartsByCustomer(req.params.customerId);
+      res.json(parts);
+    } catch (error) {
+      console.error('Error fetching customer parts for supplier:', error);
+      res.status(500).json({ message: 'Erro ao buscar peças do cliente' });
+    }
+  });
+
+  // ============================================================================
+  // END OF SUPPLIER MODULE API ROUTES
+  // ============================================================================
 
   const httpServer = createServer(app);
   return httpServer;

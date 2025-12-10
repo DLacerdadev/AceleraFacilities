@@ -8,6 +8,7 @@ import {
   maintenanceChecklistExecutions, maintenancePlans, maintenancePlanEquipments, maintenanceActivities,
   parts, workOrderParts, maintenancePlanParts, maintenanceActivityParts, partMovements,
   aiIntegrations, chatConversations, chatMessages,
+  suppliers, supplierCustomers, supplierUsers, maintenancePlanProposals, supplierPartBatches, notifications,
   type Company, type InsertCompany, type Site, type InsertSite, 
   type Zone, type InsertZone, type QrCodePoint, type InsertQrCodePoint,
   type User, type InsertUser, type ChecklistTemplate, type InsertChecklistTemplate,
@@ -42,7 +43,13 @@ import {
   type AiIntegration, type InsertAiIntegration,
   type ChatConversation, type InsertChatConversation,
   type ChatMessage, type InsertChatMessage,
-  type SyncBatchRequest, type SyncBatchResponse
+  type SyncBatchRequest, type SyncBatchResponse,
+  type Supplier, type InsertSupplier,
+  type SupplierCustomer, type InsertSupplierCustomer,
+  type SupplierUser, type InsertSupplierUser,
+  type MaintenancePlanProposal, type InsertMaintenancePlanProposal,
+  type SupplierPartBatch, type InsertSupplierPartBatch,
+  type Notification, type InsertNotification
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, sql, count, inArray, isNull, isNotNull, ne, gte, lte, lt, not } from "drizzle-orm";
@@ -574,6 +581,52 @@ export interface IStorage {
   // Offline sync
   getWorkOrdersByIds(ids: string[], customerId: string): Promise<WorkOrder[]>;
   syncBatch(data: SyncBatchRequest, customerId: string, validatedWorkOrders: Map<string, WorkOrder>): Promise<SyncBatchResponse>;
+
+  // ============================================================================
+  // SUPPLIER MODULE
+  // ============================================================================
+  
+  // Suppliers CRUD
+  getSuppliers(companyId: string): Promise<Supplier[]>;
+  getSupplierById(id: string): Promise<Supplier | undefined>;
+  createSupplier(supplier: InsertSupplier & { id: string }): Promise<Supplier>;
+  updateSupplier(id: string, data: Partial<InsertSupplier>): Promise<Supplier>;
+  deleteSupplier(id: string): Promise<void>;
+
+  // Supplier-Customer relationships
+  getSupplierCustomers(supplierId: string): Promise<SupplierCustomer[]>;
+  getCustomerSuppliers(customerId: string): Promise<Supplier[]>;
+  addSupplierCustomer(data: InsertSupplierCustomer & { id: string }): Promise<SupplierCustomer>;
+  removeSupplierCustomer(supplierId: string, customerId: string): Promise<void>;
+
+  // Supplier Users
+  getSupplierUsers(supplierId: string): Promise<SupplierUser[]>;
+  getUserSupplier(userId: string): Promise<Supplier | undefined>;
+  addSupplierUser(data: InsertSupplierUser & { id: string }): Promise<SupplierUser>;
+  removeSupplierUser(supplierId: string, userId: string): Promise<void>;
+
+  // Maintenance Plan Proposals
+  getProposalsBySupplierId(supplierId: string): Promise<MaintenancePlanProposal[]>;
+  getProposalsByCustomerId(customerId: string): Promise<MaintenancePlanProposal[]>;
+  getProposalById(id: string): Promise<MaintenancePlanProposal | undefined>;
+  createProposal(proposal: InsertMaintenancePlanProposal & { id: string }): Promise<MaintenancePlanProposal>;
+  updateProposal(id: string, data: Partial<InsertMaintenancePlanProposal>): Promise<MaintenancePlanProposal>;
+  deleteProposal(id: string): Promise<void>;
+
+  // Supplier Part Batches
+  getPartBatchesBySupplierId(supplierId: string): Promise<SupplierPartBatch[]>;
+  getPartBatchesByCustomerId(customerId: string): Promise<SupplierPartBatch[]>;
+  getPartBatchById(id: string): Promise<SupplierPartBatch | undefined>;
+  createPartBatch(batch: InsertSupplierPartBatch & { id: string }): Promise<SupplierPartBatch>;
+  updatePartBatch(id: string, data: Partial<InsertSupplierPartBatch>): Promise<SupplierPartBatch>;
+  deletePartBatch(id: string): Promise<void>;
+
+  // Notifications
+  getNotificationsByUserId(userId: string, unreadOnly?: boolean): Promise<Notification[]>;
+  createNotification(notification: InsertNotification & { id: string }): Promise<Notification>;
+  markNotificationRead(id: string): Promise<void>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  deleteNotification(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -9581,6 +9634,193 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
     }
 
     return response;
+  }
+
+  // ============================================================================
+  // SUPPLIER MODULE IMPLEMENTATIONS
+  // ============================================================================
+
+  // Suppliers CRUD
+  async getSuppliers(companyId: string): Promise<Supplier[]> {
+    return await db.select().from(suppliers).where(eq(suppliers.companyId, companyId)).orderBy(suppliers.name);
+  }
+
+  async getSupplierById(id: string): Promise<Supplier | undefined> {
+    const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, id));
+    return supplier;
+  }
+
+  async createSupplier(supplier: InsertSupplier & { id: string }): Promise<Supplier> {
+    const [newSupplier] = await db.insert(suppliers).values(supplier).returning();
+    return newSupplier;
+  }
+
+  async updateSupplier(id: string, data: Partial<InsertSupplier>): Promise<Supplier> {
+    const [updated] = await db.update(suppliers)
+      .set({ ...data, updatedAt: sql`now()` })
+      .where(eq(suppliers.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteSupplier(id: string): Promise<void> {
+    await db.delete(suppliers).where(eq(suppliers.id, id));
+  }
+
+  // Supplier-Customer relationships
+  async getSupplierCustomers(supplierId: string): Promise<SupplierCustomer[]> {
+    return await db.select().from(supplierCustomers).where(eq(supplierCustomers.supplierId, supplierId));
+  }
+
+  async getCustomerSuppliers(customerId: string): Promise<Supplier[]> {
+    const results = await db.select({ supplier: suppliers })
+      .from(supplierCustomers)
+      .innerJoin(suppliers, eq(supplierCustomers.supplierId, suppliers.id))
+      .where(eq(supplierCustomers.customerId, customerId));
+    return results.map(r => r.supplier);
+  }
+
+  async addSupplierCustomer(data: InsertSupplierCustomer & { id: string }): Promise<SupplierCustomer> {
+    const [result] = await db.insert(supplierCustomers).values(data).returning();
+    return result;
+  }
+
+  async removeSupplierCustomer(supplierId: string, customerId: string): Promise<void> {
+    await db.delete(supplierCustomers).where(
+      and(
+        eq(supplierCustomers.supplierId, supplierId),
+        eq(supplierCustomers.customerId, customerId)
+      )
+    );
+  }
+
+  // Supplier Users
+  async getSupplierUsers(supplierId: string): Promise<SupplierUser[]> {
+    return await db.select().from(supplierUsers).where(eq(supplierUsers.supplierId, supplierId));
+  }
+
+  async getUserSupplier(userId: string): Promise<Supplier | undefined> {
+    const results = await db.select({ supplier: suppliers })
+      .from(supplierUsers)
+      .innerJoin(suppliers, eq(supplierUsers.supplierId, suppliers.id))
+      .where(eq(supplierUsers.userId, userId));
+    return results[0]?.supplier;
+  }
+
+  async addSupplierUser(data: InsertSupplierUser & { id: string }): Promise<SupplierUser> {
+    const [result] = await db.insert(supplierUsers).values(data).returning();
+    return result;
+  }
+
+  async removeSupplierUser(supplierId: string, userId: string): Promise<void> {
+    await db.delete(supplierUsers).where(
+      and(
+        eq(supplierUsers.supplierId, supplierId),
+        eq(supplierUsers.userId, userId)
+      )
+    );
+  }
+
+  // Maintenance Plan Proposals
+  async getProposalsBySupplierId(supplierId: string): Promise<MaintenancePlanProposal[]> {
+    return await db.select().from(maintenancePlanProposals)
+      .where(eq(maintenancePlanProposals.supplierId, supplierId))
+      .orderBy(desc(maintenancePlanProposals.createdAt));
+  }
+
+  async getProposalsByCustomerId(customerId: string): Promise<MaintenancePlanProposal[]> {
+    return await db.select().from(maintenancePlanProposals)
+      .where(eq(maintenancePlanProposals.customerId, customerId))
+      .orderBy(desc(maintenancePlanProposals.createdAt));
+  }
+
+  async getProposalById(id: string): Promise<MaintenancePlanProposal | undefined> {
+    const [proposal] = await db.select().from(maintenancePlanProposals).where(eq(maintenancePlanProposals.id, id));
+    return proposal;
+  }
+
+  async createProposal(proposal: InsertMaintenancePlanProposal & { id: string }): Promise<MaintenancePlanProposal> {
+    const [newProposal] = await db.insert(maintenancePlanProposals).values(proposal).returning();
+    return newProposal;
+  }
+
+  async updateProposal(id: string, data: Partial<InsertMaintenancePlanProposal>): Promise<MaintenancePlanProposal> {
+    const [updated] = await db.update(maintenancePlanProposals)
+      .set({ ...data, updatedAt: sql`now()` })
+      .where(eq(maintenancePlanProposals.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProposal(id: string): Promise<void> {
+    await db.delete(maintenancePlanProposals).where(eq(maintenancePlanProposals.id, id));
+  }
+
+  // Supplier Part Batches
+  async getPartBatchesBySupplierId(supplierId: string): Promise<SupplierPartBatch[]> {
+    return await db.select().from(supplierPartBatches)
+      .where(eq(supplierPartBatches.supplierId, supplierId))
+      .orderBy(desc(supplierPartBatches.createdAt));
+  }
+
+  async getPartBatchesByCustomerId(customerId: string): Promise<SupplierPartBatch[]> {
+    return await db.select().from(supplierPartBatches)
+      .where(eq(supplierPartBatches.customerId, customerId))
+      .orderBy(desc(supplierPartBatches.createdAt));
+  }
+
+  async getPartBatchById(id: string): Promise<SupplierPartBatch | undefined> {
+    const [batch] = await db.select().from(supplierPartBatches).where(eq(supplierPartBatches.id, id));
+    return batch;
+  }
+
+  async createPartBatch(batch: InsertSupplierPartBatch & { id: string }): Promise<SupplierPartBatch> {
+    const [newBatch] = await db.insert(supplierPartBatches).values(batch).returning();
+    return newBatch;
+  }
+
+  async updatePartBatch(id: string, data: Partial<InsertSupplierPartBatch>): Promise<SupplierPartBatch> {
+    const [updated] = await db.update(supplierPartBatches)
+      .set({ ...data, updatedAt: sql`now()` })
+      .where(eq(supplierPartBatches.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePartBatch(id: string): Promise<void> {
+    await db.delete(supplierPartBatches).where(eq(supplierPartBatches.id, id));
+  }
+
+  // Notifications
+  async getNotificationsByUserId(userId: string, unreadOnly: boolean = false): Promise<Notification[]> {
+    const whereCondition = unreadOnly
+      ? and(eq(notifications.userId, userId), eq(notifications.isRead, false))
+      : eq(notifications.userId, userId);
+    
+    return await db.select().from(notifications)
+      .where(whereCondition)
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(notification: InsertNotification & { id: string }): Promise<Notification> {
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true, readAt: sql`now()` })
+      .where(eq(notifications.id, id));
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db.update(notifications)
+      .set({ isRead: true, readAt: sql`now()` })
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+  }
+
+  async deleteNotification(id: string): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.id, id));
   }
 }
 
