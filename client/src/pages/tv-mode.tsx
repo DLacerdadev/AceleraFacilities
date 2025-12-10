@@ -13,7 +13,8 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 interface TvModeStats {
   workOrdersStats: {
     resolved: number;
-    unresolved: number;
+    open: number;
+    overdue: number;
     total: number;
   };
   leaderboard: Array<{
@@ -78,8 +79,8 @@ export default function TvMode() {
         },
       },
     },
-    labels: ["OSs Resolvidas", "OSs Não Resolvidas"],
-    colors: ["#10b981", "#ef4444"],
+    labels: ["O.S Resolvida", "O.S Aberta", "O.S Vencida"],
+    colors: ["#10b981", "#3b82f6", "#ef4444"],
     legend: {
       position: "bottom",
       fontSize: "16px",
@@ -130,7 +131,8 @@ export default function TvMode() {
 
   const workOrdersChartSeries = [
     stats?.workOrdersStats.resolved || 0,
-    stats?.workOrdersStats.unresolved || 0,
+    stats?.workOrdersStats.open || 0,
+    stats?.workOrdersStats.overdue || 0,
   ];
 
   // Get medal icon based on rank

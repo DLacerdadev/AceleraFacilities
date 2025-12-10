@@ -9021,13 +9021,14 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
   // ===== TV MODE STATISTICS =====
 
   async getTvModeStats(customerId: string, module: 'clean' | 'maintenance') {
-    // Get work orders stats (resolved vs unresolved)
+    // Get work orders stats (resolved, open, overdue)
     const allWorkOrders = await db
       .select({
         id: workOrders.id,
         status: workOrders.status,
         assignedUserId: workOrders.assignedUserId,
         completedAt: workOrders.completedAt,
+        expectedCompletionDate: workOrders.expectedCompletionDate,
       })
       .from(workOrders)
       .where(
@@ -9037,9 +9038,24 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
         )
       );
 
-    // Count resolved (concluida) vs unresolved (others)
+    const now = new Date();
+    
+    // Count resolved (concluida)
     const resolved = allWorkOrders.filter(wo => wo.status === 'concluida').length;
-    const unresolved = allWorkOrders.filter(wo => wo.status !== 'concluida').length;
+    
+    // Count overdue (not resolved + expectedCompletionDate in the past)
+    const overdue = allWorkOrders.filter(wo => {
+      if (wo.status === 'concluida') return false;
+      if (!wo.expectedCompletionDate) return false;
+      return new Date(wo.expectedCompletionDate) < now;
+    }).length;
+    
+    // Count open (not resolved and not overdue)
+    const open = allWorkOrders.filter(wo => {
+      if (wo.status === 'concluida') return false;
+      if (!wo.expectedCompletionDate) return true; // No due date = open
+      return new Date(wo.expectedCompletionDate) >= now;
+    }).length;
 
     // Get leaderboard: top collaborators by completed work orders
     const completedWorkOrders = await db
@@ -9084,8 +9100,9 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
     return {
       workOrdersStats: {
         resolved,
-        unresolved,
-        total: resolved + unresolved,
+        open,
+        overdue,
+        total: resolved + open + overdue,
       },
       leaderboard,
     };
