@@ -59,6 +59,15 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limiter for public endpoints - more restrictive
+const publicEndpointLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 30, // 30 requests per minute per IP
+  message: { message: "Too many requests. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // ============================================================================
@@ -1598,6 +1607,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "QR code point deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete QR code point" });
+    }
+  });
+
+  // Toggle public access for QR code
+  app.patch("/api/qr-points/:id/public", requirePermission('qrcodes_edit'), async (req, res) => {
+    try {
+      const { isPublic, expiresAt } = req.body;
+      
+      if (typeof isPublic !== 'boolean') {
+        return res.status(400).json({ message: "isPublic must be a boolean" });
+      }
+
+      const expiresDate = expiresAt ? new Date(expiresAt) : undefined;
+      const updatedPoint = await storage.toggleQrCodePublicAccess(
+        req.params.id, 
+        isPublic, 
+        expiresDate
+      );
+
+      // Buscar zone e site para broadcast
+      const zone = updatedPoint.zoneId ? await storage.getZone(updatedPoint.zoneId) : null;
+      const site = zone ? await storage.getSite(zone.siteId) : null;
+
+      broadcast({
+        type: 'update',
+        resource: 'qrcodes',
+        data: updatedPoint,
+        customerId: site?.customerId ?? undefined,
+      });
+
+      res.json(updatedPoint);
+    } catch (error) {
+      console.error("Failed to toggle QR code public access:", error);
+      res.status(500).json({ message: "Failed to toggle public access" });
+    }
+  });
+
+  // PUBLIC ENDPOINT - Zone TV Mode (no authentication required)
+  // Public zone stats - with rate limiting and access logging
+  app.get("/api/public/zone/:slug", publicEndpointLimiter, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      
+      if (!slug || slug.length < 20) {
+        return res.status(404).json({ message: "Not found" });
+      }
+
+      const stats = await storage.getPublicZoneStats(slug);
+      
+      if (!stats) {
+        return res.status(404).json({ message: "Not found" });
+      }
+
+      // Log public access for audit purposes
+      const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      
+      try {
+        await storage.logPublicRequest({
+          qrCodeId: stats.qrCodeId,
+          ipAddress: ipAddress.substring(0, 45), // Limit IP length
+          userAgent: userAgent.substring(0, 255), // Limit user agent length
+          endpoint: `/api/public/zone/${slug}`,
+          success: true
+        });
+      } catch (logError) {
+        // Don't fail the request if logging fails
+        console.error("Failed to log public access:", logError);
+      }
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Failed to get public zone stats:", error);
+      res.status(500).json({ message: "Failed to get zone stats" });
     }
   });
 

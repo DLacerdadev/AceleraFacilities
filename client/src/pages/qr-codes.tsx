@@ -22,8 +22,12 @@ import {
   Printer,
   Check,
   Copy,
-  RefreshCw
+  RefreshCw,
+  Globe,
+  Link,
+  Eye
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import jsPDF from 'jspdf';
 import { cn } from "@/lib/utils";
 
@@ -304,6 +308,39 @@ export default function QrCodes() {
       queryClient.invalidateQueries({ queryKey: ["/api/customers", activeClientId, "qr-points"] });
     },
   });
+
+  const togglePublicAccessMutation = useMutation({
+    mutationFn: async ({ id, isPublic }: { id: string; isPublic: boolean }) => {
+      return await apiRequest("PATCH", `/api/qr-points/${id}/public`, { isPublic });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", activeClientId, "qr-points"] });
+      if (data.isPublic) {
+        toast({ 
+          title: "Acesso público ativado",
+          description: "O link público foi gerado com sucesso"
+        });
+      } else {
+        toast({ title: "Acesso público desativado" });
+      }
+    },
+    onError: () => {
+      toast({ 
+        title: "Erro ao alterar acesso público",
+        variant: "destructive"
+      });
+    },
+  });
+
+  const getPublicUrl = (slug: string) => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/public/tv/${slug}`;
+  };
+
+  const copyPublicUrl = (slug: string) => {
+    navigator.clipboard.writeText(getPublicUrl(slug));
+    toast({ title: "Link público copiado!" });
+  };
 
   const toggleSelection = (id: string) => {
     setSelectedQrCodes(prev => 
@@ -708,6 +745,52 @@ export default function QrCodes() {
                             <Trash2 className="w-4 h-4 mr-1" />
                             Excluir
                           </Button>
+                        </div>
+
+                        {/* Acesso Público */}
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <Globe className={cn("w-4 h-4", point.isPublic ? "text-green-600" : "text-gray-400")} />
+                              <span className="text-sm font-medium">Acesso Público</span>
+                            </div>
+                            <Switch
+                              checked={point.isPublic || false}
+                              onCheckedChange={(checked) => 
+                                togglePublicAccessMutation.mutate({ id: point.id, isPublic: checked })
+                              }
+                              disabled={togglePublicAccessMutation.isPending}
+                              data-testid={`switch-public-${point.id}`}
+                            />
+                          </div>
+                          
+                          {point.isPublic && point.publicSlug && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-muted-foreground">
+                                Visitantes podem ver estatísticas desta zona sem login
+                              </p>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="flex-1"
+                                  onClick={() => copyPublicUrl(point.publicSlug)}
+                                  data-testid={`button-copy-public-url-${point.id}`}
+                                >
+                                  <Link className="w-3 h-3 mr-1" />
+                                  Copiar Link
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => window.open(getPublicUrl(point.publicSlug), '_blank')}
+                                  data-testid={`button-view-public-${point.id}`}
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>

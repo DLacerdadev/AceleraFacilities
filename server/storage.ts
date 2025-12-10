@@ -45,7 +45,7 @@ import {
   type SyncBatchRequest, type SyncBatchResponse
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, sql, count, inArray, isNull, isNotNull, ne, gte, lte, lt } from "drizzle-orm";
+import { eq, and, or, desc, sql, count, inArray, isNull, isNotNull, ne, gte, lte, lt, not } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
@@ -152,9 +152,32 @@ export interface IStorage {
   getQrCodePointsByZone(zoneId: string): Promise<QrCodePoint[]>;
   getQrCodePoint(id: string): Promise<QrCodePoint | undefined>;
   getQrCodePointByCode(code: string): Promise<QrCodePoint | undefined>;
+  getQrCodePointByPublicSlug(slug: string): Promise<QrCodePoint | undefined>;
   createQrCodePoint(qrCodePoint: InsertQrCodePoint): Promise<QrCodePoint>;
   updateQrCodePoint(id: string, qrCodePoint: Partial<InsertQrCodePoint>): Promise<QrCodePoint>;
+  toggleQrCodePublicAccess(id: string, isPublic: boolean, expiresAt?: Date): Promise<QrCodePoint>;
   deleteQrCodePoint(id: string): Promise<void>;
+  getPublicZoneStats(slug: string): Promise<{
+    qrCodeId: string;
+    zone: { id: string; name: string; };
+    customer: { id: string; name: string; homeLogo?: string | null; };
+    module: string;
+    stats: {
+      openToday: number;
+      completedToday: number;
+      partsUsedToday: number;
+    };
+    workOrders: Array<{
+      id: string;
+      code: string;
+      title: string;
+      status: string;
+      priority: string;
+      createdAt: Date | null;
+      completedAt: Date | null;
+    }>;
+  } | null>;
+  logPublicRequest(request: { qrCodeId: string; ipAddress: string; userAgent: string; endpoint: string; success: boolean; }): Promise<void>;
   
   // QR Code Resolution
   resolveQrCode(code: string): Promise<{
@@ -2540,6 +2563,191 @@ export class DatabaseStorage implements IStorage {
 
   async deleteQrCodePoint(id: string): Promise<void> {
     await db.delete(qrCodePoints).where(eq(qrCodePoints.id, id));
+  }
+
+  async getQrCodePointByPublicSlug(slug: string): Promise<QrCodePoint | undefined> {
+    const [point] = await db.select().from(qrCodePoints)
+      .where(and(
+        eq(qrCodePoints.publicSlug, slug),
+        eq(qrCodePoints.isPublic, true)
+      ));
+    return point;
+  }
+
+  async toggleQrCodePublicAccess(id: string, isPublic: boolean, expiresAt?: Date): Promise<QrCodePoint> {
+    const { nanoid } = await import('nanoid');
+    
+    const updateData: any = {
+      isPublic,
+      updatedAt: sql`now()`,
+    };
+
+    if (isPublic) {
+      // Generate unique public slug when enabling public access
+      updateData.publicSlug = nanoid(32);
+      updateData.publicExpiresAt = expiresAt || null;
+    } else {
+      // Clear public access data when disabling
+      updateData.publicSlug = null;
+      updateData.publicExpiresAt = null;
+    }
+
+    const [updatedPoint] = await db.update(qrCodePoints)
+      .set(updateData)
+      .where(eq(qrCodePoints.id, id))
+      .returning();
+    
+    return updatedPoint;
+  }
+
+  async getPublicZoneStats(slug: string): Promise<{
+    qrCodeId: string;
+    zone: { id: string; name: string; };
+    customer: { id: string; name: string; homeLogo?: string | null; };
+    module: string;
+    stats: {
+      openToday: number;
+      completedToday: number;
+      partsUsedToday: number;
+    };
+    workOrders: Array<{
+      id: string;
+      code: string;
+      title: string;
+      status: string;
+      priority: string;
+      createdAt: Date | null;
+      completedAt: Date | null;
+    }>;
+  } | null> {
+    // Find QR code point by public slug
+    const qrPoint = await this.getQrCodePointByPublicSlug(slug);
+    if (!qrPoint || !qrPoint.isPublic || !qrPoint.zoneId) {
+      return null;
+    }
+
+    // Check expiration
+    if (qrPoint.publicExpiresAt && new Date(qrPoint.publicExpiresAt) < new Date()) {
+      return null;
+    }
+
+    // Update last access timestamp
+    await db.update(qrCodePoints)
+      .set({ lastPublicAccessAt: sql`now()` })
+      .where(eq(qrCodePoints.id, qrPoint.id));
+
+    // Get zone info
+    const zone = await this.getZone(qrPoint.zoneId);
+    if (!zone) return null;
+
+    // Get customer info through the site
+    const site = await this.getSite(zone.siteId);
+    if (!site || !site.customerId) return null;
+
+    const customer = await this.getCustomer(site.customerId);
+    if (!customer) return null;
+
+    // Get today's date range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Count open work orders for this zone today
+    const openResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(workOrders)
+      .where(and(
+        eq(workOrders.zoneId, qrPoint.zoneId),
+        eq(workOrders.customerId, site.customerId),
+        eq(workOrders.module, qrPoint.module),
+        not(eq(workOrders.status, 'concluida')),
+        not(eq(workOrders.status, 'cancelada')),
+        gte(workOrders.createdAt, today)
+      ));
+
+    // Count completed work orders for this zone today
+    const completedResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(workOrders)
+      .where(and(
+        eq(workOrders.zoneId, qrPoint.zoneId),
+        eq(workOrders.customerId, site.customerId),
+        eq(workOrders.module, qrPoint.module),
+        eq(workOrders.status, 'concluida'),
+        gte(workOrders.completedAt, today)
+      ));
+
+    // Count parts used in work orders for this zone today
+    const partsResult = await db
+      .select({ count: sql<number>`COALESCE(SUM(wop.quantity_used), 0)::int` })
+      .from(workOrderParts)
+      .innerJoin(workOrders, eq(workOrderParts.workOrderId, workOrders.id))
+      .where(and(
+        eq(workOrders.zoneId, qrPoint.zoneId),
+        eq(workOrders.customerId, site.customerId),
+        eq(workOrders.module, qrPoint.module),
+        gte(workOrders.createdAt, today)
+      ));
+
+    // Get work orders for this zone today (limited info for public display)
+    const todayWorkOrders = await db
+      .select({
+        id: workOrders.id,
+        code: workOrders.code,
+        title: workOrders.title,
+        status: workOrders.status,
+        priority: workOrders.priority,
+        createdAt: workOrders.createdAt,
+        completedAt: workOrders.completedAt,
+      })
+      .from(workOrders)
+      .where(and(
+        eq(workOrders.zoneId, qrPoint.zoneId),
+        eq(workOrders.customerId, site.customerId),
+        eq(workOrders.module, qrPoint.module),
+        gte(workOrders.createdAt, today)
+      ))
+      .orderBy(desc(workOrders.createdAt))
+      .limit(20);
+
+    return {
+      qrCodeId: qrPoint.id,
+      zone: { id: zone.id, name: zone.name },
+      customer: { 
+        id: customer.id, 
+        name: customer.name, 
+        homeLogo: customer.homeLogo 
+      },
+      module: qrPoint.module,
+      stats: {
+        openToday: openResult[0]?.count || 0,
+        completedToday: completedResult[0]?.count || 0,
+        partsUsedToday: partsResult[0]?.count || 0,
+      },
+      workOrders: todayWorkOrders,
+    };
+  }
+
+  // Log public request for audit purposes
+  async logPublicRequest(request: { qrCodeId: string; ipAddress: string; userAgent: string; endpoint: string; success: boolean; }): Promise<void> {
+    const crypto = await import('crypto');
+    const { nanoid } = await import('nanoid');
+    
+    // Hash the IP address for privacy
+    const ipHash = crypto.createHash('sha256').update(request.ipAddress).digest('hex').substring(0, 64);
+    
+    await db.insert(publicRequestLogs).values({
+      id: nanoid(),
+      qrCodePointId: request.qrCodeId,
+      ipHash: ipHash,
+      userAgent: request.userAgent.substring(0, 500),
+      requestData: { 
+        endpoint: request.endpoint, 
+        success: request.success,
+        timestamp: new Date().toISOString()
+      },
+    });
   }
 
   // QR Code Resolution - Get all necessary data for QR code execution

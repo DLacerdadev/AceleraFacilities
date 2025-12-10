@@ -502,6 +502,7 @@ export const customerCounters = pgTable("customer_counters", {
 // 22. TABELA: qr_code_points (Pontos de QR Code)
 export const qrCodePoints = pgTable("qr_code_points", {
   id: varchar("id").primaryKey(),
+  customerId: varchar("customer_id").references(() => customers.id),
   zoneId: varchar("zone_id").references(() => zones.id),
   equipmentId: varchar("equipment_id").references(() => equipment.id),
   serviceId: varchar("service_id").references(() => services.id),
@@ -512,6 +513,10 @@ export const qrCodePoints = pgTable("qr_code_points", {
   sizeCm: integer("size_cm").default(5), // Tamanho em centímetros (padrão 5cm)
   module: moduleEnum("module").notNull().default('clean'),
   isActive: boolean("is_active").default(true),
+  isPublic: boolean("is_public").default(false),
+  publicSlug: varchar("public_slug").unique(),
+  publicExpiresAt: timestamp("public_expires_at"),
+  lastPublicAccessAt: timestamp("last_public_access_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

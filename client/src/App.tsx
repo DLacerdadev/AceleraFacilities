@@ -31,6 +31,7 @@ import PartsInventory from "@/pages/parts-inventory";
 import AssetReport from "@/pages/asset-report";
 import AiIntegrations from "@/pages/ai-integrations";
 import TvMode from "@/pages/tv-mode";
+import PublicZoneTv from "@/pages/public-zone-tv";
 import BrandingSettings from "@/pages/branding-settings";
 import { useIsMobile } from "@/hooks/use-mobile";
 import QrExecution from "@/pages/qr-execution";
@@ -280,6 +281,9 @@ function AuthenticatedAdminRouter() {
           {/* TV Mode Dashboard */}
           <Route path="/tv-mode" component={() => <TvMode />} />
           
+          {/* Public Zone TV (can be accessed by authenticated users too) */}
+          <Route path="/public/tv/:slug" component={PublicZoneTv} />
+          
           {/* Redirecionar rotas de login para dashboard se já autenticado */}
           <Route path="/login">
             <Redirect to="/" />
@@ -306,6 +310,7 @@ function MobileRouter() {
       <Route path="/mobile/qr-test" component={QrTest} />
       <Route path="/mobile/work-order-details/:id" component={MobileWorkOrderDetails} />
       <Route path="/mobile/work-order/:id" component={MobileWorkOrderExecute} />
+      <Route path="/public/tv/:slug" component={PublicZoneTv} />
       <Route path="/qr-public/:code" component={QrPublic} />
       <Route component={() => <MobileDashboard />} />
     </Switch>
@@ -321,6 +326,7 @@ function Router() {
   if (!isAuthenticated || !user) {
     return (
       <Switch>
+        <Route path="/public/tv/:slug" component={PublicZoneTv} />
         <Route path="/qr-public/:code" component={QrPublic} />
         <Route path="/mobile/qr-scanner" component={MobileQrScanner} />
         <Route path="/module-selection" component={ModuleSelection} />
