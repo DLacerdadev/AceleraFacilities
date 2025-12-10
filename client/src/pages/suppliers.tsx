@@ -83,8 +83,8 @@ export default function Suppliers() {
   const hasViewPermission = can.viewSuppliers();
 
   const { data: suppliers = [], isLoading } = useQuery<Supplier[]>({
-    queryKey: ['/api/suppliers'],
-    enabled: !!companyId && hasViewPermission,
+    queryKey: ['/api/suppliers', { customerId: activeClientId }],
+    enabled: !!companyId && !!activeClientId && hasViewPermission,
   });
 
   const { data: supplierCustomers = [] } = useQuery<SupplierCustomer[]>({

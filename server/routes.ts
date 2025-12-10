@@ -7318,8 +7318,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.user?.companyId) {
         return res.status(403).json({ message: 'Não autorizado' });
       }
-      const suppliers = await storage.getSuppliers(req.user.companyId);
-      res.json(suppliers);
+      const customerId = req.query.customerId as string | undefined;
+      let suppliersList;
+      if (customerId) {
+        // Return only suppliers linked to this customer
+        suppliersList = await storage.getCustomerSuppliers(customerId);
+      } else {
+        // Return all suppliers for the company
+        suppliersList = await storage.getSuppliers(req.user.companyId);
+      }
+      res.json(suppliersList);
     } catch (error) {
       console.error('Error fetching suppliers:', error);
       res.status(500).json({ message: 'Erro ao buscar fornecedores' });
