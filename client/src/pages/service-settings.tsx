@@ -29,7 +29,8 @@ import {
   Loader2,
   MoreVertical,
   Power,
-  PowerOff
+  PowerOff,
+  Truck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient as globalQueryClient } from "@/lib/queryClient";
@@ -39,6 +40,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Sites from "./sites";
 import Users from "./users";
 import Services from "./services";
+import Suppliers from "./suppliers";
 import { useClient } from "@/contexts/ClientContext";
 import { useModule } from "@/contexts/ModuleContext";
 import { useEffect } from "react";
@@ -793,6 +795,14 @@ export default function Settings() {
                   Categorias
                 </TabsTrigger>
               )}
+              <TabsTrigger 
+                value="suppliers" 
+                className="flex items-center gap-2 text-sm rounded-lg px-4 py-2.5 transition-all whitespace-nowrap data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900 data-[state=active]:shadow-sm"
+                data-testid="tab-suppliers"
+              >
+                <Truck className="w-4 h-4" />
+                Fornecedores
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1383,6 +1393,10 @@ export default function Settings() {
               <EquipmentCategoriesTab />
             </TabsContent>
           )}
+
+          <TabsContent value="suppliers" className="space-y-6">
+            <Suppliers />
+          </TabsContent>
         </Tabs>
       </div>
     </div>

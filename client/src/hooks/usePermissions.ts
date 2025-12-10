@@ -20,7 +20,8 @@ export type PermissionKey =
   | 'roles_manage'
   | 'opus_users_view' | 'opus_users_create' | 'opus_users_edit' | 'opus_users_delete'
   | 'client_users_view' | 'client_users_create' | 'client_users_edit' | 'client_users_delete'
-  | 'system_roles_view' | 'system_roles_edit' | 'system_roles_delete';
+  | 'system_roles_view' | 'system_roles_edit' | 'system_roles_delete'
+  | 'suppliers_view' | 'suppliers_create' | 'suppliers_edit' | 'suppliers_delete';
 
 export interface CustomRole {
   id: string;
@@ -225,6 +226,13 @@ export function usePermissions() {
     
     // Área: Gerenciamento de Funções/Roles
     canAccessRoles: () => hasPermission('roles_manage'),
+    
+    // Fornecedores
+    viewSuppliers: () => hasPermission('suppliers_view'),
+    createSuppliers: () => hasPermission('suppliers_create'),
+    editSuppliers: () => hasPermission('suppliers_edit'),
+    deleteSuppliers: () => hasPermission('suppliers_delete'),
+    canAccessSuppliers: () => hasPermission('suppliers_view'),
   };
 
   // Lista de todas as permissões disponíveis
@@ -318,6 +326,12 @@ export function usePermissions() {
     { key: 'client_users_create', label: 'Criar Usuários de Cliente', category: 'Usuários de Cliente' },
     { key: 'client_users_edit', label: 'Editar Usuários de Cliente', category: 'Usuários de Cliente' },
     { key: 'client_users_delete', label: 'Excluir Usuários de Cliente', category: 'Usuários de Cliente' },
+    
+    // Fornecedores
+    { key: 'suppliers_view', label: 'Visualizar Fornecedores', category: 'Fornecedores' },
+    { key: 'suppliers_create', label: 'Criar Fornecedores', category: 'Fornecedores' },
+    { key: 'suppliers_edit', label: 'Editar Fornecedores', category: 'Fornecedores' },
+    { key: 'suppliers_delete', label: 'Excluir Fornecedores', category: 'Fornecedores' },
   ];
 
   // Detectar se o usuário é "mobile-only" (Operador)
