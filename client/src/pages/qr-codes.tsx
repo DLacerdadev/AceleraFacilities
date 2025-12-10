@@ -123,10 +123,19 @@ export default function QrCodes() {
     }, 500);
   };
 
-  const generateQrCodeUrl = (type: string, code: string) => {
-    if (type === 'execucao') return code;
+  const generateQrCodeUrl = (point: { type: string; code: string; isPublic?: boolean; publicSlug?: string | null }) => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/qr-public/${code}`;
+    
+    // Se acesso público está ativo e tem slug, usa a URL pública direta
+    if (point.isPublic && point.publicSlug) {
+      return `${baseUrl}/tv/${point.publicSlug}`;
+    }
+    
+    // QR codes de execução usam apenas o código interno (para o app)
+    if (point.type === 'execucao') return point.code;
+    
+    // Outros tipos usam URL de redirecionamento
+    return `${baseUrl}/qr-public/${point.code}`;
   };
 
   const generateQrCodeImage = async (url: string, sizeCm: number): Promise<string> => {
@@ -150,7 +159,7 @@ export default function QrCodes() {
       const newQrImages: {[key: string]: string} = {};
       
       for (const point of qrPoints as any[]) {
-        const url = generateQrCodeUrl(point.type, point.code);
+        const url = generateQrCodeUrl(point);
         const sizeCm = point.sizeCm || 5;
         const qrCodeDataUrl = await generateQrCodeImage(url, sizeCm);
         if (qrCodeDataUrl) {
@@ -165,7 +174,7 @@ export default function QrCodes() {
   }, [qrPoints]);
 
   const downloadPDF = async (point: any) => {
-    const url = generateQrCodeUrl(point.type, point.code);
+    const url = generateQrCodeUrl(point);
     const sizeCm = point.sizeCm || 5;
     const qrCodeDataUrl = await generateQrCodeImage(url, sizeCm);
     
@@ -258,7 +267,7 @@ export default function QrCodes() {
         maxRowHeight = 0;
       }
       
-      const url = generateQrCodeUrl(point.type, point.code);
+      const url = generateQrCodeUrl(point);
       const qrCodeDataUrl = await generateQrCodeImage(url, sizeCm);
       
       // Borda simples cinza
@@ -334,7 +343,7 @@ export default function QrCodes() {
 
   const getPublicUrl = (slug: string) => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/public/tv/${slug}`;
+    return `${baseUrl}/tv/${slug}`;
   };
 
   const copyPublicUrl = (slug: string) => {
@@ -682,8 +691,27 @@ export default function QrCodes() {
                                 </div>
                               )}
                             </div>
+                            {/* Badge de QR Code Público */}
+                            {point.isPublic && point.publicSlug && (
+                              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
+                                <Badge 
+                                  className="bg-green-600 text-white text-xs shadow-md"
+                                  data-testid={`badge-public-qr-${point.id}`}
+                                >
+                                  <Globe className="w-3 h-3 mr-1" />
+                                  Escaneável
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         </div>
+                        
+                        {/* Mensagem de QR público */}
+                        {point.isPublic && point.publicSlug && (
+                          <p className="text-xs text-center text-green-600 font-medium mb-2" data-testid={`text-public-info-${point.id}`}>
+                            Qualquer pessoa pode escanear este QR code
+                          </p>
+                        )}
 
                         {/* Badge Execução */}
                         <div className="flex justify-center mb-3">
