@@ -9097,6 +9097,48 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
       })
     );
 
+    // Get zones ranking - completed work orders today by zone
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const zonesCompletedToday = await db
+      .select({
+        zoneId: workOrders.zoneId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(workOrders)
+      .where(
+        and(
+          eq(workOrders.customerId, customerId),
+          eq(workOrders.module, module),
+          eq(workOrders.status, 'concluida'),
+          isNotNull(workOrders.zoneId),
+          gte(workOrders.completedAt, today)
+        )
+      )
+      .groupBy(workOrders.zoneId)
+      .orderBy(desc(sql`count(*)`))
+      .limit(10);
+
+    // Get zone details for ranking
+    const zonesRanking = await Promise.all(
+      zonesCompletedToday.map(async (item) => {
+        const zone = await db.query.zones.findFirst({
+          where: eq(zones.id, item.zoneId!),
+          columns: {
+            id: true,
+            name: true,
+          },
+        });
+
+        return {
+          zoneId: item.zoneId,
+          zoneName: zone?.name || 'Zona Desconhecida',
+          completedToday: item.count,
+        };
+      })
+    );
+
     return {
       workOrdersStats: {
         resolved,
@@ -9105,6 +9147,7 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
         total: resolved + open + overdue,
       },
       leaderboard,
+      zonesRanking,
     };
   }
 

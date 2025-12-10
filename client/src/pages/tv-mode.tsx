@@ -6,7 +6,7 @@ import ReactApexChart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Medal, Award, TrendingUp, Activity, Wifi, WifiOff } from "lucide-react";
+import { Trophy, Medal, Award, TrendingUp, Activity, Wifi, WifiOff, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
@@ -22,6 +22,11 @@ interface TvModeStats {
     userName: string;
     userEmail: string;
     completedCount: number;
+  }>;
+  zonesRanking: Array<{
+    zoneId: string;
+    zoneName: string;
+    completedToday: number;
   }>;
 }
 
@@ -226,29 +231,41 @@ export default function TvMode() {
                   />
                 </motion.div>
               </AnimatePresence>
-              <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="grid grid-cols-3 gap-3 mt-6">
                 <motion.div
                   key={`resolved-${stats?.workOrdersStats.resolved || 0}`}
                   initial={{ scale: 0.95 }}
                   animate={{ scale: 1 }}
                   transition={{ duration: 0.3 }}
-                  className="bg-green-500/20 border border-green-500 rounded-lg p-4 text-center"
+                  className="bg-green-500/20 border border-green-500 rounded-lg p-3 text-center"
                 >
-                  <p className="text-green-400 text-sm font-medium mb-1">Resolvidas</p>
-                  <p className="text-4xl font-bold text-white">
+                  <p className="text-green-400 text-xs font-medium mb-1">Resolvidas</p>
+                  <p className="text-3xl font-bold text-white">
                     {stats?.workOrdersStats.resolved || 0}
                   </p>
                 </motion.div>
                 <motion.div
-                  key={`unresolved-${stats?.workOrdersStats.unresolved || 0}`}
+                  key={`open-${stats?.workOrdersStats.open || 0}`}
                   initial={{ scale: 0.95 }}
                   animate={{ scale: 1 }}
                   transition={{ duration: 0.3 }}
-                  className="bg-red-500/20 border border-red-500 rounded-lg p-4 text-center"
+                  className="bg-blue-500/20 border border-blue-500 rounded-lg p-3 text-center"
                 >
-                  <p className="text-red-400 text-sm font-medium mb-1">Não Resolvidas</p>
-                  <p className="text-4xl font-bold text-white">
-                    {stats?.workOrdersStats.unresolved || 0}
+                  <p className="text-blue-400 text-xs font-medium mb-1">Abertas</p>
+                  <p className="text-3xl font-bold text-white">
+                    {stats?.workOrdersStats.open || 0}
+                  </p>
+                </motion.div>
+                <motion.div
+                  key={`overdue-${stats?.workOrdersStats.overdue || 0}`}
+                  initial={{ scale: 0.95 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-red-500/20 border border-red-500 rounded-lg p-3 text-center"
+                >
+                  <p className="text-red-400 text-xs font-medium mb-1">Vencidas</p>
+                  <p className="text-3xl font-bold text-white">
+                    {stats?.workOrdersStats.overdue || 0}
                   </p>
                 </motion.div>
               </div>
@@ -334,6 +351,89 @@ export default function TvMode() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Zones Ranking Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+        className="mt-8 max-w-7xl mx-auto"
+      >
+        <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+          <CardHeader>
+            <CardTitle className="text-3xl text-white flex items-center gap-2">
+              <MapPin className="w-8 h-8 text-cyan-400" />
+              Ranking de Zonas - OSs Concluídas Hoje
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AnimatePresence mode="wait">
+              {stats?.zonesRanking && stats.zonesRanking.length > 0 ? (
+                <motion.div
+                  key={stats.zonesRanking.map(z => z.zoneId).join('-')}
+                  initial={{ opacity: 0.8 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0.8 }}
+                  transition={{ duration: 0.3 }}
+                  className="space-y-3"
+                >
+                  {stats.zonesRanking.map((zone, index) => {
+                    const maxCount = stats.zonesRanking[0]?.completedToday || 1;
+                    const percentage = (zone.completedToday / maxCount) * 100;
+                    
+                    return (
+                      <div
+                        key={zone.zoneId}
+                        className="relative"
+                        data-testid={`zones-ranking-item-${index + 1}`}
+                      >
+                        <div className="flex items-center gap-4 p-4 bg-slate-700/50 rounded-lg">
+                          {/* Rank number */}
+                          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                            <span className="text-white font-bold text-lg">
+                              {index + 1}
+                            </span>
+                          </div>
+                          
+                          {/* Zone name and progress bar */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-center mb-2">
+                              <h3 className="text-lg font-semibold text-white truncate">
+                                {zone.zoneName}
+                              </h3>
+                              <Badge 
+                                variant="secondary" 
+                                className="ml-2 bg-cyan-500/20 text-cyan-300 border-cyan-500"
+                              >
+                                {zone.completedToday} OS{zone.completedToday !== 1 ? 's' : ''}
+                              </Badge>
+                            </div>
+                            <div className="h-2 bg-slate-600 rounded-full overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${percentage}%` }}
+                                transition={{ duration: 0.8, delay: index * 0.1 }}
+                                className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              ) : (
+                <div className="text-center py-12">
+                  <MapPin className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                  <p className="text-slate-400 text-lg">
+                    Nenhuma zona com OSs concluídas hoje.
+                  </p>
+                </div>
+              )}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Auto-refresh indicator */}
       <motion.div
