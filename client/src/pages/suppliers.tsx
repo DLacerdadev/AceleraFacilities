@@ -352,26 +352,15 @@ export default function Suppliers() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {can.editSuppliers() && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleManageCustomers(supplier)}
-                              title="Gerenciar Clientes"
-                              data-testid={`button-manage-customers-${supplier.id}`}
-                            >
-                              <Link2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleManageUsers(supplier)}
-                              title="Gerenciar Usuários"
-                              data-testid={`button-manage-users-${supplier.id}`}
-                            >
-                              <Users className="w-4 h-4" />
-                            </Button>
-                          </>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleManageUsers(supplier)}
+                            title="Gerenciar Usuários"
+                            data-testid={`button-manage-users-${supplier.id}`}
+                          >
+                            <Users className="w-4 h-4" />
+                          </Button>
                         )}
                         {can.editSuppliers() && (
                           <Button
