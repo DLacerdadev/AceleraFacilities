@@ -6,7 +6,7 @@ import { z } from "zod";
 
 // Enums baseados no backup real
 export const userRoleEnum = pgEnum('user_role', ['admin', 'gestor_cliente', 'supervisor_site', 'operador', 'auditor']);
-export const userTypeEnum = pgEnum('user_type', ['opus_user', 'customer_user']);
+export const userTypeEnum = pgEnum('user_type', ['opus_user', 'customer_user', 'supplier_user']);
 export const authProviderEnum = pgEnum('auth_provider', ['local', 'microsoft']);
 export const workOrderStatusEnum = pgEnum('work_order_status', ['aberta', 'em_execucao', 'pausada', 'vencida', 'concluida', 'cancelada']);
 export const workOrderTypeEnum = pgEnum('work_order_type', ['programada', 'corretiva_interna', 'corretiva_publica']);
@@ -19,6 +19,8 @@ export const equipmentStatusEnum = pgEnum('equipment_status', ['operacional', 'e
 export const aiProviderEnum = pgEnum('ai_provider', ['openai', 'anthropic', 'google', 'groq', 'azure_openai', 'cohere', 'huggingface', 'custom']);
 export const aiIntegrationStatusEnum = pgEnum('ai_integration_status', ['ativa', 'inativa', 'erro']);
 export const syncStatusEnum = pgEnum('sync_status', ['pending', 'syncing', 'synced', 'failed']);
+export const proposalStatusEnum = pgEnum('proposal_status', ['em_espera', 'aprovado', 'recusado']);
+export const partBatchStatusEnum = pgEnum('part_batch_status', ['planejado', 'enviado', 'recebido', 'cancelado']);
 
 // Sistema de permissões granulares
 export const permissionKeyEnum = pgEnum('permission_key', [
@@ -75,7 +77,16 @@ export const permissionKeyEnum = pgEnum('permission_key', [
   'client_users_view',
   'client_users_create',
   'client_users_edit',
-  'client_users_delete'
+  'client_users_delete',
+  'suppliers_view',
+  'suppliers_create',
+  'suppliers_edit',
+  'suppliers_delete',
+  'supplier_inventory_view',
+  'maintenance_plan_propose',
+  'supplier_parts_manage',
+  'supplier_reports_view',
+  'maintenance_plan_approve'
 ]);
 
 // 1. TABELA: companies (Empresas)
@@ -812,6 +823,7 @@ export const partMovements = pgTable("part_movements", {
   workOrderId: varchar("work_order_id").references(() => workOrders.id), // Referência se for saída por O.S.
   reason: text("reason"),
   performedByUserId: varchar("performed_by_user_id").notNull().references(() => users.id),
+  supplierId: varchar("supplier_id"),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -866,6 +878,122 @@ export const chatMessages = pgTable("chat_messages", {
   aiIntegrationId: varchar("ai_integration_id").references(() => aiIntegrations.id), // Qual integração foi usada
   tokensUsed: integer("tokens_used"), // Tokens consumidos nesta mensagem
   error: text("error"), // Se houve erro ao processar
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+// ============================================================================
+// MÓDULO DE FORNECEDORES (Suppliers)
+// ============================================================================
+
+// Suppliers - Fornecedores cadastrados
+export const suppliers = pgTable("suppliers", {
+  id: varchar("id").primaryKey(),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  name: varchar("name").notNull(),
+  tradeName: varchar("trade_name"),
+  cnpj: varchar("cnpj"),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  address: varchar("address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  zipCode: varchar("zip_code"),
+  contactPerson: varchar("contact_person"),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Supplier-Customer relationships - Quais clientes o fornecedor atende
+export const supplierCustomers = pgTable("supplier_customers", {
+  id: varchar("id").primaryKey(),
+  supplierId: varchar("supplier_id").notNull().references(() => suppliers.id, { onDelete: 'cascade' }),
+  customerId: varchar("customer_id").notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  uniqueSupplierCustomer: unique().on(table.supplierId, table.customerId),
+}));
+
+// Supplier Users - Usuários vinculados a fornecedores
+export const supplierUsers = pgTable("supplier_users", {
+  id: varchar("id").primaryKey(),
+  supplierId: varchar("supplier_id").notNull().references(() => suppliers.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  uniqueSupplierUser: unique().on(table.supplierId, table.userId),
+}));
+
+// Maintenance Plan Proposals - Propostas de planos de manutenção
+export const maintenancePlanProposals = pgTable("maintenance_plan_proposals", {
+  id: varchar("id").primaryKey(),
+  supplierId: varchar("supplier_id").notNull().references(() => suppliers.id),
+  customerId: varchar("customer_id").notNull().references(() => customers.id),
+  
+  name: varchar("name").notNull(),
+  description: text("description"),
+  frequency: frequencyEnum("frequency").notNull(),
+  dayOfWeek: integer("day_of_week"),
+  dayOfMonth: integer("day_of_month"),
+  scheduledTime: time("scheduled_time"),
+  estimatedDurationMinutes: integer("estimated_duration_minutes"),
+  
+  proposedEquipments: jsonb("proposed_equipments"),
+  proposedTasks: jsonb("proposed_tasks"),
+  proposedParts: jsonb("proposed_parts"),
+  
+  status: proposalStatusEnum("status").notNull().default('em_espera'),
+  reviewedBy: varchar("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewNotes: text("review_notes"),
+  
+  approvedPlanId: varchar("approved_plan_id").references(() => maintenancePlans.id),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Supplier Part Batches - Lotes de peças enviados pelo fornecedor
+export const supplierPartBatches = pgTable("supplier_part_batches", {
+  id: varchar("id").primaryKey(),
+  supplierId: varchar("supplier_id").notNull().references(() => suppliers.id),
+  customerId: varchar("customer_id").notNull().references(() => customers.id),
+  partId: varchar("part_id").notNull().references(() => parts.id),
+  
+  quantityPlanned: integer("quantity_planned").notNull(),
+  quantityShipped: integer("quantity_shipped"),
+  quantityReceived: integer("quantity_received"),
+  
+  expectedDeliveryDate: date("expected_delivery_date"),
+  shippedAt: timestamp("shipped_at"),
+  receivedAt: timestamp("received_at"),
+  
+  status: partBatchStatusEnum("status").notNull().default('planejado'),
+  trackingCode: varchar("tracking_code"),
+  invoiceNumber: varchar("invoice_number"),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }),
+  totalCost: decimal("total_cost", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+  
+  partMovementId: varchar("part_movement_id").references(() => partMovements.id),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Notifications - Sistema de notificações
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: varchar("type").notNull(),
+  title: varchar("title").notNull(),
+  message: text("message"),
+  data: jsonb("data"),
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -1665,6 +1793,58 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+
+// Supplier schemas
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+
+export const insertSupplierCustomerSchema = createInsertSchema(supplierCustomers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SupplierCustomer = typeof supplierCustomers.$inferSelect;
+export type InsertSupplierCustomer = z.infer<typeof insertSupplierCustomerSchema>;
+
+export const insertSupplierUserSchema = createInsertSchema(supplierUsers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SupplierUser = typeof supplierUsers.$inferSelect;
+export type InsertSupplierUser = z.infer<typeof insertSupplierUserSchema>;
+
+export const insertMaintenancePlanProposalSchema = createInsertSchema(maintenancePlanProposals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type MaintenancePlanProposal = typeof maintenancePlanProposals.$inferSelect;
+export type InsertMaintenancePlanProposal = z.infer<typeof insertMaintenancePlanProposalSchema>;
+
+export const insertSupplierPartBatchSchema = createInsertSchema(supplierPartBatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SupplierPartBatch = typeof supplierPartBatches.$inferSelect;
+export type InsertSupplierPartBatch = z.infer<typeof insertSupplierPartBatchSchema>;
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 
 // ============================================================================
 // Offline Sync Types
