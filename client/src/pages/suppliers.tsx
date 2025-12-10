@@ -228,6 +228,7 @@ export default function Suppliers() {
       ...formData,
       companyId,
       isActive: true,
+      initialCustomerId: activeClientId,
     });
   };
 

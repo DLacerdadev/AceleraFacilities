@@ -7346,8 +7346,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.user?.companyId) {
         return res.status(403).json({ message: 'Não autorizado' });
       }
+      const { initialCustomerId, ...bodyData } = req.body;
       const validatedData = insertSupplierSchema.parse({
-        ...req.body,
+        ...bodyData,
         companyId: req.user.companyId
       });
       const supplierData = {
@@ -7356,6 +7357,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyId: req.user.companyId
       };
       const newSupplier = await storage.createSupplier(supplierData);
+      
+      // Auto-link to initial customer if provided
+      if (initialCustomerId) {
+        const supplierCustomerData = {
+          id: nanoid(),
+          supplierId: newSupplier.id,
+          customerId: initialCustomerId
+        };
+        await storage.createSupplierCustomer(supplierCustomerData);
+        broadcast({ type: 'create', resource: 'supplierCustomers', data: supplierCustomerData });
+      }
+      
       broadcast({ type: 'create', resource: 'suppliers', data: newSupplier });
       res.status(201).json(newSupplier);
     } catch (error) {
