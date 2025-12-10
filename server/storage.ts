@@ -2616,7 +2616,7 @@ export class DatabaseStorage implements IStorage {
     };
     workOrders: Array<{
       id: string;
-      code: string;
+      number: number;
       title: string;
       status: string;
       priority: string;
@@ -2698,7 +2698,7 @@ export class DatabaseStorage implements IStorage {
     const todayWorkOrders = await db
       .select({
         id: workOrders.id,
-        code: workOrders.code,
+        number: workOrders.number,
         title: workOrders.title,
         status: workOrders.status,
         priority: workOrders.priority,
