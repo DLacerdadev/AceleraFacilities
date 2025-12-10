@@ -128,7 +128,7 @@ export default function QrCodes() {
     
     // Se acesso público está ativo e tem slug, usa a URL pública direta
     if (point.isPublic && point.publicSlug) {
-      return `${baseUrl}/tv/${point.publicSlug}`;
+      return `${baseUrl}/public/tv/${point.publicSlug}`;
     }
     
     // QR codes de execução usam apenas o código interno (para o app)
@@ -343,7 +343,7 @@ export default function QrCodes() {
 
   const getPublicUrl = (slug: string) => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/tv/${slug}`;
+    return `${baseUrl}/public/tv/${slug}`;
   };
 
   const copyPublicUrl = (slug: string) => {
