@@ -2682,9 +2682,9 @@ export class DatabaseStorage implements IStorage {
         gte(workOrders.completedAt, today)
       ));
 
-    // Count parts used in work orders for this zone today
+    // Count parts used in work orders for this zone today (count of part records)
     const partsResult = await db
-      .select({ count: sql<number>`COALESCE(SUM(${workOrderParts.quantityUsed}), 0)::int` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(workOrderParts)
       .innerJoin(workOrders, eq(workOrderParts.workOrderId, workOrders.id))
       .where(and(
