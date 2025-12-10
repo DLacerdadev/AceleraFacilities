@@ -7346,11 +7346,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.user?.companyId) {
         return res.status(403).json({ message: 'Não autorizado' });
       }
-      const supplierData = insertSupplierSchema.parse({
+      const validatedData = insertSupplierSchema.parse({
         ...req.body,
-        id: nanoid(),
         companyId: req.user.companyId
       });
+      const supplierData = {
+        ...validatedData,
+        id: nanoid(),
+        companyId: req.user.companyId
+      };
       const newSupplier = await storage.createSupplier(supplierData);
       broadcast({ type: 'create', resource: 'suppliers', data: newSupplier });
       res.status(201).json(newSupplier);
