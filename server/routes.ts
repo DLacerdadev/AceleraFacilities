@@ -7365,7 +7365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           supplierId: newSupplier.id,
           customerId: initialCustomerId
         };
-        await storage.createSupplierCustomer(supplierCustomerData);
+        await storage.addSupplierCustomer(supplierCustomerData);
         broadcast({ type: 'create', resource: 'supplierCustomers', data: supplierCustomerData });
       }
       
