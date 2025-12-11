@@ -8273,7 +8273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== SUPPLIER INVENTORY VIEW =====
 
   // View customer's parts inventory (read-only for suppliers)
-  app.get('/api/suppliers/:supplierId/customers/:customerId/parts', requireAuth, requirePermission('supplier_inventory_view'), async (req, res) => {
+  app.get('/api/suppliers/:supplierId/customers/:customerId/parts', requireAuth, async (req, res) => {
     try {
       // Verify supplier has access to this customer
       const hasAccess = await storage.supplierHasCustomerAccess(req.params.supplierId, req.params.customerId);
