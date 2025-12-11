@@ -7819,7 +7819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const enrichedItems = await Promise.all(
             items.map(async (item) => {
-              const part = await storage.getPartById(item.partId);
+              const part = await storage.getPart(item.partId);
               return { ...item, part };
             })
           );
@@ -7847,7 +7847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const enrichedItems = await Promise.all(
             items.map(async (item) => {
-              const part = await storage.getPartById(item.partId);
+              const part = await storage.getPart(item.partId);
               return { ...item, part };
             })
           );
@@ -7877,7 +7877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const enrichedItems = await Promise.all(
         items.map(async (item) => {
-          const part = await storage.getPartById(item.partId);
+          const part = await storage.getPart(item.partId);
           return { ...item, part };
         })
       );
