@@ -764,6 +764,7 @@ export const parts = pgTable("parts", {
   unit: varchar("unit").default('un'), // unidade, litro, kg, etc
   currentQuantity: decimal("current_quantity", { precision: 10, scale: 2 }).notNull().default('0'),
   minimumQuantity: decimal("minimum_quantity", { precision: 10, scale: 2 }).notNull().default('0'),
+  maximumQuantity: decimal("maximum_quantity", { precision: 10, scale: 2 }), // Quantidade máxima do estoque para cálculo de reabastecimento
   costPrice: decimal("cost_price", { precision: 10, scale: 2 }), // Preço de custo
   location: varchar("location"), // Localização no almoxarifado
   module: moduleEnum("module").notNull().default('maintenance'),

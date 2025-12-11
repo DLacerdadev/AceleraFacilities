@@ -63,6 +63,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
   const [selectedEquipmentTypeId, setSelectedEquipmentTypeId] = useState("");
   const [currentQuantity, setCurrentQuantity] = useState("");
   const [minimumQuantity, setMinimumQuantity] = useState("");
+  const [maximumQuantity, setMaximumQuantity] = useState("");
   const [unit, setUnit] = useState("un");
   const [costPrice, setCostPrice] = useState("");
   const [unitCost, setUnitCost] = useState("");
@@ -244,6 +245,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
     setSelectedEquipmentTypeId("");
     setCurrentQuantity("");
     setMinimumQuantity("");
+    setMaximumQuantity("");
     setUnit("un");
     setCostPrice("");
     setUnitCost("");
@@ -268,6 +270,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
       equipmentTypeId: selectedEquipmentTypeId || null,
       currentQuantity: currentQuantity || "0",
       minimumQuantity: minimumQuantity || "0",
+      maximumQuantity: maximumQuantity || null,
       unit: unit || "un",
       costPrice: costPrice || null,
       location: partLocation || null,
@@ -290,6 +293,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
         description: partDescription || null,
         equipmentTypeId: selectedEquipmentTypeId || null,
         minimumQuantity: minimumQuantity || "0",
+        maximumQuantity: maximumQuantity || null,
         unit: unit || "un",
         costPrice: costPrice || null,
         location: partLocation || null,
@@ -322,6 +326,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
     setSelectedEquipmentTypeId(part.equipmentTypeId || "");
     setCurrentQuantity(part.currentQuantity);
     setMinimumQuantity(part.minimumQuantity);
+    setMaximumQuantity((part as any).maximumQuantity || "");
     setUnit(part.unit || "un");
     setCostPrice(part.costPrice || "");
     setPartLocation(part.location || "");
@@ -547,6 +552,20 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                             placeholder="0"
                             data-testid="input-minimum-quantity"
                           />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="maximumQuantity">Quantidade Máxima</Label>
+                          <Input
+                            id="maximumQuantity"
+                            type="number"
+                            value={maximumQuantity}
+                            onChange={(e) => setMaximumQuantity(e.target.value)}
+                            placeholder="Ex: 100"
+                            data-testid="input-maximum-quantity"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Usado para calcular a quantidade de reabastecimento
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="unitCost">Custo Unitário (R$)</Label>
@@ -819,6 +838,19 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                   onChange={(e) => setMinimumQuantity(e.target.value)}
                   data-testid="input-edit-minimum-quantity"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editMaximumQuantity">Quantidade Máxima</Label>
+                <Input
+                  id="editMaximumQuantity"
+                  type="number"
+                  value={maximumQuantity}
+                  onChange={(e) => setMaximumQuantity(e.target.value)}
+                  data-testid="input-edit-maximum-quantity"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Usado para calcular a quantidade de reabastecimento
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editCostPrice">Custo Unitário (R$)</Label>
