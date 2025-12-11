@@ -27,7 +27,7 @@ import {
   History,
   Search
 } from "lucide-react";
-import type { Part, PartMovement } from "@shared/schema";
+import type { Part, PartMovement, Supplier } from "@shared/schema";
 
 type EquipmentType = {
   id: string;
@@ -128,6 +128,18 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
       return response.json();
     },
     enabled: !!selectedPartForHistory?.id && isHistoryDialogOpen
+  });
+
+  const { data: customerSuppliers } = useQuery<Supplier[]>({
+    queryKey: [`/api/customers/${customerId}/suppliers`],
+    queryFn: async () => {
+      const response = await fetch(`/api/customers/${customerId}/suppliers`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('acelera_token')}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch suppliers');
+      return response.json();
+    },
+    enabled: !!customerId
   });
 
   const createPartMutation = useMutation({
@@ -258,6 +270,8 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
       minimumQuantity: minimumQuantity || "0",
       unit: unit || "un",
       costPrice: costPrice || null,
+      location: partLocation || null,
+      supplierId: supplier || null,
       isActive: true
     });
   };
@@ -277,7 +291,9 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
         equipmentTypeId: selectedEquipmentTypeId || null,
         minimumQuantity: minimumQuantity || "0",
         unit: unit || "un",
-        costPrice: costPrice || null
+        costPrice: costPrice || null,
+        location: partLocation || null,
+        supplierId: supplier || null
       }
     });
   };
@@ -308,6 +324,8 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
     setMinimumQuantity(part.minimumQuantity);
     setUnit(part.unit || "un");
     setCostPrice(part.costPrice || "");
+    setPartLocation(part.location || "");
+    setSupplier(part.supplierId || "");
     setIsEditDialogOpen(true);
   };
 
@@ -557,13 +575,18 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="supplier">Fornecedor</Label>
-                          <Input
-                            id="supplier"
-                            value={supplier}
-                            onChange={(e) => setSupplier(e.target.value)}
-                            placeholder="Nome do fornecedor"
-                            data-testid="input-supplier"
-                          />
+                          <Select value={supplier} onValueChange={setSupplier}>
+                            <SelectTrigger id="supplier" data-testid="select-supplier">
+                              <SelectValue placeholder="Selecione um fornecedor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {customerSuppliers?.map((s) => (
+                                <SelectItem key={s.id} value={s.id}>
+                                  {s.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
 
@@ -807,6 +830,34 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                   onChange={(e) => setCostPrice(e.target.value)}
                   data-testid="input-edit-cost-price"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editLocation">Localização no Almoxarifado</Label>
+                <Input
+                  id="editLocation"
+                  value={partLocation}
+                  onChange={(e) => setPartLocation(e.target.value)}
+                  placeholder="Ex: Prateleira A3"
+                  data-testid="input-edit-location"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editSupplier">Fornecedor</Label>
+                <Select value={supplier} onValueChange={setSupplier}>
+                  <SelectTrigger id="editSupplier" data-testid="select-edit-supplier">
+                    <SelectValue placeholder="Selecione um fornecedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customerSuppliers?.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

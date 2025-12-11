@@ -757,6 +757,7 @@ export const parts = pgTable("parts", {
   companyId: varchar("company_id").notNull().references(() => companies.id),
   customerId: varchar("customer_id").notNull().references(() => customers.id),
   equipmentTypeId: varchar("equipment_type_id").references(() => equipmentTypes.id),
+  supplierId: varchar("supplier_id").references(() => suppliers.id),
   name: varchar("name").notNull(),
   description: text("description"),
   partNumber: varchar("part_number"), // Código/número da peça
@@ -764,6 +765,7 @@ export const parts = pgTable("parts", {
   currentQuantity: decimal("current_quantity", { precision: 10, scale: 2 }).notNull().default('0'),
   minimumQuantity: decimal("minimum_quantity", { precision: 10, scale: 2 }).notNull().default('0'),
   costPrice: decimal("cost_price", { precision: 10, scale: 2 }), // Preço de custo
+  location: varchar("location"), // Localização no almoxarifado
   module: moduleEnum("module").notNull().default('maintenance'),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
@@ -1518,6 +1520,10 @@ export const partsRelations = relations(parts, ({ one, many }) => ({
   equipmentType: one(equipmentTypes, {
     fields: [parts.equipmentTypeId],
     references: [equipmentTypes.id],
+  }),
+  supplier: one(suppliers, {
+    fields: [parts.supplierId],
+    references: [suppliers.id],
   }),
   workOrderParts: many(workOrderParts),
   maintenancePlanParts: many(maintenancePlanParts),
