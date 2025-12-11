@@ -9,6 +9,7 @@ import {
   parts, workOrderParts, maintenancePlanParts, maintenanceActivityParts, partMovements,
   aiIntegrations, chatConversations, chatMessages,
   suppliers, supplierCustomers, supplierUsers, maintenancePlanProposals, supplierPartBatches, notifications,
+  supplierWorkOrders, supplierWorkOrderItems,
   type Company, type InsertCompany, type Site, type InsertSite, 
   type Zone, type InsertZone, type QrCodePoint, type InsertQrCodePoint,
   type User, type InsertUser, type ChecklistTemplate, type InsertChecklistTemplate,
@@ -49,7 +50,9 @@ import {
   type SupplierUser, type InsertSupplierUser,
   type MaintenancePlanProposal, type InsertMaintenancePlanProposal,
   type SupplierPartBatch, type InsertSupplierPartBatch,
-  type Notification, type InsertNotification
+  type Notification, type InsertNotification,
+  type SupplierWorkOrder, type InsertSupplierWorkOrder,
+  type SupplierWorkOrderItem, type InsertSupplierWorkOrderItem
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, sql, count, inArray, isNull, isNotNull, ne, gte, lte, lt, not } from "drizzle-orm";
@@ -604,6 +607,22 @@ export interface IStorage {
   getUserSupplier(userId: string): Promise<Supplier | undefined>;
   addSupplierUser(data: InsertSupplierUser & { id: string }): Promise<SupplierUser>;
   removeSupplierUser(supplierId: string, userId: string): Promise<void>;
+
+  // Supplier Work Orders
+  getSupplierWorkOrders(supplierId: string): Promise<SupplierWorkOrder[]>;
+  getSupplierWorkOrdersByCustomer(customerId: string): Promise<SupplierWorkOrder[]>;
+  getSupplierWorkOrderById(id: string): Promise<SupplierWorkOrder | undefined>;
+  createSupplierWorkOrder(data: InsertSupplierWorkOrder & { id: string }): Promise<SupplierWorkOrder>;
+  updateSupplierWorkOrder(id: string, data: Partial<InsertSupplierWorkOrder>): Promise<SupplierWorkOrder | undefined>;
+  
+  // Supplier Work Order Items
+  getSupplierWorkOrderItems(supplierWorkOrderId: string): Promise<SupplierWorkOrderItem[]>;
+  createSupplierWorkOrderItem(data: InsertSupplierWorkOrderItem & { id: string }): Promise<SupplierWorkOrderItem>;
+  updateSupplierWorkOrderItem(id: string, data: Partial<InsertSupplierWorkOrderItem>): Promise<SupplierWorkOrderItem | undefined>;
+  
+  // Low Stock Parts Check
+  getPartsAtLowStock(customerId: string): Promise<Part[]>;
+  getPartPrimarySupplier(partId: string, customerId: string): Promise<Supplier | undefined>;
 
   // Maintenance Plan Proposals
   getProposalsBySupplierId(supplierId: string): Promise<MaintenancePlanProposal[]>;
@@ -9719,6 +9738,84 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
         eq(supplierUsers.userId, userId)
       )
     );
+  }
+
+  // Supplier Work Orders
+  async getSupplierWorkOrders(supplierId: string): Promise<SupplierWorkOrder[]> {
+    return await db.select().from(supplierWorkOrders)
+      .where(eq(supplierWorkOrders.supplierId, supplierId))
+      .orderBy(desc(supplierWorkOrders.createdAt));
+  }
+
+  async getSupplierWorkOrdersByCustomer(customerId: string): Promise<SupplierWorkOrder[]> {
+    return await db.select().from(supplierWorkOrders)
+      .where(eq(supplierWorkOrders.customerId, customerId))
+      .orderBy(desc(supplierWorkOrders.createdAt));
+  }
+
+  async getSupplierWorkOrderById(id: string): Promise<SupplierWorkOrder | undefined> {
+    const [result] = await db.select().from(supplierWorkOrders).where(eq(supplierWorkOrders.id, id));
+    return result;
+  }
+
+  async createSupplierWorkOrder(data: InsertSupplierWorkOrder & { id: string }): Promise<SupplierWorkOrder> {
+    const [result] = await db.insert(supplierWorkOrders).values(data).returning();
+    return result;
+  }
+
+  async updateSupplierWorkOrder(id: string, data: Partial<InsertSupplierWorkOrder>): Promise<SupplierWorkOrder | undefined> {
+    const [result] = await db.update(supplierWorkOrders)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(supplierWorkOrders.id, id))
+      .returning();
+    return result;
+  }
+
+  // Supplier Work Order Items
+  async getSupplierWorkOrderItems(supplierWorkOrderId: string): Promise<SupplierWorkOrderItem[]> {
+    return await db.select().from(supplierWorkOrderItems)
+      .where(eq(supplierWorkOrderItems.supplierWorkOrderId, supplierWorkOrderId));
+  }
+
+  async createSupplierWorkOrderItem(data: InsertSupplierWorkOrderItem & { id: string }): Promise<SupplierWorkOrderItem> {
+    const [result] = await db.insert(supplierWorkOrderItems).values(data).returning();
+    return result;
+  }
+
+  async updateSupplierWorkOrderItem(id: string, data: Partial<InsertSupplierWorkOrderItem>): Promise<SupplierWorkOrderItem | undefined> {
+    const [result] = await db.update(supplierWorkOrderItems)
+      .set(data)
+      .where(eq(supplierWorkOrderItems.id, id))
+      .returning();
+    return result;
+  }
+
+  // Low Stock Parts Check
+  async getPartsAtLowStock(customerId: string): Promise<Part[]> {
+    return await db.select().from(parts)
+      .where(
+        and(
+          eq(parts.customerId, customerId),
+          eq(parts.isActive, true),
+          sql`CAST(${parts.currentQuantity} AS DECIMAL) <= CAST(${parts.minimumQuantity} AS DECIMAL)`
+        )
+      );
+  }
+
+  async getPartPrimarySupplier(partId: string, customerId: string): Promise<Supplier | undefined> {
+    // Get the most recent supplier batch for this part
+    const results = await db.select({ supplier: suppliers })
+      .from(supplierPartBatches)
+      .innerJoin(suppliers, eq(supplierPartBatches.supplierId, suppliers.id))
+      .where(
+        and(
+          eq(supplierPartBatches.partId, partId),
+          eq(supplierPartBatches.customerId, customerId)
+        )
+      )
+      .orderBy(desc(supplierPartBatches.createdAt))
+      .limit(1);
+    return results[0]?.supplier;
   }
 
   // Maintenance Plan Proposals
