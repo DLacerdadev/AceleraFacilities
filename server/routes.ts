@@ -8080,6 +8080,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Confirm receipt of supplier work order (client-side action)
+  // This updates stock automatically when receipt is confirmed
+  app.post('/api/supplier-work-orders/:id/confirm-receipt', requireAuth, async (req, res) => {
+    try {
+      const { notes } = req.body;
+      const userId = req.user?.id;
+      
+      // Get the work order
+      const wo = await storage.getSupplierWorkOrderById(req.params.id);
+      if (!wo) {
+        return res.status(404).json({ message: 'Pedido não encontrado' });
+      }
+      
+      // Validate that order was shipped
+      if (!wo.shippedAt) {
+        return res.status(400).json({ message: 'Não é possível confirmar recebimento antes do envio' });
+      }
+      
+      // Validate not already received
+      if (wo.receivedAt) {
+        return res.status(400).json({ message: 'Recebimento já foi confirmado anteriormente' });
+      }
+      
+      // Get items to update stock
+      const items = await storage.getSupplierWorkOrderItems(wo.id);
+      
+      // Update each item's quantity received and add to stock
+      for (const item of items) {
+        const quantityToAdd = parseFloat(item.quantityShipped?.toString() || item.quantityRequested?.toString() || '0');
+        
+        if (quantityToAdd > 0) {
+          // Update item with quantity received
+          await storage.updateSupplierWorkOrderItem(item.id, {
+            quantityReceived: quantityToAdd.toString()
+          });
+          
+          // Get current part stock
+          const part = await storage.getPart(item.partId);
+          if (part) {
+            const currentStock = parseFloat(part.currentStock?.toString() || '0');
+            const newStock = currentStock + quantityToAdd;
+            
+            // Update part stock
+            await storage.updatePart(item.partId, {
+              currentStock: newStock.toString()
+            });
+            
+            // Create part movement for the stock entry
+            const movementId = nanoid();
+            await storage.createPartMovement({
+              id: movementId,
+              partId: item.partId,
+              movementType: 'entrada',
+              quantity: quantityToAdd.toString(),
+              previousQuantity: currentStock.toString(),
+              newQuantity: newStock.toString(),
+              reason: 'Reposição de fornecedor',
+              performedByUserId: userId || 'system',
+              supplierWorkOrderId: wo.id
+            });
+            
+            // Broadcast part update
+            broadcast({ type: 'update', resource: 'parts', data: { ...part, currentStock: newStock.toString() } });
+          }
+        }
+      }
+      
+      // Update the work order with receipt info
+      const updated = await storage.updateSupplierWorkOrder(wo.id, {
+        receivedAt: new Date(),
+        receivedBy: userId,
+        receivedNotes: notes || null,
+        status: 'concluido'
+      });
+      
+      broadcast({ type: 'update', resource: 'supplierWorkOrders', data: updated });
+      
+      res.json({ 
+        message: 'Recebimento confirmado com sucesso. Estoque atualizado.',
+        workOrder: updated,
+        itemsUpdated: items.length
+      });
+    } catch (error) {
+      console.error('Error confirming receipt:', error);
+      res.status(500).json({ message: 'Erro ao confirmar recebimento' });
+    }
+  });
+
   // ===== MAINTENANCE PLAN PROPOSALS =====
 
   // Get proposals by supplier

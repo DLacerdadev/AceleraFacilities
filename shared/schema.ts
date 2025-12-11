@@ -824,9 +824,10 @@ export const partMovements = pgTable("part_movements", {
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
   previousQuantity: decimal("previous_quantity", { precision: 10, scale: 2 }).notNull(),
   newQuantity: decimal("new_quantity", { precision: 10, scale: 2 }).notNull(),
-  workOrderId: varchar("work_order_id").references(() => workOrders.id), // Referência se for saída por O.S.
+  workOrderId: varchar("work_order_id").references(() => workOrders.id),
+  supplierWorkOrderId: varchar("supplier_work_order_id").references(() => supplierWorkOrders.id),
   reason: text("reason"),
-  performedByUserId: varchar("performed_by_user_id").notNull().references(() => users.id),
+  performedByUserId: varchar("performed_by_user_id").references(() => users.id),
   supplierId: varchar("supplier_id"),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
