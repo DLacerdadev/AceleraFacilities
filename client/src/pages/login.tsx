@@ -97,7 +97,9 @@ export default function Login() {
         console.error("Error checking available modules:", error);
       }
       
-      if (user.role === 'operador') {
+      if (user.userType === 'supplier_user') {
+        navigateTo("/supplier-portal");
+      } else if (user.role === 'operador') {
         navigateTo("/mobile");
       } else {
         navigateTo("/");

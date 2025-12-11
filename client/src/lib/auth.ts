@@ -6,6 +6,7 @@ export interface User {
   email: string;
   username: string;
   role: "admin" | "gestor_cliente" | "supervisor_site" | "operador" | "auditor";
+  userType?: "opus_user" | "customer_user" | "supplier_user";
   companyId?: string;
   isActive: boolean;
 }

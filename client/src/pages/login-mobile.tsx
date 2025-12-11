@@ -26,8 +26,10 @@ export default function LoginMobile() {
       const { user, token } = await login(credentials);
       setAuthState(user, token);
       
-      // Redirecionar baseado no role do usuário
-      if (user.role === 'operador') {
+      // Redirecionar baseado no role/tipo do usuário
+      if (user.userType === 'supplier_user') {
+        setLocation("/supplier-portal");
+      } else if (user.role === 'operador') {
         setLocation("/mobile");
       } else {
         // Admin, gestor, supervisor vão para a versão desktop
