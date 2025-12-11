@@ -7567,7 +7567,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const relation = await storage.addSupplierUser(supplierUserRelation);
       
-      // Broadcast both updates
+      // Get supplier's customers and add user to allowed customers
+      const supplierCustomers = await storage.getSupplierCustomers(req.params.id);
+      for (const sc of supplierCustomers) {
+        await storage.addUserAllowedCustomer({
+          id: nanoid(),
+          userId: newUser.id,
+          customerId: sc.customerId
+        });
+      }
+      
+      // Broadcast updates
       broadcast({ type: 'create', resource: 'supplierUsers', data: relation });
       broadcast({ type: 'create', resource: 'users', data: sanitizeUser(newUser) });
       
