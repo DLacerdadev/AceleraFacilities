@@ -342,6 +342,9 @@ export function usePermissions() {
     // Admin nunca é mobile-only
     if (user.role === 'admin') return false;
     
+    // Supplier users nunca são mobile-only - têm portal próprio
+    if (user.userType === 'supplier_user') return false;
+    
     // Se não tem custom roles, usar fallback do role enum
     if (userRoles.length === 0) {
       return user.role === 'operador';
