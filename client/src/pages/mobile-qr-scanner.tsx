@@ -10,6 +10,7 @@ import ChecklistSelectionModal from "@/components/ChecklistSelectionModal";
 import { useModule } from "@/contexts/ModuleContext";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { useOfflineStorage } from "@/hooks/use-offline-storage";
+import { useQRAccess } from "@/contexts/QRAccessContext";
 import { Capacitor } from "@capacitor/core";
 
 const COMPANY_ID = "company-opus-default";
@@ -29,6 +30,7 @@ export default function MobileQrScanner() {
   const { currentModule, setModule, canAccessModule } = useModule();
   const { isOnline } = useNetworkStatus();
   const { getQRPoint, getZone, cacheQRPoint, cacheZone } = useOfflineStorage();
+  const { registerQRAccess } = useQRAccess();
   
   // QR Scanner States
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -430,6 +432,8 @@ export default function MobileQrScanner() {
       // Se está selecionando uma work order existente
       if (workOrderId) {
         console.log('[QR SCANNER] Selecionando work order existente:', workOrderId);
+        // Registrar acesso via QR para proteger a rota
+        registerQRAccess(workOrderId);
         setShowServiceModal(false);
         setLocation(`/mobile/work-order/${workOrderId}`);
         return;
@@ -496,6 +500,8 @@ export default function MobileQrScanner() {
           description: `OS #${workOrder.number} criada com sucesso`,
         });
 
+        // Registrar acesso via QR para proteger a rota
+        registerQRAccess(workOrder.id);
         setShowChecklistModal(false);
         setLocation(`/mobile/work-order/${workOrder.id}`);
       } else {

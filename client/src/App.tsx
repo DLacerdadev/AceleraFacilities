@@ -7,6 +7,7 @@ import { ClientProvider, useClient } from "@/contexts/ClientContext";
 import { ModuleProvider, useModule } from "@/contexts/ModuleContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
 import { NetworkProvider } from "@/contexts/NetworkContext";
+import { QRAccessProvider } from "@/contexts/QRAccessContext";
 import { logout } from "@/lib/auth";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
@@ -372,20 +373,22 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <NetworkProvider>
-          <ClientProvider>
-            <ModuleProvider>
-              <BrandingProvider>
-                <TooltipProvider>
-                  <ErrorSuppressor />
-                  <SyncInitializer />
-                  <WebSocketInitializer />
-                  <ScrollToTop />
-                  <Toaster />
-                  <Router />
-                </TooltipProvider>
-              </BrandingProvider>
-            </ModuleProvider>
-          </ClientProvider>
+          <QRAccessProvider>
+            <ClientProvider>
+              <ModuleProvider>
+                <BrandingProvider>
+                  <TooltipProvider>
+                    <ErrorSuppressor />
+                    <SyncInitializer />
+                    <WebSocketInitializer />
+                    <ScrollToTop />
+                    <Toaster />
+                    <Router />
+                  </TooltipProvider>
+                </BrandingProvider>
+              </ModuleProvider>
+            </ClientProvider>
+          </QRAccessProvider>
         </NetworkProvider>
       </QueryClientProvider>
     </ErrorBoundary>
