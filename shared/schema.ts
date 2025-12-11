@@ -981,6 +981,7 @@ export const supplierPartBatches = pgTable("supplier_part_batches", {
   totalCost: decimal("total_cost", { precision: 10, scale: 2 }),
   notes: text("notes"),
   
+  workOrderId: varchar("work_order_id").references(() => workOrders.id),
   partMovementId: varchar("part_movement_id").references(() => partMovements.id),
   
   createdAt: timestamp("created_at").default(sql`now()`),

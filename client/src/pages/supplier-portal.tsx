@@ -73,6 +73,7 @@ export default function SupplierPortal() {
   const [batchQuantity, setBatchQuantity] = useState("");
   const [batchExpectedDate, setBatchExpectedDate] = useState("");
   const [batchNotes, setBatchNotes] = useState("");
+  const [batchWorkOrderId, setBatchWorkOrderId] = useState("");
   
   const [isShipDialogOpen, setIsShipDialogOpen] = useState(false);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<EnrichedSupplierWorkOrder | null>(null);
@@ -122,6 +123,11 @@ export default function SupplierPortal() {
   const { data: selectedCustomerParts } = useQuery<Part[]>({
     queryKey: ['/api/suppliers', supplierId, 'customers', batchCustomerId, 'parts'],
     enabled: !!supplierId && !!batchCustomerId && isBatchDialogOpen,
+  });
+
+  const { data: selectedCustomerWorkOrders } = useQuery<any[]>({
+    queryKey: ['/api/customers', batchCustomerId, 'work-orders'],
+    enabled: !!batchCustomerId && isBatchDialogOpen,
   });
 
   const createProposalMutation = useMutation({
@@ -198,6 +204,7 @@ export default function SupplierPortal() {
     setBatchQuantity("");
     setBatchExpectedDate("");
     setBatchNotes("");
+    setBatchWorkOrderId("");
   }
 
   function handleCreateProposal() {
@@ -225,6 +232,7 @@ export default function SupplierPortal() {
       quantityPlanned: parseInt(batchQuantity),
       expectedDeliveryDate: batchExpectedDate || null,
       notes: batchNotes.trim() || null,
+      workOrderId: batchWorkOrderId || null,
     });
   }
 
@@ -931,6 +939,22 @@ export default function SupplierPortal() {
                         placeholder="10"
                         data-testid="input-batch-quantity"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="batch-work-order">Vincular a O.S. (opcional)</Label>
+                      <Select value={batchWorkOrderId} onValueChange={setBatchWorkOrderId} disabled={!batchCustomerId}>
+                        <SelectTrigger id="batch-work-order" data-testid="select-batch-work-order">
+                          <SelectValue placeholder={batchCustomerId ? "Selecione uma O.S. (opcional)" : "Selecione o cliente primeiro"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Nenhuma</SelectItem>
+                          {selectedCustomerWorkOrders?.filter(wo => wo.status !== 'completed' && wo.status !== 'cancelled').map((wo) => (
+                            <SelectItem key={wo.id} value={wo.id}>
+                              #{wo.orderNumber || wo.id.slice(0, 8)} - {wo.title || wo.description?.slice(0, 30) || 'Sem título'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="batch-date">Data Prevista de Entrega</Label>
