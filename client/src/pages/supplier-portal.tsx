@@ -125,9 +125,10 @@ export default function SupplierPortal() {
     enabled: !!supplierId && !!batchCustomerId && isBatchDialogOpen,
   });
 
-  const { data: selectedCustomerWorkOrders } = useQuery<any[]>({
+  const { data: selectedCustomerWorkOrders = [] } = useQuery<any[]>({
     queryKey: ['/api/customers', batchCustomerId, 'work-orders'],
     enabled: !!batchCustomerId && isBatchDialogOpen,
+    select: (data) => Array.isArray(data) ? data : [],
   });
 
   const createProposalMutation = useMutation({
@@ -948,7 +949,7 @@ export default function SupplierPortal() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Nenhuma</SelectItem>
-                          {selectedCustomerWorkOrders?.filter(wo => wo.status !== 'completed' && wo.status !== 'cancelled').map((wo) => (
+                          {(selectedCustomerWorkOrders || []).filter(wo => wo.status !== 'completed' && wo.status !== 'cancelled').map((wo) => (
                             <SelectItem key={wo.id} value={wo.id}>
                               #{wo.orderNumber || wo.id.slice(0, 8)} - {wo.title || wo.description?.slice(0, 30) || 'Sem título'}
                             </SelectItem>
