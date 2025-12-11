@@ -1003,6 +1003,8 @@ export const supplierWorkOrders = pgTable("supplier_work_orders", {
   confirmedAt: timestamp("confirmed_at"),
   shippedAt: timestamp("shipped_at"),
   receivedAt: timestamp("received_at"),
+  receivedBy: varchar("received_by").references(() => users.id),
+  receivedNotes: text("received_notes"),
   
   trackingCode: varchar("tracking_code"),
   invoiceNumber: varchar("invoice_number"),
