@@ -21,6 +21,7 @@ export const aiIntegrationStatusEnum = pgEnum('ai_integration_status', ['ativa',
 export const syncStatusEnum = pgEnum('sync_status', ['pending', 'syncing', 'synced', 'failed']);
 export const proposalStatusEnum = pgEnum('proposal_status', ['em_espera', 'aprovado', 'recusado']);
 export const partBatchStatusEnum = pgEnum('part_batch_status', ['planejado', 'enviado', 'recebido', 'cancelado']);
+export const supplierWorkOrderStatusEnum = pgEnum('supplier_work_order_status', ['pendente', 'confirmado', 'enviado', 'recebido', 'cancelado']);
 
 // Sistema de permissões granulares
 export const permissionKeyEnum = pgEnum('permission_key', [
@@ -984,6 +985,47 @@ export const supplierPartBatches = pgTable("supplier_part_batches", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// Supplier Work Orders - Ordens de serviço para fornecedores (pedidos de reposição)
+export const supplierWorkOrders = pgTable("supplier_work_orders", {
+  id: varchar("id").primaryKey(),
+  supplierId: varchar("supplier_id").notNull().references(() => suppliers.id),
+  customerId: varchar("customer_id").notNull().references(() => customers.id),
+  
+  orderNumber: varchar("order_number"), // Número do pedido gerado
+  status: supplierWorkOrderStatusEnum("status").notNull().default('pendente'),
+  priority: priorityEnum("priority").notNull().default('media'),
+  
+  expectedDeliveryDate: date("expected_delivery_date"),
+  confirmedAt: timestamp("confirmed_at"),
+  shippedAt: timestamp("shipped_at"),
+  receivedAt: timestamp("received_at"),
+  
+  trackingCode: varchar("tracking_code"),
+  invoiceNumber: varchar("invoice_number"),
+  notes: text("notes"),
+  
+  source: varchar("source").default('auto_low_stock'), // auto_low_stock, manual
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Supplier Work Order Items - Itens do pedido de reposição
+export const supplierWorkOrderItems = pgTable("supplier_work_order_items", {
+  id: varchar("id").primaryKey(),
+  supplierWorkOrderId: varchar("supplier_work_order_id").notNull().references(() => supplierWorkOrders.id, { onDelete: 'cascade' }),
+  partId: varchar("part_id").notNull().references(() => parts.id),
+  
+  quantityRequested: decimal("quantity_requested", { precision: 10, scale: 2 }).notNull(),
+  quantityConfirmed: decimal("quantity_confirmed", { precision: 10, scale: 2 }),
+  quantityShipped: decimal("quantity_shipped", { precision: 10, scale: 2 }),
+  quantityReceived: decimal("quantity_received", { precision: 10, scale: 2 }),
+  
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 // Notifications - Sistema de notificações
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey(),
@@ -1837,6 +1879,23 @@ export const insertSupplierPartBatchSchema = createInsertSchema(supplierPartBatc
 
 export type SupplierPartBatch = typeof supplierPartBatches.$inferSelect;
 export type InsertSupplierPartBatch = z.infer<typeof insertSupplierPartBatchSchema>;
+
+export const insertSupplierWorkOrderSchema = createInsertSchema(supplierWorkOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SupplierWorkOrder = typeof supplierWorkOrders.$inferSelect;
+export type InsertSupplierWorkOrder = z.infer<typeof insertSupplierWorkOrderSchema>;
+
+export const insertSupplierWorkOrderItemSchema = createInsertSchema(supplierWorkOrderItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SupplierWorkOrderItem = typeof supplierWorkOrderItems.$inferSelect;
+export type InsertSupplierWorkOrderItem = z.infer<typeof insertSupplierWorkOrderItemSchema>;
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
