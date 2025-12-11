@@ -141,6 +141,9 @@ app.use((req, res, next) => {
     
     // Schedule daily overdue work order marking
     scheduleDailyOverdueCheck();
+    
+    // Schedule daily auto-replenishment check for low stock parts
+    scheduleDailyAutoReplenishment();
   });
 })();
 
@@ -193,4 +196,26 @@ function scheduleDailyOverdueCheck() {
   });
   
   log('[DAILY OVERDUE SCHEDULER] Agendamento diário ativado via node-cron - roda todo dia às 23:55');
+}
+
+// Daily auto-replenishment scheduler - runs every day at 08:00 to check low stock and create supplier orders
+// Cron: "0 8 * * *" = At 08:00 every day
+function scheduleDailyAutoReplenishment() {
+  cron.schedule('0 8 * * *', async () => {
+    log('[AUTO-REPLENISHMENT SCHEDULER] Verificando peças com estoque baixo...');
+    
+    try {
+      // Get all customers to check their low stock parts
+      const response = await fetch(`http://localhost:${parseInt(process.env.PORT || '5000', 10)}/api/scheduler/auto-replenishment-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      log(`[AUTO-REPLENISHMENT SCHEDULER] ✅ ${data.totalOrders} pedidos de reposição criados`);
+    } catch (error) {
+      console.error('[AUTO-REPLENISHMENT SCHEDULER] ❌ Erro na verificação automática:', error);
+    }
+  });
+  
+  log('[AUTO-REPLENISHMENT SCHEDULER] Agendamento diário ativado via node-cron - roda todo dia às 08:00');
 }

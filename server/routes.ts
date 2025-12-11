@@ -5401,6 +5401,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Auto-replenishment scheduler endpoint - processes all customers
+  app.post("/api/scheduler/auto-replenishment-all", async (req, res) => {
+    try {
+      console.log(`[AUTO-REPLENISHMENT SCHEDULER] Iniciando verificação de estoque baixo em todos os clientes`);
+      
+      const allCustomers = await storage.getAllCustomers();
+      let totalOrders = 0;
+      let totalValue = 0;
+      const results: any[] = [];
+      
+      for (const customer of allCustomers) {
+        try {
+          const lowStockParts = await storage.getPartsAtLowStock(customer.id);
+          
+          if (lowStockParts.length === 0) continue;
+          
+          // Group parts by supplier
+          const partsBySupplier = new Map<string, Array<{ 
+            part: typeof lowStockParts[0]; 
+            quantityToOrder: number;
+            unitCost: string | null;
+            totalCost: number;
+          }>>();
+          
+          for (const part of lowStockParts) {
+            const supplierId = part.supplierId;
+            if (!supplierId) continue;
+            
+            const currentQty = parseFloat(part.currentQuantity || '0');
+            const maxQty = parseFloat(part.maximumQuantity || '0') || (parseFloat(part.minimumQuantity || '0') * 2);
+            const quantityToOrder = Math.max(Math.ceil(maxQty - currentQty), 1);
+            const unitCost = part.costPrice || null;
+            const totalCost = unitCost ? quantityToOrder * parseFloat(unitCost) : 0;
+            
+            if (!partsBySupplier.has(supplierId)) {
+              partsBySupplier.set(supplierId, []);
+            }
+            partsBySupplier.get(supplierId)!.push({ part, quantityToOrder, unitCost, totalCost });
+          }
+          
+          // Create work orders for each supplier
+          for (const [supplierId, partsInfo] of partsBySupplier) {
+            const workOrderId = nanoid();
+            const orderNumber = `SWO-${Date.now().toString(36).toUpperCase()}-${supplierId.slice(-4)}`;
+            const orderTotalValue = partsInfo.reduce((sum, item) => sum + item.totalCost, 0);
+            
+            await storage.createSupplierWorkOrder({
+              id: workOrderId,
+              supplierId,
+              customerId: customer.id,
+              orderNumber,
+              status: 'pendente',
+              priority: 'media',
+              notes: `Gerado automaticamente por estoque baixo. Valor total estimado: R$ ${orderTotalValue.toFixed(2)}`,
+              source: 'auto'
+            });
+            
+            for (const { part, quantityToOrder, unitCost } of partsInfo) {
+              await storage.createSupplierWorkOrderItem({
+                id: nanoid(),
+                supplierWorkOrderId: workOrderId,
+                partId: part.id,
+                quantityRequested: quantityToOrder.toString(),
+                unitCost: unitCost
+              });
+            }
+            
+            totalOrders++;
+            totalValue += orderTotalValue;
+            results.push({
+              customer: customer.name,
+              orderNumber,
+              items: partsInfo.length,
+              value: orderTotalValue
+            });
+          }
+          
+          console.log(`[AUTO-REPLENISHMENT SCHEDULER] ${customer.name}: ${partsBySupplier.size} pedido(s) criado(s)`);
+        } catch (customerError) {
+          console.error(`[AUTO-REPLENISHMENT SCHEDULER] Erro no cliente ${customer.name}:`, customerError);
+        }
+      }
+      
+      console.log(`[AUTO-REPLENISHMENT SCHEDULER] ✅ Total: ${totalOrders} pedidos criados, valor: R$ ${totalValue.toFixed(2)}`);
+      
+      res.json({
+        message: `Auto-replenishment completed`,
+        totalOrders,
+        totalValue,
+        results
+      });
+    } catch (error) {
+      console.error("Error in auto-replenishment:", error);
+      res.status(500).json({ message: "Failed to run auto-replenishment" });
+    }
+  });
+
   // === SYSTEM USERS MANAGEMENT ===
   
   // Listar usuários do sistema OPUS (type: opus_user)

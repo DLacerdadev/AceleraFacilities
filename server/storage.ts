@@ -6396,7 +6396,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(parts.customerId, customerId),
         eq(parts.isActive, true),
-        sql`${parts.currentQuantity} < ${parts.minimumQuantity}`
+        sql`CAST(${parts.currentQuantity} AS DECIMAL) <= CAST(${parts.minimumQuantity} AS DECIMAL)`
       ))
       .orderBy(parts.name);
   }

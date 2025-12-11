@@ -25,7 +25,8 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   History,
-  Search
+  Search,
+  Truck
 } from "lucide-react";
 import type { Part, PartMovement, Supplier } from "@shared/schema";
 
@@ -209,6 +210,38 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
     },
     onError: (error: any) => {
       toast({ title: "Erro", description: error.message || "Falha ao excluir peça", variant: "destructive" });
+    }
+  });
+
+  const generateReplenishmentMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/customers/${customerId}/auto-replenishment`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('acelera_token')}` 
+        }
+      });
+      if (!response.ok) throw new Error('Failed to generate replenishment orders');
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/parts`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/parts/low-stock`] });
+      if (data.ordersCreated > 0) {
+        toast({ 
+          title: "Pedidos Gerados", 
+          description: `${data.ordersCreated} pedido(s) de reposição criado(s). Valor total: R$ ${data.totalValue?.toFixed(2) || '0.00'}` 
+        });
+      } else {
+        toast({ 
+          title: "Nenhum Pedido", 
+          description: data.message || "Não há peças em estoque baixo com fornecedor definido" 
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message || "Falha ao gerar pedidos", variant: "destructive" });
     }
   });
 
@@ -447,6 +480,19 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                 >
                   <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
                 </Button>
+                
+                {lowStockParts && lowStockParts.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => generateReplenishmentMutation.mutate()}
+                    disabled={generateReplenishmentMutation.isPending}
+                    data-testid="button-generate-replenishment"
+                  >
+                    <Truck className={cn("w-4 h-4 mr-2", generateReplenishmentMutation.isPending && "animate-pulse")} />
+                    Gerar Pedidos de Reposição
+                    <Badge variant="destructive" className="ml-2">{lowStockParts.length}</Badge>
+                  </Button>
+                )}
                 
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
