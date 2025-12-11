@@ -7492,8 +7492,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get users of a supplier
   app.get('/api/suppliers/:id/users', requireAuth, async (req, res) => {
     try {
-      const users = await storage.getSupplierUsers(req.params.id);
-      res.json(sanitizeUsers(users));
+      const supplierUserRecords = await storage.getSupplierUsers(req.params.id);
+      
+      // Fetch actual user data for each supplier user
+      const usersWithData = await Promise.all(
+        supplierUserRecords.map(async (su) => {
+          const user = await storage.getUser(su.userId);
+          return {
+            ...su,
+            user: user ? sanitizeUser(user) : null
+          };
+        })
+      );
+      
+      res.json(usersWithData);
     } catch (error) {
       console.error('Error fetching supplier users:', error);
       res.status(500).json({ message: 'Erro ao buscar usuários do fornecedor' });
