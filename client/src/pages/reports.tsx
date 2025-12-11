@@ -38,7 +38,8 @@ import {
   Building2,
   Zap,
   Wrench,
-  Package
+  Package,
+  Truck
 } from "lucide-react";
 
 // Types for report data
@@ -152,6 +153,13 @@ export default function Reports() {
     enabled: !!activeClientId && currentModule === 'maintenance',
   });
 
+  // Replenishment Orders Report Query (Pedidos de Reabastecimento)
+  const { data: replenishmentReport, isLoading: isLoadingReplenishment, refetch: refetchReplenishment } = useQuery({
+    queryKey: ["/api/customers", activeClientId, "reports", "replenishment", { period: dateRange }],
+    queryFn: () => fetch(`/api/customers/${activeClientId}/reports/replenishment?period=${dateRange}`).then(res => res.json()),
+    enabled: !!activeClientId && currentModule === 'maintenance',
+  });
+
   // Helper function to safely access nested properties
   const safeGet = (obj: any, key: string, defaultValue: any = 0) => {
     return obj && typeof obj === 'object' && key in obj ? obj[key] : defaultValue;
@@ -173,10 +181,11 @@ export default function Reports() {
         refetchTemporal()
       ];
       
-      // Only refetch assets and monthly cost for maintenance module
+      // Only refetch assets, monthly cost, and replenishment for maintenance module
       if (currentModule === 'maintenance') {
         refetchPromises.push(refetchAssets());
         refetchPromises.push(refetchMonthlyCost());
+        refetchPromises.push(refetchReplenishment());
       }
       
       await Promise.all(refetchPromises);
@@ -288,6 +297,16 @@ export default function Reports() {
             month: selectedMonth
           };
           filename = `relatorio-custos-${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+          break;
+        case 'reabastecimento':
+          reportData = {
+            ...(replenishmentReport || {}),
+            period: `${dateRange} dias`,
+            generatedAt: new Date().toISOString(),
+            reportType: `Relatório de Pedidos de Reabastecimento - ${moduleSuffix}`,
+            module: currentModule
+          };
+          filename = `relatorio-reabastecimento-${dateRange}dias`;
           break;
       }
 
@@ -481,6 +500,42 @@ export default function Reports() {
           csv += "\n";
         });
       }
+    }
+
+    // Relatório de Reabastecimento
+    if (data.orders && Array.isArray(data.orders)) {
+      csv += `RESUMO DE PEDIDOS DE REABASTECIMENTO\n`;
+      csv += `Total de Pedidos,${data.summary?.totalOrders || 0}\n`;
+      csv += `Pedidos Recebidos,${data.summary?.receivedOrders || 0}\n`;
+      csv += `Pedidos Pendentes,${data.summary?.pendingOrders || 0}\n`;
+      csv += `Valor Total,"R$ ${(data.summary?.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}"\n\n`;
+
+      csv += `LISTA DE PEDIDOS\n`;
+      csv += `ID,Fornecedor,Status,Data Criação,Data Envio,Data Recebimento,Valor Total\n`;
+      data.orders.forEach((order: any) => {
+        const createdAt = order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : '-';
+        const shippedAt = order.shippedAt ? new Date(order.shippedAt).toLocaleDateString('pt-BR') : '-';
+        const receivedAt = order.receivedAt ? new Date(order.receivedAt).toLocaleDateString('pt-BR') : '-';
+        const statusLabel = order.status === 'pendente' ? 'Pendente' : 
+                            order.status === 'confirmado' ? 'Confirmado' :
+                            order.status === 'enviado' ? 'Enviado' :
+                            order.status === 'recebido' ? 'Recebido' : order.status;
+        const totalValue = `R$ ${(order.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        csv += `"${order.id}","${order.supplierName || '-'}","${statusLabel}","${createdAt}","${shippedAt}","${receivedAt}","${totalValue}"\n`;
+      });
+      csv += "\n";
+
+      csv += `ITENS DOS PEDIDOS\n`;
+      csv += `ID Pedido,Peça,Quantidade Solicitada,Quantidade Recebida,Custo Unitário,Custo Total\n`;
+      data.orders.forEach((order: any) => {
+        if (Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            const unitCost = `R$ ${(item.unitCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            const totalCost = `R$ ${(item.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            csv += `"${order.id}","${item.partName}",${item.quantityRequested},${item.quantityReceived || '-'},"${unitCost}","${totalCost}"\n`;
+          });
+        }
+      });
     }
 
     // Dados gerais (para relatórios que ainda usam o formato antigo)
@@ -760,6 +815,70 @@ export default function Reports() {
         const hierarchySheet = XLSX.utils.aoa_to_sheet(hierarchyData);
         XLSX.utils.book_append_sheet(workbook, hierarchySheet, "Patrimônio Completo");
       }
+    }
+    // Relatório de Reabastecimento
+    else if (data.orders && Array.isArray(data.orders)) {
+      const replenishmentSummaryData: any[][] = [
+        [`GRUPO OPUS - RELATÓRIO DE PEDIDOS DE REABASTECIMENTO`],
+        [''],
+        ['Período', data.period || ''],
+        [''],
+        ['RESUMO'],
+        ['Total de Pedidos', data.summary?.totalOrders || 0],
+        ['Pedidos Recebidos', data.summary?.receivedOrders || 0],
+        ['Pedidos Pendentes', data.summary?.pendingOrders || 0],
+        ['Valor Total', `R$ ${(data.summary?.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]
+      ];
+      const summarySheet = XLSX.utils.aoa_to_sheet(replenishmentSummaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumo");
+
+      const ordersData: any[][] = [
+        ['LISTA DE PEDIDOS'],
+        [''],
+        ['ID', 'Fornecedor', 'Status', 'Data Criação', 'Data Envio', 'Data Recebimento', 'Valor Total']
+      ];
+      data.orders.forEach((order: any) => {
+        const createdAt = order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : '-';
+        const shippedAt = order.shippedAt ? new Date(order.shippedAt).toLocaleDateString('pt-BR') : '-';
+        const receivedAt = order.receivedAt ? new Date(order.receivedAt).toLocaleDateString('pt-BR') : '-';
+        const statusLabel = order.status === 'pendente' ? 'Pendente' : 
+                            order.status === 'confirmado' ? 'Confirmado' :
+                            order.status === 'enviado' ? 'Enviado' :
+                            order.status === 'recebido' ? 'Recebido' : order.status;
+        ordersData.push([
+          order.id,
+          order.supplierName || '-',
+          statusLabel,
+          createdAt,
+          shippedAt,
+          receivedAt,
+          `R$ ${(order.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        ]);
+      });
+      const ordersSheet = XLSX.utils.aoa_to_sheet(ordersData);
+      XLSX.utils.book_append_sheet(workbook, ordersSheet, "Pedidos");
+
+      const itemsData: any[][] = [
+        ['ITENS DOS PEDIDOS'],
+        [''],
+        ['ID Pedido', 'Peça', 'Quantidade Solicitada', 'Quantidade Recebida', 'Custo Unitário', 'Custo Total']
+      ];
+      data.orders.forEach((order: any) => {
+        if (Array.isArray(order.items)) {
+          order.items.forEach((item: any) => {
+            itemsData.push([
+              order.id,
+              item.partName,
+              item.quantityRequested,
+              item.quantityReceived || '-',
+              `R$ ${(item.unitCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              `R$ ${(item.totalCost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            ]);
+          });
+        }
+      });
+      const itemsSheet = XLSX.utils.aoa_to_sheet(itemsData);
+      XLSX.utils.book_append_sheet(workbook, itemsSheet, "Itens");
     }
     // Dados gerais (para relatórios que ainda usam o formato antigo)
     else {
@@ -1069,6 +1188,58 @@ export default function Reports() {
       }
     }
 
+    // Relatório de Reabastecimento
+    if (data.orders && Array.isArray(data.orders)) {
+      doc.setFontSize(16);
+      doc.setTextColor(30, 58, 138);
+      doc.text('RESUMO DE PEDIDOS DE REABASTECIMENTO', 20, yPosition);
+      yPosition += 10;
+
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Total de Pedidos: ${data.summary?.totalOrders || 0}`, 20, yPosition);
+      yPosition += 8;
+      doc.text(`Pedidos Recebidos: ${data.summary?.receivedOrders || 0}`, 20, yPosition);
+      yPosition += 8;
+      doc.text(`Pedidos Pendentes: ${data.summary?.pendingOrders || 0}`, 20, yPosition);
+      yPosition += 8;
+      doc.setTextColor(0, 128, 0);
+      doc.text(`Valor Total: R$ ${(data.summary?.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, yPosition);
+      yPosition += 15;
+
+      if (data.orders.length > 0) {
+        doc.setTextColor(30, 58, 138);
+        doc.setFontSize(14);
+        doc.text('LISTA DE PEDIDOS', 20, yPosition);
+        yPosition += 8;
+
+        const ordersTableData = data.orders.map((order: any) => {
+          const createdAt = order.createdAt ? new Date(order.createdAt).toLocaleDateString('pt-BR') : '-';
+          const statusLabel = order.status === 'pendente' ? 'Pendente' : 
+                              order.status === 'confirmado' ? 'Confirmado' :
+                              order.status === 'enviado' ? 'Enviado' :
+                              order.status === 'recebido' ? 'Recebido' : order.status;
+          return [
+            order.id?.substring(0, 8) || '-',
+            order.supplierName || '-',
+            statusLabel,
+            createdAt,
+            `R$ ${(order.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          ];
+        });
+
+        autoTable(doc, {
+          startY: yPosition,
+          head: [['ID', 'Fornecedor', 'Status', 'Data', 'Valor']],
+          body: ordersTableData,
+          headStyles: { fillColor: [30, 58, 138] },
+          margin: { left: 20 },
+          styles: { fontSize: 9 }
+        });
+        yPosition = (doc as any).lastAutoTable.finalY + 15;
+      }
+    }
+
     // Footer
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -1167,6 +1338,14 @@ export default function Reports() {
           icon: TrendingUp,
           color: "bg-amber-500",
           gradient: "from-amber-50 to-amber-100"
+        },
+        {
+          id: "reabastecimento",
+          title: "Pedidos de Reabastecimento",
+          description: "Histórico de pedidos de peças aos fornecedores",
+          icon: Truck,
+          color: "bg-cyan-500",
+          gradient: "from-cyan-50 to-cyan-100"
         }
       ]
     : baseReportTypes;

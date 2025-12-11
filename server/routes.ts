@@ -1284,6 +1284,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Replenishment report endpoint
+  app.get("/api/customers/:customerId/reports/replenishment", async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const period = parseInt(req.query.period as string) || 30;
+      
+      console.log(`[REPLENISHMENT REPORT] Getting report for customer ${customerId}, period: ${period} days`);
+      
+      // Get supplier work orders for this customer
+      const orders = await storage.getSupplierWorkOrdersByCustomer(customerId);
+      
+      // Filter by period
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - period);
+      
+      const filteredOrders = orders.filter(order => {
+        const orderDate = order.createdAt ? new Date(order.createdAt) : null;
+        return orderDate && orderDate >= startDate;
+      });
+      
+      // Get items for each order and supplier info
+      const ordersWithDetails = await Promise.all(filteredOrders.map(async (order) => {
+        const items = await storage.getSupplierWorkOrderItems(order.id);
+        const supplier = order.supplierId ? await storage.getSupplier(order.supplierId) : null;
+        
+        // Calculate total value for order
+        let totalValue = 0;
+        const itemsWithDetails = await Promise.all(items.map(async (item) => {
+          const part = await storage.getPart(item.partId);
+          const unitCost = parseFloat(item.unitCost?.toString() || '0');
+          const qty = parseFloat(item.quantityReceived?.toString() || item.quantityConfirmed?.toString() || item.quantityRequested?.toString() || '0');
+          const itemTotal = unitCost * qty;
+          totalValue += itemTotal;
+          
+          return {
+            id: item.id,
+            partId: item.partId,
+            partName: part?.name || 'Peça não encontrada',
+            quantityRequested: parseFloat(item.quantityRequested?.toString() || '0'),
+            quantityConfirmed: item.quantityConfirmed ? parseFloat(item.quantityConfirmed.toString()) : null,
+            quantityReceived: item.quantityReceived ? parseFloat(item.quantityReceived.toString()) : null,
+            unitCost: unitCost,
+            totalCost: itemTotal
+          };
+        }));
+        
+        return {
+          id: order.id,
+          supplierId: order.supplierId,
+          supplierName: supplier?.name || 'Fornecedor não identificado',
+          status: order.status,
+          createdAt: order.createdAt,
+          confirmedAt: order.confirmedAt,
+          shippedAt: order.shippedAt,
+          receivedAt: order.receivedAt,
+          totalValue: totalValue,
+          items: itemsWithDetails
+        };
+      }));
+      
+      // Calculate summary
+      const summary = {
+        totalOrders: ordersWithDetails.length,
+        receivedOrders: ordersWithDetails.filter(o => o.status === 'recebido').length,
+        pendingOrders: ordersWithDetails.filter(o => o.status !== 'recebido' && o.status !== 'cancelado').length,
+        totalValue: ordersWithDetails.reduce((sum, o) => sum + o.totalValue, 0)
+      };
+      
+      res.json({
+        summary,
+        orders: ordersWithDetails
+      });
+    } catch (error) {
+      console.error("[REPLENISHMENT REPORT] Error:", error);
+      res.status(500).json({ message: "Failed to get replenishment report" });
+    }
+  });
+
   app.get("/api/sites/:siteId/zones", async (req, res) => {
     try {
       const module = req.query.module as 'clean' | 'maintenance' | undefined;
