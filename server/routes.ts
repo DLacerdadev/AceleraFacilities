@@ -7425,7 +7425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const customersWithDetails = await Promise.all(
         supplierCustomers.map(async (sc) => {
-          const customer = await storage.getCustomerById(sc.customerId);
+          const customer = await storage.getCustomer(sc.customerId);
           return {
             ...sc,
             customer: customer ? { id: customer.id, name: customer.name, tradeName: customer.tradeName } : null
