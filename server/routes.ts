@@ -7748,6 +7748,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Auto-generate supplier work orders from low stock parts
+  app.post('/api/customers/:customerId/auto-replenishment', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      
+      // Get all parts at or below minimum stock
+      const lowStockParts = await storage.getPartsAtLowStock(customerId);
+      
+      if (lowStockParts.length === 0) {
+        return res.json({ message: 'Nenhuma peça com estoque baixo', ordersCreated: 0 });
+      }
+      
+      // Group parts by their primary supplier
+      const partsBySupplier = new Map<string, Array<{ part: typeof lowStockParts[0]; quantityToOrder: number }>>();
+      
+      for (const part of lowStockParts) {
+        const supplier = await storage.getPartPrimarySupplier(part.id, customerId);
+        if (!supplier) continue;
+        
+        const currentQty = parseFloat(part.currentQuantity || '0');
+        const maxQty = parseFloat(part.maxQuantity || part.minimumQuantity || '0');
+        const quantityToOrder = Math.max(maxQty - currentQty, 1);
+        
+        if (!partsBySupplier.has(supplier.id)) {
+          partsBySupplier.set(supplier.id, []);
+        }
+        partsBySupplier.get(supplier.id)!.push({ part, quantityToOrder });
+      }
+      
+      const createdOrders: any[] = [];
+      
+      // Create one work order per supplier
+      for (const [supplierId, partsInfo] of partsBySupplier) {
+        const workOrderId = nanoid();
+        const orderNumber = `SWO-${Date.now().toString(36).toUpperCase()}-${supplierId.slice(-4)}`;
+        
+        const wo = await storage.createSupplierWorkOrder({
+          id: workOrderId,
+          supplierId,
+          customerId,
+          orderNumber,
+          status: 'pendente',
+          priority: 'media',
+          notes: 'Gerado automaticamente por estoque baixo',
+          source: 'auto'
+        });
+        
+        // Create items for each low-stock part
+        for (const { part, quantityToOrder } of partsInfo) {
+          await storage.createSupplierWorkOrderItem({
+            id: nanoid(),
+            supplierWorkOrderId: workOrderId,
+            partId: part.id,
+            quantityRequested: quantityToOrder.toString()
+          });
+        }
+        
+        broadcast({ type: 'create', resource: 'supplierWorkOrders', data: wo });
+        createdOrders.push(wo);
+      }
+      
+      res.json({ 
+        message: `${createdOrders.length} pedido(s) criado(s)`,
+        ordersCreated: createdOrders.length,
+        orders: createdOrders
+      });
+    } catch (error) {
+      console.error('Error auto-generating supplier work orders:', error);
+      res.status(500).json({ message: 'Erro ao gerar pedidos automaticamente' });
+    }
+  });
+
   // Update supplier work order status
   app.patch('/api/supplier-work-orders/:id', requireAuth, async (req, res) => {
     try {
