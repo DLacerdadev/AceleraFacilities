@@ -12,13 +12,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Package, FileText, Truck, Plus, Eye, Send, CheckCircle, Loader2 } from "lucide-react";
-import type { Supplier, Part, MaintenancePlanProposal, SupplierPartBatch } from "@shared/schema";
+import { Package, FileText, Truck, Plus, Eye, Send, CheckCircle, Loader2, Clock, XCircle, AlertTriangle, Building2, ShoppingCart } from "lucide-react";
+import type { Supplier, Part, MaintenancePlanProposal, SupplierPartBatch, SupplierWorkOrder, SupplierWorkOrderItem } from "@shared/schema";
 
 type Customer = {
   id: string;
   name: string;
   tradeName?: string;
+};
+
+type EnrichedSupplierWorkOrderItem = SupplierWorkOrderItem & {
+  part?: Part;
+};
+
+type EnrichedSupplierWorkOrder = SupplierWorkOrder & {
+  items: EnrichedSupplierWorkOrderItem[];
+  customer?: Customer;
 };
 
 type SupplierCustomer = {
@@ -45,7 +54,7 @@ export default function SupplierPortal() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
-  const [activeTab, setActiveTab] = useState("inventory");
+  const [activeTab, setActiveTab] = useState("orders");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   
   const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
@@ -64,6 +73,11 @@ export default function SupplierPortal() {
   const [batchQuantity, setBatchQuantity] = useState("");
   const [batchExpectedDate, setBatchExpectedDate] = useState("");
   const [batchNotes, setBatchNotes] = useState("");
+  
+  const [isShipDialogOpen, setIsShipDialogOpen] = useState(false);
+  const [selectedWorkOrder, setSelectedWorkOrder] = useState<EnrichedSupplierWorkOrder | null>(null);
+  const [trackingCode, setTrackingCode] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
 
   const { data: userSupplier, isLoading: isLoadingSupplier } = useQuery<Supplier>({
     queryKey: ['/api/users', userId, 'supplier'],
@@ -91,6 +105,11 @@ export default function SupplierPortal() {
 
   const { data: partBatches, isLoading: isLoadingBatches } = useQuery<SupplierPartBatch[]>({
     queryKey: ['/api/suppliers', supplierId, 'part-batches'],
+    enabled: !!supplierId,
+  });
+
+  const { data: workOrders = [], isLoading: isLoadingWorkOrders } = useQuery<EnrichedSupplierWorkOrder[]>({
+    queryKey: ['/api/suppliers', supplierId, 'work-orders'],
     enabled: !!supplierId,
   });
 
@@ -142,6 +161,20 @@ export default function SupplierPortal() {
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao enviar lote", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateWorkOrderMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const response = await apiRequest("PATCH", `/api/supplier-work-orders/${id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Pedido atualizado com sucesso" });
+      queryClient.invalidateQueries({ queryKey: ['/api/suppliers', supplierId, 'work-orders'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao atualizar pedido", description: error.message, variant: "destructive" });
     },
   });
 
@@ -218,7 +251,7 @@ export default function SupplierPortal() {
   }
 
   function getCustomerName(customerId: string) {
-    const customer = customers?.find(c => c.id === customerId);
+    const customer = supplierCustomers?.find((c: Customer) => c.id === customerId);
     return customer?.tradeName || customer?.name || 'Cliente não encontrado';
   }
 
@@ -227,6 +260,74 @@ export default function SupplierPortal() {
     const part = allParts?.find(p => p.id === partId);
     return part?.name || partId;
   }
+
+  function getWorkOrderStatusBadge(status: string) {
+    switch (status) {
+      case 'pendente':
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"><Clock className="w-3 h-3 mr-1" />Pendente</Badge>;
+      case 'confirmado':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"><CheckCircle className="w-3 h-3 mr-1" />Confirmado</Badge>;
+      case 'enviado':
+        return <Badge variant="outline" className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"><Truck className="w-3 h-3 mr-1" />Enviado</Badge>;
+      case 'recebido':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"><CheckCircle className="w-3 h-3 mr-1" />Recebido</Badge>;
+      case 'cancelado':
+        return <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"><XCircle className="w-3 h-3 mr-1" />Cancelado</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  }
+
+  function getPriorityBadge(priority: string) {
+    switch (priority) {
+      case 'baixa':
+        return <Badge variant="outline" className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">Baixa</Badge>;
+      case 'media':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Média</Badge>;
+      case 'alta':
+        return <Badge variant="outline" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">Alta</Badge>;
+      case 'urgente':
+        return <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Urgente</Badge>;
+      default:
+        return <Badge variant="outline">{priority}</Badge>;
+    }
+  }
+
+  function handleConfirmOrder(order: EnrichedSupplierWorkOrder) {
+    updateWorkOrderMutation.mutate({
+      id: order.id,
+      data: { status: 'confirmado', confirmedAt: new Date().toISOString() }
+    });
+  }
+
+  function handleCancelOrder(order: EnrichedSupplierWorkOrder) {
+    updateWorkOrderMutation.mutate({
+      id: order.id,
+      data: { status: 'cancelado' }
+    });
+  }
+
+  function handleShipOrder() {
+    if (!selectedWorkOrder) return;
+    updateWorkOrderMutation.mutate({
+      id: selectedWorkOrder.id,
+      data: { 
+        status: 'enviado', 
+        shippedAt: new Date().toISOString(),
+        trackingCode: trackingCode || null,
+        invoiceNumber: invoiceNumber || null,
+      }
+    });
+    setIsShipDialogOpen(false);
+    setSelectedWorkOrder(null);
+    setTrackingCode("");
+    setInvoiceNumber("");
+  }
+
+  const pendingOrders = workOrders.filter(o => o.status === 'pendente');
+  const confirmedOrders = workOrders.filter(o => o.status === 'confirmado');
+  const shippedOrders = workOrders.filter(o => o.status === 'enviado');
+  const completedOrders = workOrders.filter(o => o.status === 'recebido' || o.status === 'cancelado');
 
   if (isLoadingSupplier) {
     return (
@@ -260,20 +361,261 @@ export default function SupplierPortal() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+          <TabsTrigger value="orders" data-testid="tab-orders" className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            <span className="hidden sm:inline">Pedidos</span>
+            {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-1 h-5 px-1.5">{pendingOrders.length}</Badge>}
+          </TabsTrigger>
           <TabsTrigger value="inventory" data-testid="tab-inventory" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            <span className="hidden sm:inline">Estoque do Cliente</span>
+            <span className="hidden sm:inline">Estoque</span>
           </TabsTrigger>
           <TabsTrigger value="proposals" data-testid="tab-proposals" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Propostas de Planos</span>
+            <span className="hidden sm:inline">Propostas</span>
           </TabsTrigger>
           <TabsTrigger value="shipments" data-testid="tab-shipments" className="flex items-center gap-2">
             <Truck className="h-4 w-4" />
-            <span className="hidden sm:inline">Envios de Peças</span>
+            <span className="hidden sm:inline">Envios</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="orders" className="space-y-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
+              <div>
+                <CardTitle>Pedidos de Reposição</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Gerencie os pedidos de peças dos clientes
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingWorkOrders ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : workOrders.length === 0 ? (
+                <div className="text-center py-8">
+                  <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Nenhum pedido recebido ainda</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pendingOrders.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold flex items-center gap-2 mb-3">
+                        <Clock className="h-4 w-4 text-yellow-600" />
+                        Aguardando Confirmação ({pendingOrders.length})
+                      </h3>
+                      <div className="space-y-3">
+                        {pendingOrders.map((order) => (
+                          <Card key={order.id} className="border-yellow-200 dark:border-yellow-800" data-testid={`card-order-${order.id}`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between gap-4 flex-wrap">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium">{order.orderNumber}</span>
+                                    {getPriorityBadge(order.priority)}
+                                    {order.source === 'auto' && <Badge variant="secondary">Auto</Badge>}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                                    <Building2 className="h-3 w-3" />
+                                    {order.customer?.tradeName || order.customer?.name || 'Cliente'}
+                                  </p>
+                                  <div className="mt-2 space-y-1">
+                                    {order.items.slice(0, 3).map((item) => (
+                                      <div key={item.id} className="text-sm flex justify-between">
+                                        <span className="truncate">{item.part?.name || 'Peça'}</span>
+                                        <span className="text-muted-foreground ml-2">{item.quantityRequested} {item.part?.unit || 'un'}</span>
+                                      </div>
+                                    ))}
+                                    {order.items.length > 3 && (
+                                      <p className="text-sm text-muted-foreground">+{order.items.length - 3} mais itens</p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => handleConfirmOrder(order)}
+                                    disabled={updateWorkOrderMutation.isPending}
+                                    data-testid={`button-confirm-${order.id}`}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Confirmar
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => handleCancelOrder(order)}
+                                    disabled={updateWorkOrderMutation.isPending}
+                                    data-testid={`button-cancel-${order.id}`}
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {confirmedOrders.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold flex items-center gap-2 mb-3">
+                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                        Prontos para Envio ({confirmedOrders.length})
+                      </h3>
+                      <div className="space-y-3">
+                        {confirmedOrders.map((order) => (
+                          <Card key={order.id} className="border-blue-200 dark:border-blue-800" data-testid={`card-order-${order.id}`}>
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between gap-4 flex-wrap">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium">{order.orderNumber}</span>
+                                    {getWorkOrderStatusBadge(order.status)}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">
+                                    {order.customer?.tradeName || order.customer?.name}
+                                  </p>
+                                  <p className="text-sm mt-1">{order.items.length} itens</p>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => {
+                                    setSelectedWorkOrder(order);
+                                    setIsShipDialogOpen(true);
+                                  }}
+                                  data-testid={`button-ship-${order.id}`}
+                                >
+                                  <Truck className="h-4 w-4 mr-1" />
+                                  Enviar
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {shippedOrders.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold flex items-center gap-2 mb-3">
+                        <Truck className="h-4 w-4 text-purple-600" />
+                        Em Trânsito ({shippedOrders.length})
+                      </h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Pedido</TableHead>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead>Rastreio</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {shippedOrders.map((order) => (
+                            <TableRow key={order.id} data-testid={`row-order-${order.id}`}>
+                              <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                              <TableCell>{order.customer?.tradeName || order.customer?.name}</TableCell>
+                              <TableCell>{order.trackingCode || '-'}</TableCell>
+                              <TableCell>{getWorkOrderStatusBadge(order.status)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
+                  {completedOrders.length > 0 && (
+                    <div>
+                      <h3 className="font-semibold flex items-center gap-2 mb-3">
+                        <Package className="h-4 w-4 text-green-600" />
+                        Finalizados ({completedOrders.length})
+                      </h3>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Pedido</TableHead>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead>Itens</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {completedOrders.slice(0, 10).map((order) => (
+                            <TableRow key={order.id} data-testid={`row-order-${order.id}`}>
+                              <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                              <TableCell>{order.customer?.tradeName || order.customer?.name}</TableCell>
+                              <TableCell>{order.items.length}</TableCell>
+                              <TableCell>{getWorkOrderStatusBadge(order.status)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Dialog open={isShipDialogOpen} onOpenChange={setIsShipDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Registrar Envio</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                {selectedWorkOrder && (
+                  <div className="bg-muted rounded-md p-3">
+                    <p className="font-medium">{selectedWorkOrder.orderNumber}</p>
+                    <p className="text-sm text-muted-foreground">{selectedWorkOrder.items.length} itens</p>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="tracking-code">Código de Rastreio</Label>
+                  <Input
+                    id="tracking-code"
+                    value={trackingCode}
+                    onChange={(e) => setTrackingCode(e.target.value)}
+                    placeholder="Ex: BR123456789BR"
+                    data-testid="input-tracking-code"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invoice-number">Número da Nota Fiscal</Label>
+                  <Input
+                    id="invoice-number"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    placeholder="Ex: 12345"
+                    data-testid="input-invoice-number"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsShipDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleShipOrder}
+                  disabled={updateWorkOrderMutation.isPending}
+                  data-testid="button-confirm-ship"
+                >
+                  {updateWorkOrderMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  <Truck className="h-4 w-4 mr-2" />
+                  Confirmar Envio
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
 
         <TabsContent value="inventory" className="space-y-4">
           <Card>
