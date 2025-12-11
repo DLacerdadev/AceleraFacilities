@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useModule } from "@/contexts/ModuleContext";
@@ -26,7 +27,12 @@ import {
   ArrowDownCircle,
   History,
   Search,
-  Truck
+  Truck,
+  CheckCircle2,
+  Clock,
+  CircleDot,
+  PackageCheck,
+  Loader2
 } from "lucide-react";
 import type { Part, PartMovement, Supplier } from "@shared/schema";
 
@@ -74,6 +80,11 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
   const [stockMovementType, setStockMovementType] = useState<"entrada" | "saida" | "ajuste">("entrada");
   const [stockMovementQuantity, setStockMovementQuantity] = useState("");
   const [stockMovementReason, setStockMovementReason] = useState("");
+  
+  const [activeTab, setActiveTab] = useState("inventory");
+  const [isConfirmReceiptDialogOpen, setIsConfirmReceiptDialogOpen] = useState(false);
+  const [selectedOrderForReceipt, setSelectedOrderForReceipt] = useState<any>(null);
+  const [receiptNotes, setReceiptNotes] = useState("");
 
   const { toast } = useToast();
 
@@ -142,6 +153,66 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
       return response.json();
     },
     enabled: !!customerId
+  });
+
+  type SupplierWorkOrderWithDetails = {
+    id: string;
+    orderNumber: string | null;
+    status: string;
+    priority: string;
+    createdAt: string | null;
+    confirmedAt: string | null;
+    shippedAt: string | null;
+    receivedAt: string | null;
+    receivedBy: string | null;
+    receivedNotes: string | null;
+    expectedDeliveryDate: string | null;
+    trackingCode: string | null;
+    invoiceNumber: string | null;
+    notes: string | null;
+    source: string | null;
+    supplier: { id: string; name: string } | null;
+    items: Array<{
+      id: string;
+      partId: string;
+      quantityRequested: string;
+      quantityConfirmed: string | null;
+      quantityShipped: string | null;
+      quantityReceived: string | null;
+      part: Part | null;
+    }>;
+  };
+
+  const { data: replenishmentOrders, isLoading: ordersLoading, refetch: refetchOrders } = useQuery<SupplierWorkOrderWithDetails[]>({
+    queryKey: ['/api/customers', customerId, 'supplier-work-orders'],
+    queryFn: async () => {
+      const response = await fetch(`/api/customers/${customerId}/supplier-work-orders`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('acelera_token')}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch replenishment orders');
+      return response.json();
+    },
+    enabled: !!customerId
+  });
+
+  const confirmReceiptMutation = useMutation({
+    mutationFn: async ({ orderId, notes }: { orderId: string; notes: string }) => {
+      const response = await apiRequest('POST', `/api/supplier-work-orders/${orderId}/confirm-receipt`, { notes });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/customers', customerId, 'supplier-work-orders'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/parts`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/parts/with-projections`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/customers/${customerId}/parts/low-stock`] });
+      toast({ title: "Sucesso", description: "Recebimento confirmado! Estoque atualizado." });
+      setIsConfirmReceiptDialogOpen(false);
+      setSelectedOrderForReceipt(null);
+      setReceiptNotes("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message || "Falha ao confirmar recebimento", variant: "destructive" });
+    }
   });
 
   const createPartMutation = useMutation({
@@ -450,7 +521,25 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
           </div>
         )}
 
-        <ModernCard className="mt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+          <TabsList className="mb-4">
+            <TabsTrigger value="inventory" data-testid="tab-inventory">
+              <Package className="w-4 h-4 mr-2" />
+              Inventário de Peças
+            </TabsTrigger>
+            <TabsTrigger value="replenishment" data-testid="tab-replenishment">
+              <Truck className="w-4 h-4 mr-2" />
+              Pedidos de Reabastecimento
+              {replenishmentOrders && replenishmentOrders.filter(o => o.status !== 'recebido' && o.status !== 'cancelado').length > 0 && (
+                <Badge variant="secondary" className="ml-2">
+                  {replenishmentOrders.filter(o => o.status !== 'recebido' && o.status !== 'cancelado').length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="inventory">
+        <ModernCard>
           <ModernCardHeader>
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-2">
@@ -806,7 +895,267 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
             </Table>
           </ModernCardContent>
         </ModernCard>
+          </TabsContent>
+
+          <TabsContent value="replenishment">
+            <ModernCard>
+              <ModernCardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <Truck className="w-5 h-5" style={{ color: theme.styles.color.color }} />
+                    <h2 className="text-lg font-semibold">Pedidos de Reabastecimento</h2>
+                    <Badge variant="secondary">{replenishmentOrders?.length || 0}</Badge>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => refetchOrders()}
+                    data-testid="button-refresh-orders"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </Button>
+                </div>
+              </ModernCardHeader>
+              <ModernCardContent>
+                {ordersLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : !replenishmentOrders || replenishmentOrders.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Truck className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhum pedido de reabastecimento encontrado</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {replenishmentOrders.sort((a, b) => 
+                      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+                    ).map((order) => {
+                      const formatDate = (dateStr: string | null) => {
+                        if (!dateStr) return null;
+                        return new Date(dateStr).toLocaleString('pt-BR', { 
+                          day: '2-digit', month: '2-digit', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        });
+                      };
+                      
+                      const getStatusBadge = (status: string) => {
+                        switch (status) {
+                          case 'pendente': return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Aguardando Confirmação</Badge>;
+                          case 'confirmado': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Confirmado</Badge>;
+                          case 'enviado': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Enviado</Badge>;
+                          case 'recebido': return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Recebido</Badge>;
+                          case 'cancelado': return <Badge variant="destructive">Cancelado</Badge>;
+                          default: return <Badge variant="secondary">{status}</Badge>;
+                        }
+                      };
+
+                      const canConfirmReceipt = order.shippedAt && !order.receivedAt;
+
+                      return (
+                        <div key={order.id} className="border rounded-lg p-4 space-y-4" data-testid={`order-card-${order.id}`}>
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">#{order.orderNumber || order.id.slice(0, 8)}</h3>
+                                {getStatusBadge(order.status)}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Fornecedor: {order.supplier?.name || 'Não definido'}
+                              </p>
+                              {order.trackingCode && (
+                                <p className="text-sm text-muted-foreground">
+                                  Código de rastreio: <span className="font-mono">{order.trackingCode}</span>
+                                </p>
+                              )}
+                            </div>
+                            {canConfirmReceipt && (
+                              <Button
+                                onClick={() => {
+                                  setSelectedOrderForReceipt(order);
+                                  setIsConfirmReceiptDialogOpen(true);
+                                }}
+                                className={theme.buttons.primary}
+                                style={theme.buttons.primaryStyle}
+                                data-testid={`button-confirm-receipt-${order.id}`}
+                              >
+                                <PackageCheck className="w-4 h-4 mr-2" />
+                                Confirmar Recebimento
+                              </Button>
+                            )}
+                          </div>
+
+                          <div className="border-t pt-4">
+                            <p className="text-sm font-medium mb-2">Itens do Pedido:</p>
+                            <div className="space-y-1">
+                              {order.items.map((item) => (
+                                <div key={item.id} className="flex items-center justify-between text-sm bg-muted/30 rounded px-2 py-1">
+                                  <span>{item.part?.name || 'Peça desconhecida'}</span>
+                                  <span className="font-mono">
+                                    {item.quantityShipped || item.quantityConfirmed || item.quantityRequested} un
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="border-t pt-4">
+                            <p className="text-sm font-medium mb-3">Linha do Tempo:</p>
+                            <div className="relative pl-6">
+                              <div className="absolute left-2 top-1 bottom-1 w-0.5 bg-muted"></div>
+                              
+                              <div className="relative pb-4">
+                                <div className={cn(
+                                  "absolute left-[-18px] w-4 h-4 rounded-full flex items-center justify-center",
+                                  "bg-green-100 border-2 border-green-500"
+                                )}>
+                                  <CheckCircle2 className="w-2.5 h-2.5 text-green-600" />
+                                </div>
+                                <div className="text-sm">
+                                  <span className="font-medium">Pedido Criado</span>
+                                  <span className="text-muted-foreground ml-2">{formatDate(order.createdAt)}</span>
+                                </div>
+                              </div>
+
+                              <div className="relative pb-4">
+                                <div className={cn(
+                                  "absolute left-[-18px] w-4 h-4 rounded-full flex items-center justify-center",
+                                  order.confirmedAt 
+                                    ? "bg-green-100 border-2 border-green-500" 
+                                    : "bg-gray-100 border-2 border-gray-300"
+                                )}>
+                                  {order.confirmedAt 
+                                    ? <CheckCircle2 className="w-2.5 h-2.5 text-green-600" />
+                                    : <Clock className="w-2.5 h-2.5 text-gray-400" />
+                                  }
+                                </div>
+                                <div className="text-sm">
+                                  <span className={cn("font-medium", !order.confirmedAt && "text-muted-foreground")}>
+                                    Confirmado pelo Fornecedor
+                                  </span>
+                                  {order.confirmedAt && (
+                                    <span className="text-muted-foreground ml-2">{formatDate(order.confirmedAt)}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="relative pb-4">
+                                <div className={cn(
+                                  "absolute left-[-18px] w-4 h-4 rounded-full flex items-center justify-center",
+                                  order.shippedAt 
+                                    ? "bg-green-100 border-2 border-green-500" 
+                                    : "bg-gray-100 border-2 border-gray-300"
+                                )}>
+                                  {order.shippedAt 
+                                    ? <CheckCircle2 className="w-2.5 h-2.5 text-green-600" />
+                                    : <Clock className="w-2.5 h-2.5 text-gray-400" />
+                                  }
+                                </div>
+                                <div className="text-sm">
+                                  <span className={cn("font-medium", !order.shippedAt && "text-muted-foreground")}>
+                                    Enviado
+                                  </span>
+                                  {order.shippedAt && (
+                                    <span className="text-muted-foreground ml-2">{formatDate(order.shippedAt)}</span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="relative">
+                                <div className={cn(
+                                  "absolute left-[-18px] w-4 h-4 rounded-full flex items-center justify-center",
+                                  order.receivedAt 
+                                    ? "bg-green-100 border-2 border-green-500" 
+                                    : "bg-gray-100 border-2 border-gray-300"
+                                )}>
+                                  {order.receivedAt 
+                                    ? <CheckCircle2 className="w-2.5 h-2.5 text-green-600" />
+                                    : <CircleDot className="w-2.5 h-2.5 text-gray-400" />
+                                  }
+                                </div>
+                                <div className="text-sm">
+                                  <span className={cn("font-medium", !order.receivedAt && "text-muted-foreground")}>
+                                    Recebido
+                                  </span>
+                                  {order.receivedAt && (
+                                    <span className="text-muted-foreground ml-2">{formatDate(order.receivedAt)}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </ModernCardContent>
+            </ModernCard>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      <Dialog open={isConfirmReceiptDialogOpen} onOpenChange={setIsConfirmReceiptDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Recebimento</DialogTitle>
+            <DialogDescription>
+              Confirme que as peças do pedido {selectedOrderForReceipt?.orderNumber || selectedOrderForReceipt?.id?.slice(0, 8)} foram recebidas.
+              O estoque será atualizado automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedOrderForReceipt && (
+            <div className="space-y-4 py-4">
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-sm font-medium mb-2">Itens a serem adicionados ao estoque:</p>
+                {selectedOrderForReceipt.items.map((item: any) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span>{item.part?.name}</span>
+                    <span className="font-mono text-green-600">
+                      +{item.quantityShipped || item.quantityConfirmed || item.quantityRequested} un
+                    </span>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="receipt-notes">Observações (opcional)</Label>
+                <Textarea
+                  id="receipt-notes"
+                  value={receiptNotes}
+                  onChange={(e) => setReceiptNotes(e.target.value)}
+                  placeholder="Ex: Todas as peças em bom estado"
+                  data-testid="input-receipt-notes"
+                />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsConfirmReceiptDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedOrderForReceipt) {
+                  confirmReceiptMutation.mutate({
+                    orderId: selectedOrderForReceipt.id,
+                    notes: receiptNotes
+                  });
+                }
+              }}
+              disabled={confirmReceiptMutation.isPending}
+              className={theme.buttons.primary}
+              style={theme.buttons.primaryStyle}
+              data-testid="button-submit-receipt"
+            >
+              {confirmReceiptMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Confirmar Recebimento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl">

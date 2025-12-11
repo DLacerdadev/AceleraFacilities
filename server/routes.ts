@@ -201,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Verificar se já existe uma O.S. pendente para esta peça
       const existingOrders = await storage.getSupplierWorkOrdersByCustomer(part.customerId);
-      const pendingStatuses = ['pendente', 'confirmado', 'em_transito'];
+      const pendingStatuses = ['pendente', 'confirmado', 'enviado'];
       
       for (const order of existingOrders) {
         if (!pendingStatuses.includes(order.status)) continue;
@@ -8152,7 +8152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         receivedAt: new Date(),
         receivedBy: userId,
         receivedNotes: notes || null,
-        status: 'concluido'
+        status: 'recebido'
       });
       
       broadcast({ type: 'update', resource: 'supplierWorkOrders', data: updated });
