@@ -7621,6 +7621,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== SUPPLIER WORK ORDERS (Parts Replenishment) =====
+
+  // Get supplier work orders for a supplier
+  app.get('/api/suppliers/:supplierId/work-orders', requireAuth, async (req, res) => {
+    try {
+      const workOrders = await storage.getSupplierWorkOrders(req.params.supplierId);
+      
+      // Enrich with items and part info
+      const enrichedOrders = await Promise.all(
+        workOrders.map(async (wo) => {
+          const items = await storage.getSupplierWorkOrderItems(wo.id);
+          const supplier = await storage.getSupplierById(wo.supplierId);
+          const customer = await storage.getCustomer(wo.customerId);
+          
+          const enrichedItems = await Promise.all(
+            items.map(async (item) => {
+              const part = await storage.getPartById(item.partId);
+              return { ...item, part };
+            })
+          );
+          
+          return { ...wo, items: enrichedItems, supplier, customer };
+        })
+      );
+      
+      res.json(enrichedOrders);
+    } catch (error) {
+      console.error('Error fetching supplier work orders:', error);
+      res.status(500).json({ message: 'Erro ao buscar pedidos do fornecedor' });
+    }
+  });
+
+  // Get supplier work orders for a customer
+  app.get('/api/customers/:customerId/supplier-work-orders', requireAuth, async (req, res) => {
+    try {
+      const workOrders = await storage.getSupplierWorkOrdersByCustomer(req.params.customerId);
+      
+      const enrichedOrders = await Promise.all(
+        workOrders.map(async (wo) => {
+          const items = await storage.getSupplierWorkOrderItems(wo.id);
+          const supplier = await storage.getSupplierById(wo.supplierId);
+          
+          const enrichedItems = await Promise.all(
+            items.map(async (item) => {
+              const part = await storage.getPartById(item.partId);
+              return { ...item, part };
+            })
+          );
+          
+          return { ...wo, items: enrichedItems, supplier };
+        })
+      );
+      
+      res.json(enrichedOrders);
+    } catch (error) {
+      console.error('Error fetching customer supplier work orders:', error);
+      res.status(500).json({ message: 'Erro ao buscar pedidos de fornecedores' });
+    }
+  });
+
+  // Get single supplier work order
+  app.get('/api/supplier-work-orders/:id', requireAuth, async (req, res) => {
+    try {
+      const wo = await storage.getSupplierWorkOrderById(req.params.id);
+      if (!wo) {
+        return res.status(404).json({ message: 'Pedido não encontrado' });
+      }
+      
+      const items = await storage.getSupplierWorkOrderItems(wo.id);
+      const supplier = await storage.getSupplierById(wo.supplierId);
+      const customer = await storage.getCustomer(wo.customerId);
+      
+      const enrichedItems = await Promise.all(
+        items.map(async (item) => {
+          const part = await storage.getPartById(item.partId);
+          return { ...item, part };
+        })
+      );
+      
+      res.json({ ...wo, items: enrichedItems, supplier, customer });
+    } catch (error) {
+      console.error('Error fetching supplier work order:', error);
+      res.status(500).json({ message: 'Erro ao buscar pedido' });
+    }
+  });
+
+  // Create supplier work order manually
+  app.post('/api/supplier-work-orders', requireAuth, async (req, res) => {
+    try {
+      const { supplierId, customerId, items, priority, expectedDeliveryDate, notes } = req.body;
+      
+      const workOrderId = nanoid();
+      const orderNumber = `SWO-${Date.now().toString(36).toUpperCase()}`;
+      
+      const wo = await storage.createSupplierWorkOrder({
+        id: workOrderId,
+        supplierId,
+        customerId,
+        orderNumber,
+        status: 'pendente',
+        priority: priority || 'media',
+        expectedDeliveryDate,
+        notes,
+        source: 'manual'
+      });
+      
+      // Create items
+      if (items && Array.isArray(items)) {
+        for (const item of items) {
+          await storage.createSupplierWorkOrderItem({
+            id: nanoid(),
+            supplierWorkOrderId: workOrderId,
+            partId: item.partId,
+            quantityRequested: item.quantityRequested,
+            unitCost: item.unitCost
+          });
+        }
+      }
+      
+      broadcast({ type: 'create', resource: 'supplierWorkOrders', data: wo });
+      res.status(201).json(wo);
+    } catch (error) {
+      console.error('Error creating supplier work order:', error);
+      res.status(500).json({ message: 'Erro ao criar pedido' });
+    }
+  });
+
+  // Update supplier work order status
+  app.patch('/api/supplier-work-orders/:id', requireAuth, async (req, res) => {
+    try {
+      const { status, trackingCode, invoiceNumber, notes, confirmedAt, shippedAt, receivedAt } = req.body;
+      
+      const updateData: any = {};
+      if (status) updateData.status = status;
+      if (trackingCode !== undefined) updateData.trackingCode = trackingCode;
+      if (invoiceNumber !== undefined) updateData.invoiceNumber = invoiceNumber;
+      if (notes !== undefined) updateData.notes = notes;
+      if (confirmedAt) updateData.confirmedAt = new Date(confirmedAt);
+      if (shippedAt) updateData.shippedAt = new Date(shippedAt);
+      if (receivedAt) updateData.receivedAt = new Date(receivedAt);
+      
+      const updated = await storage.updateSupplierWorkOrder(req.params.id, updateData);
+      if (!updated) {
+        return res.status(404).json({ message: 'Pedido não encontrado' });
+      }
+      
+      broadcast({ type: 'update', resource: 'supplierWorkOrders', data: updated });
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating supplier work order:', error);
+      res.status(500).json({ message: 'Erro ao atualizar pedido' });
+    }
+  });
+
+  // Update supplier work order item (for quantity updates)
+  app.patch('/api/supplier-work-order-items/:id', requireAuth, async (req, res) => {
+    try {
+      const { quantityConfirmed, quantityShipped, quantityReceived, unitCost } = req.body;
+      
+      const updateData: any = {};
+      if (quantityConfirmed !== undefined) updateData.quantityConfirmed = quantityConfirmed;
+      if (quantityShipped !== undefined) updateData.quantityShipped = quantityShipped;
+      if (quantityReceived !== undefined) updateData.quantityReceived = quantityReceived;
+      if (unitCost !== undefined) updateData.unitCost = unitCost;
+      
+      const updated = await storage.updateSupplierWorkOrderItem(req.params.id, updateData);
+      if (!updated) {
+        return res.status(404).json({ message: 'Item não encontrado' });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error('Error updating supplier work order item:', error);
+      res.status(500).json({ message: 'Erro ao atualizar item' });
+    }
+  });
+
   // ===== MAINTENANCE PLAN PROPOSALS =====
 
   // Get proposals by supplier
