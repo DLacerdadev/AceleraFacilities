@@ -8,10 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, CheckCircle, MapPin, Building2, AlertCircle, Camera, X, PauseCircle, Image as ImageIcon, WifiOff } from "lucide-react";
+import { ArrowLeft, CheckCircle, MapPin, Building2, AlertCircle, Camera, X, PauseCircle, Image as ImageIcon, WifiOff, QrCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNetwork } from "@/contexts/NetworkContext";
 import { useOfflineStorage } from "@/hooks/use-offline-storage";
+import { useQRAccess } from "@/contexts/QRAccessContext";
 import { nanoid } from "nanoid";
 import { pickMultipleImages, promptForPicture, type CapturedPhoto } from "@/lib/camera-utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -55,6 +56,7 @@ export default function MobileWorkOrderExecute() {
     createOfflineChecklistExecution,
     createOfflineAttachment 
   } = useOfflineStorage();
+  const { validateQRAccess } = useQRAccess();
   
   const [workOrder, setWorkOrder] = useState<any>(null);
   const [checklist, setChecklist] = useState<any>(null);
@@ -66,6 +68,19 @@ export default function MobileWorkOrderExecute() {
   const [pausePhotos, setPausePhotos] = useState<CapturedPhoto[]>([]);
   const [isPausing, setIsPausing] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [hasQRAccess, setHasQRAccess] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Validar acesso via QR code
+    if (params?.id) {
+      const isValidAccess = validateQRAccess(params.id);
+      setHasQRAccess(isValidAccess);
+      
+      if (!isValidAccess) {
+        console.log('[MOBILE WO EXECUTE] Acesso negado - não veio via QR code:', params.id);
+      }
+    }
+  }, [params?.id, validateQRAccess]);
 
   useEffect(() => {
     // Carregar usuário do localStorage
@@ -75,10 +90,11 @@ export default function MobileWorkOrderExecute() {
       setCurrentUser(authData.user);
     }
     
-    if (params?.id) {
+    // Só carregar work order se tiver acesso válido via QR
+    if (params?.id && hasQRAccess === true) {
       loadWorkOrder(params.id);
     }
-  }, [params?.id]);
+  }, [params?.id, hasQRAccess]);
 
   const loadWorkOrder = async (id: string) => {
     setIsLoading(true);
@@ -598,7 +614,35 @@ export default function MobileWorkOrderExecute() {
     }
   };
 
-  if (isLoading) {
+  // Verificar acesso via QR code - bloquear acesso direto via URL
+  if (hasQRAccess === false) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="max-w-md mx-auto mt-8">
+          <CardContent className="p-6 text-center">
+            <QrCode className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2" data-testid="text-qr-access-required">Acesso via QR Code Necessário</h3>
+            <p className="text-slate-600 mb-4">
+              Para acessar esta ordem de serviço, é necessário escanear o QR Code correspondente.
+            </p>
+            <p className="text-sm text-slate-500 mb-6">
+              Esta página só pode ser acessada após leitura do QR Code no local.
+            </p>
+            <Button 
+              onClick={() => setLocation('/mobile/qr-scanner')} 
+              className="w-full"
+              data-testid="button-go-to-scanner"
+            >
+              <QrCode className="w-4 h-4 mr-2" />
+              Ir para Scanner QR
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isLoading || hasQRAccess === null) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 flex items-center justify-center">
         <div className="text-center">

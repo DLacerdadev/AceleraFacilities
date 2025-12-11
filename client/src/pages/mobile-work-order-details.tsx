@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MapPin, Building2, Clock, CheckCircle, AlertCircle, Calendar, User, QrCode, Flag, PlayCircle, PauseCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQRAccess } from "@/contexts/QRAccessContext";
 import { Capacitor } from "@capacitor/core";
 
 // Get base URL for API requests (absolute URL for APK, relative for web)
@@ -20,6 +21,7 @@ export default function MobileWorkOrderDetails() {
   const [, params] = useRoute("/mobile/work-order-details/:id");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { registerQRAccess } = useQRAccess();
   
   const [workOrder, setWorkOrder] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,6 +126,9 @@ export default function MobileWorkOrderDetails() {
         description: "A ordem de serviço foi retomada com sucesso.",
       });
 
+      // Registrar acesso via QR para permitir navegação
+      registerQRAccess(workOrder.id);
+      
       // Redirecionar para página de execução
       setTimeout(() => {
         setLocation(`/mobile/work-order/${workOrder.id}`);
