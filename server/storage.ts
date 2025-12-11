@@ -601,6 +601,7 @@ export interface IStorage {
   getCustomerSuppliers(customerId: string): Promise<Supplier[]>;
   addSupplierCustomer(data: InsertSupplierCustomer & { id: string }): Promise<SupplierCustomer>;
   removeSupplierCustomer(supplierId: string, customerId: string): Promise<void>;
+  supplierHasCustomerAccess(supplierId: string, customerId: string): Promise<boolean>;
 
   // Supplier Users
   getSupplierUsers(supplierId: string): Promise<SupplierUser[]>;
@@ -9711,6 +9712,16 @@ PROIBIDO: Responder "preciso saber a data" - VOCÊ JÁ TEM A DATA!`;
         eq(supplierCustomers.customerId, customerId)
       )
     );
+  }
+
+  async supplierHasCustomerAccess(supplierId: string, customerId: string): Promise<boolean> {
+    const result = await db.select().from(supplierCustomers).where(
+      and(
+        eq(supplierCustomers.supplierId, supplierId),
+        eq(supplierCustomers.customerId, customerId)
+      )
+    ).limit(1);
+    return result.length > 0;
   }
 
   // Supplier Users
