@@ -7760,21 +7760,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ message: 'Nenhuma peça com estoque baixo', ordersCreated: 0 });
       }
       
-      // Group parts by their primary supplier
-      const partsBySupplier = new Map<string, Array<{ part: typeof lowStockParts[0]; quantityToOrder: number }>>();
+      // Group parts by their supplier (using supplierId field from part)
+      const partsBySupplier = new Map<string, Array<{ 
+        part: typeof lowStockParts[0]; 
+        quantityToOrder: number;
+        unitCost: string | null;
+        totalCost: number;
+      }>>();
       
       for (const part of lowStockParts) {
-        const supplier = await storage.getPartPrimarySupplier(part.id, customerId);
-        if (!supplier) continue;
+        // Use the supplierId directly from the part
+        const supplierId = part.supplierId;
+        if (!supplierId) {
+          console.log(`[AUTO-REPLENISHMENT] Peça ${part.name} (${part.id}) não tem fornecedor definido, pulando...`);
+          continue;
+        }
         
         const currentQty = parseFloat(part.currentQuantity || '0');
-        const maxQty = parseFloat(part.maxQuantity || part.minimumQuantity || '0');
-        const quantityToOrder = Math.max(maxQty - currentQty, 1);
+        // Use maximumQuantity field correctly, fallback to minimumQuantity * 2 if not set
+        const maxQty = parseFloat(part.maximumQuantity || '0') || (parseFloat(part.minimumQuantity || '0') * 2);
+        // Calculate quantity needed: Maximum - Current (minimum 1)
+        const quantityToOrder = Math.max(Math.ceil(maxQty - currentQty), 1);
         
-        if (!partsBySupplier.has(supplier.id)) {
-          partsBySupplier.set(supplier.id, []);
+        // Calculate cost
+        const unitCost = part.costPrice || null;
+        const totalCost = unitCost ? quantityToOrder * parseFloat(unitCost) : 0;
+        
+        console.log(`[AUTO-REPLENISHMENT] Peça: ${part.name}, Atual: ${currentQty}, Máximo: ${maxQty}, Qtd a pedir: ${quantityToOrder}, Custo unit.: ${unitCost}, Total: ${totalCost}`);
+        
+        if (!partsBySupplier.has(supplierId)) {
+          partsBySupplier.set(supplierId, []);
         }
-        partsBySupplier.get(supplier.id)!.push({ part, quantityToOrder });
+        partsBySupplier.get(supplierId)!.push({ part, quantityToOrder, unitCost, totalCost });
+      }
+      
+      if (partsBySupplier.size === 0) {
+        return res.json({ message: 'Nenhuma peça com estoque baixo tem fornecedor definido', ordersCreated: 0 });
       }
       
       const createdOrders: any[] = [];
@@ -7784,6 +7805,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const workOrderId = nanoid();
         const orderNumber = `SWO-${Date.now().toString(36).toUpperCase()}-${supplierId.slice(-4)}`;
         
+        // Calculate total order value
+        const orderTotalValue = partsInfo.reduce((sum, item) => sum + item.totalCost, 0);
+        
         const wo = await storage.createSupplierWorkOrder({
           id: workOrderId,
           supplierId,
@@ -7791,27 +7815,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orderNumber,
           status: 'pendente',
           priority: 'media',
-          notes: 'Gerado automaticamente por estoque baixo',
+          notes: `Gerado automaticamente por estoque baixo. Valor total estimado: R$ ${orderTotalValue.toFixed(2)}`,
           source: 'auto'
         });
         
-        // Create items for each low-stock part
-        for (const { part, quantityToOrder } of partsInfo) {
+        // Create items for each low-stock part with quantity and unit cost
+        for (const { part, quantityToOrder, unitCost } of partsInfo) {
           await storage.createSupplierWorkOrderItem({
             id: nanoid(),
             supplierWorkOrderId: workOrderId,
             partId: part.id,
-            quantityRequested: quantityToOrder.toString()
+            quantityRequested: quantityToOrder.toString(),
+            unitCost: unitCost
           });
         }
         
         broadcast({ type: 'create', resource: 'supplierWorkOrders', data: wo });
-        createdOrders.push(wo);
+        createdOrders.push({ ...wo, totalValue: orderTotalValue, itemsCount: partsInfo.length });
       }
       
+      const totalValue = createdOrders.reduce((sum, o) => sum + (o.totalValue || 0), 0);
+      
       res.json({ 
-        message: `${createdOrders.length} pedido(s) criado(s)`,
+        message: `${createdOrders.length} pedido(s) criado(s) - Valor total: R$ ${totalValue.toFixed(2)}`,
         ordersCreated: createdOrders.length,
+        totalValue,
         orders: createdOrders
       });
     } catch (error) {
