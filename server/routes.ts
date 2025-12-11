@@ -171,9 +171,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Broadcast atualização da peça
       broadcast({ type: 'update', resource: 'parts', data: { id: part.id } });
+      
+      // Verificação REATIVA: Se atingiu mínimo, gerar O.S. de reposição automaticamente
+      await checkAndGenerateReplenishmentForPart(part.id);
     }
     
     console.log(`[STOCK] Desconto de estoque concluído para O.S. ${workOrderId}`);
+  }
+  
+  // ============================================================================
+  // 🔧 FUNÇÃO REATIVA: Verificar e gerar O.S. de reposição automaticamente
+  // ============================================================================
+  async function checkAndGenerateReplenishmentForPart(partId: string) {
+    try {
+      const part = await storage.getPart(partId);
+      if (!part || !part.isActive || !part.supplierId) {
+        return; // Peça não encontrada, inativa ou sem fornecedor
+      }
+      
+      const currentQty = parseFloat(part.currentQuantity || '0');
+      const minQty = parseFloat(part.minimumQuantity || '0');
+      
+      // Verificar se atingiu o mínimo
+      if (currentQty > minQty) {
+        return; // Estoque ainda acima do mínimo
+      }
+      
+      console.log(`[AUTO-REPLENISHMENT REATIVO] Peça ${part.name} atingiu estoque mínimo (${currentQty} <= ${minQty})`);
+      
+      // Verificar se já existe uma O.S. pendente para esta peça
+      const existingOrders = await storage.getSupplierWorkOrdersByCustomer(part.customerId);
+      const pendingStatuses = ['pendente', 'confirmado', 'em_transito'];
+      
+      for (const order of existingOrders) {
+        if (!pendingStatuses.includes(order.status)) continue;
+        
+        const items = await storage.getSupplierWorkOrderItems(order.id);
+        const hasThisPart = items.some(item => item.partId === partId);
+        
+        if (hasThisPart) {
+          console.log(`[AUTO-REPLENISHMENT REATIVO] Já existe pedido pendente para ${part.name} (O.S. ${order.orderNumber})`);
+          return; // Já existe pedido pendente
+        }
+      }
+      
+      // Calcular quantidade a pedir: Máximo - Atual
+      const maxQty = parseFloat(part.maximumQuantity || '0') || (minQty * 2);
+      const quantityToOrder = Math.max(Math.ceil(maxQty - currentQty), 1);
+      const unitCost = part.costPrice || null;
+      const totalCost = unitCost ? quantityToOrder * parseFloat(unitCost) : 0;
+      
+      console.log(`[AUTO-REPLENISHMENT REATIVO] Criando pedido: ${quantityToOrder} x ${part.name} = R$ ${totalCost.toFixed(2)}`);
+      
+      // Criar O.S. de reposição
+      const workOrderId = nanoid();
+      const orderNumber = `SWO-${Date.now().toString(36).toUpperCase()}-${part.supplierId.slice(-4)}`;
+      
+      const wo = await storage.createSupplierWorkOrder({
+        id: workOrderId,
+        supplierId: part.supplierId,
+        customerId: part.customerId,
+        orderNumber,
+        status: 'pendente',
+        priority: 'media',
+        notes: `Gerado automaticamente (reativo) - Estoque atingiu mínimo. Valor: R$ ${totalCost.toFixed(2)}`,
+        source: 'auto'
+      });
+      
+      // Criar item do pedido
+      await storage.createSupplierWorkOrderItem({
+        id: nanoid(),
+        supplierWorkOrderId: workOrderId,
+        partId: part.id,
+        quantityRequested: quantityToOrder.toString(),
+        unitCost: unitCost
+      });
+      
+      broadcast({ type: 'create', resource: 'supplierWorkOrders', data: wo });
+      console.log(`[AUTO-REPLENISHMENT REATIVO] Pedido ${orderNumber} criado com sucesso para ${part.name}`);
+      
+    } catch (error) {
+      console.error('[AUTO-REPLENISHMENT REATIVO] Erro:', error);
+    }
   }
   
   // ============================================================================
@@ -6842,6 +6921,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createPartMovement(movement);
 
       broadcast({ type: 'update', resource: 'parts', data: updatedPart });
+      
+      // Verificação REATIVA: Se foi saída e atingiu mínimo, gerar O.S. de reposição
+      if (movementType === 'saida') {
+        await checkAndGenerateReplenishmentForPart(req.params.id);
+      }
+      
       res.json(updatedPart);
     } catch (error) {
       if (error instanceof z.ZodError) {
