@@ -8105,12 +8105,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get items to update stock
       const items = await storage.getSupplierWorkOrderItems(wo.id);
+      console.log(`[CONFIRM-RECEIPT] Found ${items.length} items for WO ${wo.id}`);
       
       // Update each item's quantity received and add to stock
       for (const item of items) {
-        const quantityToAdd = parseFloat(item.quantityShipped?.toString() || item.quantityRequested?.toString() || '0');
+        console.log(`[CONFIRM-RECEIPT] Processing item ${item.id}:`, {
+          partId: item.partId,
+          quantityShipped: item.quantityShipped,
+          quantityRequested: item.quantityRequested,
+          quantityConfirmed: item.quantityConfirmed
+        });
+        const quantityToAdd = parseFloat(item.quantityShipped?.toString() || item.quantityConfirmed?.toString() || item.quantityRequested?.toString() || '0');
         
         if (quantityToAdd > 0) {
+          console.log(`[CONFIRM-RECEIPT] Will add ${quantityToAdd} units`);
           // Update item with quantity received
           await storage.updateSupplierWorkOrderItem(item.id, {
             quantityReceived: quantityToAdd.toString()
@@ -8118,14 +8126,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Get current part stock
           const part = await storage.getPart(item.partId);
+          console.log(`[CONFIRM-RECEIPT] Part found:`, part ? { id: part.id, name: part.name, currentQuantity: part.currentQuantity } : 'NOT FOUND');
           if (part) {
-            const currentStock = parseFloat(part.currentStock?.toString() || '0');
+            const currentStock = parseFloat(part.currentQuantity?.toString() || '0');
             const newStock = currentStock + quantityToAdd;
             
+            console.log(`[CONFIRM-RECEIPT] Updating stock: ${currentStock} -> ${newStock}`);
             // Update part stock
-            await storage.updatePart(item.partId, {
-              currentStock: newStock.toString()
+            const updatedPart = await storage.updatePart(item.partId, {
+              currentQuantity: newStock.toString()
             });
+            console.log(`[CONFIRM-RECEIPT] Stock updated result:`, updatedPart ? { id: updatedPart.id, currentQuantity: updatedPart.currentQuantity } : 'FAILED');
             
             // Create part movement for the stock entry
             const movementId = nanoid();
@@ -8142,7 +8153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             // Broadcast part update
-            broadcast({ type: 'update', resource: 'parts', data: { ...part, currentStock: newStock.toString() } });
+            broadcast({ type: 'update', resource: 'parts', data: { ...part, currentQuantity: newStock.toString() } });
           }
         }
       }
