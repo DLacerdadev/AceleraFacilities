@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +92,12 @@ export default function SupplierPortal() {
   });
 
   const supplierCustomers = supplierCustomersRaw?.map(sc => sc.customer).filter(Boolean) as Customer[] | undefined;
+
+  useEffect(() => {
+    if (supplierCustomers && supplierCustomers.length > 0 && !selectedCustomerId) {
+      setSelectedCustomerId(supplierCustomers[0].id);
+    }
+  }, [supplierCustomers, selectedCustomerId]);
 
   const { data: customerParts, isLoading: isLoadingParts } = useQuery<Part[]>({
     queryKey: ['/api/suppliers', supplierId, 'customers', selectedCustomerId, 'parts'],
