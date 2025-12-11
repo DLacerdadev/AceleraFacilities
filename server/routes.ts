@@ -8272,7 +8272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== SUPPLIER INVENTORY VIEW =====
 
-  // View customer's parts inventory (read-only for suppliers)
+  // View customer's parts inventory (read-only for suppliers) - only parts supplied by this supplier
   app.get('/api/suppliers/:supplierId/customers/:customerId/parts', requireAuth, async (req, res) => {
     try {
       // Verify supplier has access to this customer
@@ -8281,8 +8281,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Fornecedor não tem acesso a este cliente' });
       }
       
-      const parts = await storage.getPartsByCustomer(req.params.customerId);
-      res.json(parts);
+      // Get all parts for the customer and filter by supplier
+      const allParts = await storage.getPartsByCustomer(req.params.customerId);
+      const supplierParts = allParts.filter(part => part.supplierId === req.params.supplierId);
+      res.json(supplierParts);
     } catch (error) {
       console.error('Error fetching customer parts for supplier:', error);
       res.status(500).json({ message: 'Erro ao buscar peças do cliente' });
