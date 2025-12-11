@@ -232,7 +232,7 @@ export default function SupplierPortal() {
       quantityPlanned: parseInt(batchQuantity),
       expectedDeliveryDate: batchExpectedDate || null,
       notes: batchNotes.trim() || null,
-      workOrderId: batchWorkOrderId || null,
+      workOrderId: batchWorkOrderId && batchWorkOrderId !== 'none' ? batchWorkOrderId : null,
     });
   }
 
@@ -947,7 +947,7 @@ export default function SupplierPortal() {
                           <SelectValue placeholder={batchCustomerId ? "Selecione uma O.S. (opcional)" : "Selecione o cliente primeiro"} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Nenhuma</SelectItem>
+                          <SelectItem value="none">Nenhuma</SelectItem>
                           {selectedCustomerWorkOrders?.filter(wo => wo.status !== 'completed' && wo.status !== 'cancelled').map((wo) => (
                             <SelectItem key={wo.id} value={wo.id}>
                               #{wo.orderNumber || wo.id.slice(0, 8)} - {wo.title || wo.description?.slice(0, 30) || 'Sem título'}
