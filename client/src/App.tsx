@@ -359,6 +359,20 @@ function Router() {
     );
   }
 
+  // Se é usuário de fornecedor, mostrar rotas do portal do fornecedor
+  if (user.userType === 'supplier_user') {
+    return (
+      <Switch>
+        <Route path="/supplier-portal" component={() => <SupplierPortal />} />
+        <Route path="/supplier-proposals" component={() => <SupplierProposals />} />
+        <Route path="/public/tv/:slug" component={PublicZoneTv} />
+        <Route>
+          <Redirect to="/supplier-portal" />
+        </Route>
+      </Switch>
+    );
+  }
+
   // Se é colaborador (operador com apenas permissões mobile), mostrar interface móvel
   if (isMobileOnlyUser) {
     return <MobileRouter />;
