@@ -427,12 +427,29 @@ export default function Equipment({ customerId }: EquipmentProps) {
     setValue(equip.value || "");
     setStatus(equip.status);
     setDescription(equip.description || "");
+    setPhotoPreview(equip.photoUrl || null);
+    setPhotoFile(null);
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     const companyId = (customer as any)?.companyId;
     if (!editingEquipment || !companyId) return;
+
+    let photoUrl = photoPreview;
+    if (photoFile) {
+      try {
+        photoUrl = await uploadPhoto();
+      } catch (error) {
+        console.error("Erro ao fazer upload da foto:", error);
+        toast({
+          title: "Erro no upload da foto",
+          description: "Não foi possível enviar a foto. Tente novamente.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
 
     updateEquipmentMutation.mutate({
       id: editingEquipment.id,
@@ -450,6 +467,7 @@ export default function Equipment({ customerId }: EquipmentProps) {
       value: value ? parseFloat(value) : null,
       status,
       description: description || null,
+      photoUrl: photoUrl || null,
     });
   };
 
@@ -1068,6 +1086,51 @@ export default function Equipment({ customerId }: EquipmentProps) {
                   rows={3}
                 />
               </div>
+
+              <div className="space-y-2">
+                <Label>Foto do Equipamento</Label>
+                <div className="flex items-start gap-4">
+                  {photoPreview ? (
+                    <div className="relative">
+                      <img 
+                        src={photoPreview} 
+                        alt="Preview" 
+                        className="w-32 h-32 object-cover rounded-md border"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6"
+                        onClick={removePhoto}
+                        data-testid="button-edit-remove-photo"
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label 
+                      htmlFor="edit-photo-upload"
+                      className="flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed rounded-md cursor-pointer hover:border-primary transition-colors"
+                    >
+                      <Camera className="w-8 h-8 text-muted-foreground mb-2" />
+                      <span className="text-xs text-muted-foreground">Adicionar foto</span>
+                      <input
+                        id="edit-photo-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handlePhotoSelect}
+                        data-testid="input-edit-photo"
+                      />
+                    </label>
+                  )}
+                  <div className="text-xs text-muted-foreground">
+                    <p>Formatos: JPG, PNG, WEBP</p>
+                    <p>Tamanho máximo: 5MB</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -1083,11 +1146,11 @@ export default function Equipment({ customerId }: EquipmentProps) {
               </Button>
               <Button
                 onClick={handleUpdate}
-                disabled={updateEquipmentMutation.isPending}
+                disabled={updateEquipmentMutation.isPending || isUploadingPhoto}
                 className={theme.buttons.primary}
                 style={theme.buttons.primaryStyle}
               >
-                {updateEquipmentMutation.isPending ? "Atualizando..." : "Atualizar"}
+                {isUploadingPhoto ? "Enviando foto..." : updateEquipmentMutation.isPending ? "Atualizando..." : "Atualizar"}
               </Button>
             </div>
           </DialogContent>
