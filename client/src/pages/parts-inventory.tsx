@@ -598,7 +598,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                       Nova Peça
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Nova Peça</DialogTitle>
                       <DialogDescription>
@@ -1158,7 +1158,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
       </Dialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Peça</DialogTitle>
             <DialogDescription>
@@ -1417,7 +1417,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
       </Dialog>
 
       <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Histórico de Movimentações</DialogTitle>
             <DialogDescription>
