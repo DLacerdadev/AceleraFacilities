@@ -7855,6 +7855,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update supplier user
+  app.patch('/api/suppliers/:id/users/:userId', requireAuth, requirePermission('suppliers_edit'), async (req, res) => {
+    try {
+      const { name, email, phone, newPassword } = req.body;
+      
+      // Update user data
+      const updateData: any = {};
+      if (name) updateData.name = name;
+      if (email) updateData.email = email;
+      if (phone !== undefined) updateData.phone = phone;
+      if (newPassword) {
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        updateData.password = hashedPassword;
+      }
+      
+      const updatedUser = await storage.updateUser(req.params.userId, updateData);
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+      
+      broadcast({ type: 'update', resource: 'users', data: sanitizeUser(updatedUser) });
+      broadcast({ type: 'update', resource: 'supplierUsers', data: { supplierId: req.params.id, userId: req.params.userId } });
+      
+      res.json(sanitizeUser(updatedUser));
+    } catch (error) {
+      console.error('Error updating supplier user:', error);
+      res.status(500).json({ message: 'Erro ao atualizar usuário do fornecedor' });
+    }
+  });
+
   // Remove user from supplier
   app.delete('/api/suppliers/:id/users/:userId', requireAuth, requirePermission('suppliers_edit'), async (req, res) => {
     try {

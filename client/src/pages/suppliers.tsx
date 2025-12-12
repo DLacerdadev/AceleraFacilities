@@ -57,6 +57,14 @@ export default function Suppliers() {
   const [isCustomersDialogOpen, setIsCustomersDialogOpen] = useState(false);
   const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
+  const [selectedUserToEdit, setSelectedUserToEdit] = useState<SupplierUser | null>(null);
+  const [editUserData, setEditUserData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    newPassword: "",
+  });
   
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
@@ -201,6 +209,35 @@ export default function Suppliers() {
       toast({ title: "Erro ao remover usuário", description: error.message, variant: "destructive" });
     },
   });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: { userId: string; name: string; email: string; phone?: string; newPassword?: string }) => {
+      const response = await apiRequest("PATCH", `/api/suppliers/${selectedSupplier?.id}/users/${data.userId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Usuário atualizado com sucesso" });
+      queryClient.invalidateQueries({ queryKey: ['/api/suppliers', selectedSupplier?.id, 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      setIsEditUserDialogOpen(false);
+      setSelectedUserToEdit(null);
+      setEditUserData({ name: "", email: "", phone: "", newPassword: "" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao atualizar usuário", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleEditUser = (su: SupplierUser) => {
+    setSelectedUserToEdit(su);
+    setEditUserData({
+      name: su.user?.name || "",
+      email: su.user?.email || "",
+      phone: "",
+      newPassword: "",
+    });
+    setIsEditUserDialogOpen(true);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -637,6 +674,14 @@ export default function Suppliers() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => handleEditUser(su)}
+                        data-testid={`button-edit-user-${su.userId}`}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => removeUserMutation.mutate(su.userId)}
                         disabled={removeUserMutation.isPending}
                         data-testid={`button-remove-user-${su.userId}`}
@@ -728,6 +773,79 @@ export default function Suppliers() {
             >
               {addUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Criar Usuário
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuário do Fornecedor</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome *</Label>
+              <Input
+                value={editUserData.name}
+                onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })}
+                placeholder="Nome completo"
+                data-testid="input-edit-user-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>E-mail *</Label>
+              <Input
+                type="email"
+                value={editUserData.email}
+                onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
+                placeholder="email@exemplo.com"
+                data-testid="input-edit-user-email"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Telefone</Label>
+              <Input
+                value={editUserData.phone}
+                onChange={(e) => setEditUserData({ ...editUserData, phone: e.target.value })}
+                placeholder="(11) 99999-9999"
+                data-testid="input-edit-user-phone"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nova Senha (deixe em branco para manter a atual)</Label>
+              <Input
+                type="password"
+                value={editUserData.newPassword}
+                onChange={(e) => setEditUserData({ ...editUserData, newPassword: e.target.value })}
+                placeholder="Digite a nova senha"
+                data-testid="input-edit-user-password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditUserDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedUserToEdit && editUserData.name && editUserData.email) {
+                  updateUserMutation.mutate({
+                    userId: selectedUserToEdit.userId,
+                    name: editUserData.name,
+                    email: editUserData.email,
+                    phone: editUserData.phone || undefined,
+                    newPassword: editUserData.newPassword || undefined,
+                  });
+                }
+              }}
+              disabled={!editUserData.name || !editUserData.email || updateUserMutation.isPending}
+              className={theme.buttons.primary}
+              style={theme.buttons.primaryStyle}
+              data-testid="button-confirm-edit-user"
+            >
+              {updateUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
