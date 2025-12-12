@@ -461,7 +461,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
     const current = parseFloat(part.currentQuantity || '0');
     const minimum = parseFloat(part.minimumQuantity || '0');
     if (isNaN(current) || isNaN(minimum)) return false;
-    return current < minimum;
+    return current <= minimum;
   };
 
   const getEquipmentTypeName = (typeId: string | null) => {
