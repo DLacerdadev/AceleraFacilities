@@ -313,10 +313,10 @@ export default function Equipment({ customerId }: EquipmentProps) {
   const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > 15 * 1024 * 1024) {
         toast({
           title: "Arquivo muito grande",
-          description: "A foto deve ter no máximo 5MB",
+          description: "A foto deve ter no máximo 15MB",
           variant: "destructive"
         });
         return;
@@ -786,7 +786,7 @@ export default function Equipment({ customerId }: EquipmentProps) {
                       )}
                       <div className="text-xs text-muted-foreground">
                         <p>Formatos: JPG, PNG, WEBP</p>
-                        <p>Tamanho máximo: 5MB</p>
+                        <p>Tamanho máximo: 15MB</p>
                       </div>
                     </div>
                   </div>
@@ -1127,7 +1127,7 @@ export default function Equipment({ customerId }: EquipmentProps) {
                   )}
                   <div className="text-xs text-muted-foreground">
                     <p>Formatos: JPG, PNG, WEBP</p>
-                    <p>Tamanho máximo: 5MB</p>
+                    <p>Tamanho máximo: 15MB</p>
                   </div>
                 </div>
               </div>
