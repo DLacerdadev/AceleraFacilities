@@ -80,6 +80,12 @@ export default function Login() {
       
       await new Promise(resolve => setTimeout(resolve, 500));
       
+      // Fornecedores sempre vão para o portal do fornecedor
+      if (user.userType === 'supplier_user') {
+        navigateTo("/supplier-portal");
+        return;
+      }
+      
       try {
         const modulesResponse = await fetch("/api/auth/user-modules", {
           headers: {
@@ -97,9 +103,7 @@ export default function Login() {
         console.error("Error checking available modules:", error);
       }
       
-      if (user.userType === 'supplier_user') {
-        navigateTo("/supplier-portal");
-      } else if (user.role === 'operador') {
+      if (user.role === 'operador') {
         navigateTo("/mobile");
       } else {
         navigateTo("/");
