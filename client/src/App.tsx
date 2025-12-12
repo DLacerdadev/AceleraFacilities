@@ -49,6 +49,7 @@ import MobileWorkOrderExecute from "@/pages/mobile-work-order-execute";
 import MobileWorkOrderDetails from "@/pages/mobile-work-order-details";
 import QrTest from "@/pages/qr-test";
 import Sidebar from "@/components/layout/sidebar";
+import SupplierSidebar from "@/components/layout/supplier-sidebar";
 import { useState, useEffect } from "react";
 import { useAuth, getAuthState } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -309,6 +310,29 @@ function AuthenticatedAdminRouter() {
   );
 }
 
+function SupplierRouter() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+
+  return (
+    <div className="flex min-h-screen bg-background">
+      <SupplierSidebar 
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+      <div className="flex-1 flex flex-col min-h-screen overflow-y-auto">
+        <Switch>
+          <Route path="/supplier-portal" component={() => <SupplierPortal />} />
+          <Route path="/supplier-proposals" component={() => <SupplierProposals />} />
+          <Route path="/public/tv/:slug" component={PublicZoneTv} />
+          <Route>
+            <Redirect to="/supplier-portal" />
+          </Route>
+        </Switch>
+      </div>
+    </div>
+  );
+}
+
 function MobileRouter() {
   return (
     <Switch>
@@ -359,18 +383,9 @@ function Router() {
     );
   }
 
-  // Se é usuário de fornecedor, mostrar rotas do portal do fornecedor
+  // Se é usuário de fornecedor, mostrar rotas do portal do fornecedor com sidebar
   if (user.userType === 'supplier_user') {
-    return (
-      <Switch>
-        <Route path="/supplier-portal" component={() => <SupplierPortal />} />
-        <Route path="/supplier-proposals" component={() => <SupplierProposals />} />
-        <Route path="/public/tv/:slug" component={PublicZoneTv} />
-        <Route>
-          <Redirect to="/supplier-portal" />
-        </Route>
-      </Switch>
-    );
+    return <SupplierRouter />;
   }
 
   // Se é colaborador (operador com apenas permissões mobile), mostrar interface móvel
