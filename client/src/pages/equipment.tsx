@@ -1513,19 +1513,6 @@ export default function Equipment({ customerId }: EquipmentProps) {
             <div className="flex justify-end gap-2 pt-4">
               <Button
                 variant="outline"
-                onClick={() => {
-                  if (selectedEquipmentForInfo) {
-                    handleEdit(selectedEquipmentForInfo);
-                    setIsInfoDialogOpen(false);
-                  }
-                }}
-                data-testid="button-edit-from-info"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Editar
-              </Button>
-              <Button
-                variant="outline"
                 onClick={() => setIsInfoDialogOpen(false)}
                 data-testid="button-close-info"
               >
