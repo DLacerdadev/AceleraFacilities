@@ -867,15 +867,6 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => openEditDialog(part)}
-                            title="Editar"
-                            data-testid={`button-edit-part-${part.id}`}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
                             onClick={() => {
                               if (confirm("Tem certeza que deseja excluir esta peça?")) {
                                 deletePartMutation.mutate(part.id);
