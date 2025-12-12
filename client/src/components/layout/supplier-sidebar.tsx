@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { 
   Package, 
-  FileText, 
   LogOut, 
   ChevronLeft, 
   ChevronRight,
@@ -61,12 +60,6 @@ export default function SupplierSidebar({ isCollapsed, onToggleCollapse }: Suppl
       label: "Portal do Fornecedor", 
       icon: ShoppingCart,
       description: "Pedidos e peças"
-    },
-    { 
-      path: "/supplier-proposals", 
-      label: "Propostas", 
-      icon: FileText,
-      description: "Planos de manutenção"
     },
   ];
 
