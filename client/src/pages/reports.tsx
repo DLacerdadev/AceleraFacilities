@@ -3,6 +3,9 @@ import { ModernCard } from "@/components/ui/modern-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown, Check } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useClient } from "@/contexts/ClientContext";
@@ -80,7 +83,7 @@ export default function Reports() {
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([new Date().getMonth() + 1]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -146,11 +149,67 @@ export default function Reports() {
     enabled: !!activeClientId && currentModule === 'maintenance', // Only for maintenance module
   });
 
-  // Monthly Cost Report Query
+  // Monthly Cost Report Query - fetches data for all selected months
   const { data: monthlyCostReport, isLoading: isLoadingMonthlyCost, refetch: refetchMonthlyCost } = useQuery({
-    queryKey: ["/api/customers", activeClientId, "reports", "monthly-cost", { year: selectedYear, month: selectedMonth }],
-    queryFn: () => fetch(`/api/customers/${activeClientId}/reports/monthly-cost?year=${selectedYear}&month=${selectedMonth}`).then(res => res.json()),
-    enabled: !!activeClientId && currentModule === 'maintenance',
+    queryKey: ["/api/customers", activeClientId, "reports", "monthly-cost", { year: selectedYear, months: selectedMonths }],
+    queryFn: async () => {
+      // Fetch data for all selected months and aggregate
+      const results = await Promise.all(
+        selectedMonths.map(month => 
+          fetch(`/api/customers/${activeClientId}/reports/monthly-cost?year=${selectedYear}&month=${month}`).then(res => res.json())
+        )
+      );
+      
+      // Aggregate results from multiple months
+      if (results.length === 1) return results[0];
+      
+      const aggregated: any = {
+        summary: {
+          totalLaborCost: 0,
+          totalPartsCost: 0,
+          totalExternalCost: 0,
+          totalCost: 0,
+          workOrderCount: 0,
+          averageCostPerOrder: 0
+        },
+        workOrders: [],
+        partsUsage: []
+      };
+      
+      const partsMap = new Map();
+      
+      results.forEach(result => {
+        if (result.summary) {
+          aggregated.summary.totalLaborCost += result.summary.totalLaborCost || 0;
+          aggregated.summary.totalPartsCost += result.summary.totalPartsCost || 0;
+          aggregated.summary.totalExternalCost += result.summary.totalExternalCost || 0;
+          aggregated.summary.totalCost += result.summary.totalCost || 0;
+          aggregated.summary.workOrderCount += result.summary.workOrderCount || 0;
+        }
+        if (result.workOrders) {
+          aggregated.workOrders.push(...result.workOrders);
+        }
+        if (result.partsUsage) {
+          result.partsUsage.forEach((part: any) => {
+            if (partsMap.has(part.partId)) {
+              const existing = partsMap.get(part.partId);
+              existing.totalQuantity += part.totalQuantity || 0;
+              existing.totalCost += part.totalCost || 0;
+            } else {
+              partsMap.set(part.partId, { ...part });
+            }
+          });
+        }
+      });
+      
+      aggregated.partsUsage = Array.from(partsMap.values());
+      aggregated.summary.averageCostPerOrder = aggregated.summary.workOrderCount > 0 
+        ? aggregated.summary.totalCost / aggregated.summary.workOrderCount 
+        : 0;
+      
+      return aggregated;
+    },
+    enabled: !!activeClientId && currentModule === 'maintenance' && selectedMonths.length > 0,
   });
 
   // Replenishment Orders Report Query (Pedidos de Reabastecimento)
@@ -287,16 +346,21 @@ export default function Reports() {
         case 'custos-mensais':
           const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
                               'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+          const selectedMonthNames = selectedMonths.sort((a, b) => a - b).map(m => monthNames[m - 1]);
+          const periodText = selectedMonths.length === 1 
+            ? `${selectedMonthNames[0]} ${selectedYear}` 
+            : `${selectedMonthNames.join(', ')} ${selectedYear}`;
           reportData = {
             ...(monthlyCostReport || {}),
-            period: `${monthNames[selectedMonth - 1]} ${selectedYear}`,
+            period: periodText,
             generatedAt: new Date().toISOString(),
             reportType: `Relatório de Custos Mensais - ${moduleSuffix}`,
             module: currentModule,
             year: selectedYear,
-            month: selectedMonth
+            months: selectedMonths
           };
-          filename = `relatorio-custos-${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+          const monthsStr = selectedMonths.sort((a, b) => a - b).map(m => String(m).padStart(2, '0')).join('-');
+          filename = `relatorio-custos-${selectedYear}-${monthsStr}`;
           break;
         case 'reabastecimento':
           reportData = {
@@ -1927,9 +1991,13 @@ export default function Reports() {
   );
 
   // Monthly Cost Report View
-  const MonthlyCostReportView = ({ data, month, year, isLoading }: { data: any; month: number; year: number; isLoading: boolean }) => {
+  const MonthlyCostReportView = ({ data, months, year, isLoading }: { data: any; months: number[]; year: number; isLoading: boolean }) => {
     const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
                         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const sortedMonths = months.sort((a, b) => a - b);
+    const periodLabel = months.length === 1 
+      ? `${monthNames[sortedMonths[0] - 1]} ${year}`
+      : `${sortedMonths.map(m => monthNames[m - 1]).join(', ')} ${year}`;
     
     if (isLoading) {
       return (
@@ -1953,7 +2021,7 @@ export default function Reports() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <TrendingUp className="w-5 h-5 text-amber-600" />
-            <span>Custos de Manutenção - {monthNames[month - 1]} {year}</span>
+            <span>Custos de Manutenção - {periodLabel}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -2221,28 +2289,59 @@ export default function Reports() {
                               Selecione o período:
                             </p>
                             <div className="grid grid-cols-2 gap-2">
-                              <Select 
-                                value={String(selectedMonth)} 
-                                onValueChange={(v) => setSelectedMonth(parseInt(v))}
-                              >
-                                <SelectTrigger data-testid="select-month">
-                                  <SelectValue placeholder="Mês" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="1">Janeiro</SelectItem>
-                                  <SelectItem value="2">Fevereiro</SelectItem>
-                                  <SelectItem value="3">Março</SelectItem>
-                                  <SelectItem value="4">Abril</SelectItem>
-                                  <SelectItem value="5">Maio</SelectItem>
-                                  <SelectItem value="6">Junho</SelectItem>
-                                  <SelectItem value="7">Julho</SelectItem>
-                                  <SelectItem value="8">Agosto</SelectItem>
-                                  <SelectItem value="9">Setembro</SelectItem>
-                                  <SelectItem value="10">Outubro</SelectItem>
-                                  <SelectItem value="11">Novembro</SelectItem>
-                                  <SelectItem value="12">Dezembro</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    className="w-full justify-between text-left font-normal"
+                                    data-testid="select-months"
+                                  >
+                                    <span className="truncate">
+                                      {selectedMonths.length === 0 
+                                        ? "Selecione meses" 
+                                        : selectedMonths.length === 1 
+                                          ? ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][selectedMonths[0] - 1]
+                                          : `${selectedMonths.length} meses`}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2" align="start">
+                                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                                    {[
+                                      { value: 1, label: 'Janeiro' },
+                                      { value: 2, label: 'Fevereiro' },
+                                      { value: 3, label: 'Março' },
+                                      { value: 4, label: 'Abril' },
+                                      { value: 5, label: 'Maio' },
+                                      { value: 6, label: 'Junho' },
+                                      { value: 7, label: 'Julho' },
+                                      { value: 8, label: 'Agosto' },
+                                      { value: 9, label: 'Setembro' },
+                                      { value: 10, label: 'Outubro' },
+                                      { value: 11, label: 'Novembro' },
+                                      { value: 12, label: 'Dezembro' },
+                                    ].map((month) => (
+                                      <label
+                                        key={month.value}
+                                        className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-accent"
+                                      >
+                                        <Checkbox
+                                          checked={selectedMonths.includes(month.value)}
+                                          onCheckedChange={(checked) => {
+                                            if (checked) {
+                                              setSelectedMonths([...selectedMonths, month.value]);
+                                            } else {
+                                              setSelectedMonths(selectedMonths.filter(m => m !== month.value));
+                                            }
+                                          }}
+                                        />
+                                        <span className="text-sm">{month.label}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                               <Select 
                                 value={String(selectedYear)} 
                                 onValueChange={(v) => setSelectedYear(parseInt(v))}
@@ -2351,7 +2450,7 @@ export default function Reports() {
               {selectedReportType === 'custos-mensais' && monthlyCostReport && (
                 <MonthlyCostReportView 
                   data={monthlyCostReport} 
-                  month={selectedMonth} 
+                  months={selectedMonths} 
                   year={selectedYear}
                   isLoading={isLoadingMonthlyCost}
                 />
