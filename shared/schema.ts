@@ -13,6 +13,7 @@ export const thirdPartyRoleEnum = pgEnum('third_party_role', ['third_party_manag
 export const authProviderEnum = pgEnum('auth_provider', ['local', 'microsoft']);
 export const workOrderStatusEnum = pgEnum('work_order_status', ['aberta', 'em_execucao', 'pausada', 'vencida', 'concluida', 'cancelada']);
 export const workOrderTypeEnum = pgEnum('work_order_type', ['programada', 'corretiva_interna', 'corretiva_publica']);
+export const executedByTypeEnum = pgEnum('executed_by_type', ['INTERNAL', 'THIRD_PARTY']);
 export const priorityEnum = pgEnum('priority', ['baixa', 'media', 'alta', 'critica']);
 export const qrCodeTypeEnum = pgEnum('qr_code_type', ['execucao', 'atendimento']);
 export const frequencyEnum = pgEnum('frequency', ['diaria', 'semanal', 'mensal', 'trimestral', 'semestral', 'anual', 'turno', 'custom']);
@@ -394,6 +395,11 @@ export const workOrders = pgTable("work_orders", {
   syncRetryCount: integer("sync_retry_count").default(0),
   syncError: text("sync_error"),
   syncedAt: timestamp("synced_at"),
+  // Campos para execução por terceiros
+  executedByType: executedByTypeEnum("executed_by_type").default('INTERNAL'),
+  thirdPartyCompanyId: varchar("third_party_company_id").references(() => thirdPartyCompanies.id),
+  thirdPartyTeamId: varchar("third_party_team_id"),
+  thirdPartyOperatorId: varchar("third_party_operator_id").references(() => users.id),
 }, (table) => ({
   uniqueWorkOrderNumber: uniqueIndex("work_orders_customer_number_unique").on(table.customerId, table.number),
   uniqueCustomerLocalId: uniqueIndex("work_orders_customer_local_id_unique").on(table.customerId, table.localId).where(sql`local_id IS NOT NULL`),
