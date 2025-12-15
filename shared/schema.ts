@@ -23,6 +23,10 @@ export const proposalStatusEnum = pgEnum('proposal_status', ['em_espera', 'aprov
 export const partBatchStatusEnum = pgEnum('part_batch_status', ['planejado', 'enviado', 'recebido', 'cancelado']);
 export const supplierWorkOrderStatusEnum = pgEnum('supplier_work_order_status', ['aguardando_aprovacao', 'pendente', 'confirmado', 'enviado', 'recebido', 'cancelado']);
 
+// Enums para submódulo Terceiros
+export const thirdPartyStatusEnum = pgEnum('third_party_status', ['active', 'inactive']);
+export const assetVisibilityModeEnum = pgEnum('asset_visibility_mode', ['ALL', 'CONTRACT_ONLY']);
+
 // Sistema de permissões granulares
 export const permissionKeyEnum = pgEnum('permission_key', [
   'dashboard_view',
@@ -130,6 +134,29 @@ export const customers = pgTable("customers", {
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
+
+// 2.1 TABELA: third_party_companies (Empresas Terceirizadas)
+// Submódulo opcional controlado por customers.thirdPartyEnabled
+export const thirdPartyCompanies = pgTable("third_party_companies", {
+  id: varchar("id").primaryKey(),
+  customerId: varchar("customer_id").notNull().references(() => customers.id),
+  name: varchar("name").notNull(),
+  status: thirdPartyStatusEnum("status").notNull().default('active'),
+  allowedSites: text("allowed_sites").array().default(sql`ARRAY[]::text[]`),
+  allowedZones: text("allowed_zones").array().default(sql`ARRAY[]::text[]`),
+  assetVisibilityMode: assetVisibilityModeEnum("asset_visibility_mode").notNull().default('CONTRACT_ONLY'),
+  userLimit: integer("user_limit").default(5),
+  // Campos para billing futuro
+  billingEmail: varchar("billing_email"),
+  billingDocument: varchar("billing_document"),
+  contractStartDate: date("contract_start_date"),
+  contractEndDate: date("contract_end_date"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  customerIdx: index("third_party_companies_customer_idx").on(table.customerId),
+  statusIdx: index("third_party_companies_status_idx").on(table.status),
+}));
 
 // 3. TABELA: sites (Locais)
 export const sites = pgTable("sites", {
@@ -1584,6 +1611,7 @@ export const partMovementsRelations = relations(partMovements, ({ one }) => ({
 // Insert schemas
 export const insertCompanySchema = createInsertSchema(companies).omit({ id: true });
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true });
+export const insertThirdPartyCompanySchema = createInsertSchema(thirdPartyCompanies).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSiteSchema = createInsertSchema(sites).omit({ id: true });
 export const insertZoneSchema = createInsertSchema(zones).omit({ id: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true }).extend({
@@ -1707,6 +1735,9 @@ export type InsertCompany = z.infer<typeof insertCompanySchema>;
 
 export type Customer = typeof customers.$inferSelect;
 export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
+
+export type ThirdPartyCompany = typeof thirdPartyCompanies.$inferSelect;
+export type InsertThirdPartyCompany = z.infer<typeof insertThirdPartyCompanySchema>;
 
 export type Site = typeof sites.$inferSelect;
 export type InsertSite = z.infer<typeof insertSiteSchema>;
