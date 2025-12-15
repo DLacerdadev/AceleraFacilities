@@ -678,6 +678,8 @@ export const equipment = pgTable("equipment", {
   qrCodeUrl: varchar("qr_code_url"),
   photoUrl: varchar("photo_url"),
   module: moduleEnum("module").notNull().default('maintenance'),
+  // Campo para controle de visibilidade de terceiros (CONTRACT_ONLY)
+  contractedThirdPartyIds: text("contracted_third_party_ids").array().default(sql`ARRAY[]::text[]`),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
