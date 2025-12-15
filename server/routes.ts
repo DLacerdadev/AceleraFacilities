@@ -8784,6 +8784,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // END OF SUPPLIER MODULE API ROUTES
   // ============================================================================
 
+  // ============================================================================
+  // THIRD PARTY SLA DASHBOARD ROUTES
+  // ============================================================================
+
+  const thirdPartySLA = await import('./services/third-party-sla');
+
+  // Customer Dashboard: General SLA including third parties
+  app.get('/api/customers/:customerId/third-party-sla/summary', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { startDate, endDate, module } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const summary = await thirdPartySLA.getCustomerThirdPartyDashboardSummary(
+        customerId,
+        start,
+        end,
+        module as string | undefined
+      );
+      
+      res.json(summary);
+    } catch (error) {
+      console.error('Error fetching customer third-party SLA summary:', error);
+      res.status(500).json({ message: 'Erro ao buscar resumo de SLA de terceiros' });
+    }
+  });
+
+  // Customer Dashboard: SLA by each third party company
+  app.get('/api/customers/:customerId/third-party-sla/by-company', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { startDate, endDate, module } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const byCompany = await thirdPartySLA.getCustomerSLAByThirdParty(
+        customerId,
+        start,
+        end,
+        module as string | undefined
+      );
+      
+      res.json(byCompany);
+    } catch (error) {
+      console.error('Error fetching customer SLA by third party:', error);
+      res.status(500).json({ message: 'Erro ao buscar SLA por terceiro' });
+    }
+  });
+
+  // Customer Dashboard: Internal vs Third Party comparison
+  app.get('/api/customers/:customerId/third-party-sla/comparison', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { startDate, endDate, module } = req.query;
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const comparison = await thirdPartySLA.getCustomerInternalVsThirdPartySLA(
+        customerId,
+        start,
+        end,
+        module as string | undefined
+      );
+      
+      res.json(comparison);
+    } catch (error) {
+      console.error('Error fetching internal vs third party SLA:', error);
+      res.status(500).json({ message: 'Erro ao buscar comparação de SLA' });
+    }
+  });
+
+  // Third Party Dashboard: General SLA for the third party company
+  app.get('/api/third-party/:companyId/sla/summary', requireAuth, requireThirdPartyEnabled, async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const { startDate, endDate, module } = req.query;
+      
+      if (req.user?.userType === 'third_party_user' && req.user.thirdPartyCompanyId !== companyId) {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa de terceiros' });
+      }
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const summary = await thirdPartySLA.getThirdPartyDashboardSummary(
+        companyId,
+        start,
+        end,
+        module as string | undefined
+      );
+      
+      res.json(summary);
+    } catch (error) {
+      console.error('Error fetching third party SLA summary:', error);
+      res.status(500).json({ message: 'Erro ao buscar resumo de SLA do terceiro' });
+    }
+  });
+
+  // Third Party Dashboard: SLA by team
+  app.get('/api/third-party/:companyId/sla/by-team', requireAuth, requireThirdPartyEnabled, async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const { startDate, endDate, module } = req.query;
+      
+      if (req.user?.userType === 'third_party_user' && req.user.thirdPartyCompanyId !== companyId) {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa de terceiros' });
+      }
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const byTeam = await thirdPartySLA.getThirdPartySLAByTeam(
+        companyId,
+        start,
+        end,
+        module as string | undefined
+      );
+      
+      res.json(byTeam);
+    } catch (error) {
+      console.error('Error fetching third party SLA by team:', error);
+      res.status(500).json({ message: 'Erro ao buscar SLA por equipe' });
+    }
+  });
+
+  // Third Party Dashboard: SLA by operator
+  app.get('/api/third-party/:companyId/sla/by-operator', requireAuth, requireThirdPartyEnabled, async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const { startDate, endDate, module } = req.query;
+      
+      if (req.user?.userType === 'third_party_user' && req.user.thirdPartyCompanyId !== companyId) {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa de terceiros' });
+      }
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const byOperator = await thirdPartySLA.getThirdPartySLAByOperator(
+        companyId,
+        start,
+        end,
+        module as string | undefined
+      );
+      
+      res.json(byOperator);
+    } catch (error) {
+      console.error('Error fetching third party SLA by operator:', error);
+      res.status(500).json({ message: 'Erro ao buscar SLA por operador' });
+    }
+  });
+
+  // Third Party Dashboard: General SLA only
+  app.get('/api/third-party/:companyId/sla/general', requireAuth, requireThirdPartyEnabled, async (req, res) => {
+    try {
+      const { companyId } = req.params;
+      const { startDate, endDate, module } = req.query;
+      
+      if (req.user?.userType === 'third_party_user' && req.user.thirdPartyCompanyId !== companyId) {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa de terceiros' });
+      }
+      
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+      
+      const general = await thirdPartySLA.getThirdPartyGeneralSLA(
+        companyId,
+        start,
+        end,
+        module as string | undefined
+      );
+      
+      res.json(general);
+    } catch (error) {
+      console.error('Error fetching third party general SLA:', error);
+      res.status(500).json({ message: 'Erro ao buscar SLA geral do terceiro' });
+    }
+  });
+
+  // ============================================================================
+  // END OF THIRD PARTY SLA DASHBOARD ROUTES
+  // ============================================================================
+
   const httpServer = createServer(app);
   return httpServer;
 }
