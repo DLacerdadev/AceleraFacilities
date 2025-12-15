@@ -27,6 +27,14 @@ The third-party module implements a three-tier user hierarchy with strict access
 
 Users table extended with `thirdPartyCompanyId` and `thirdPartyRole` fields. New middlewares enforce hierarchical permissions: `requireThirdPartyUser`, `requireThirdPartyRole(minRole)`, and `validateThirdPartyUserCreation` for role-based user creation validation. Dedicated permissions added: `third_party_view/create/edit/delete`, `third_party_users_*`, `third_party_workorders_*`, and `third_party_reports_view`.
 
+A comprehensive data isolation system ensures third-party users can only access authorized resources. The `ThirdPartyContext` middleware loads company configuration (allowed sites, zones, asset visibility mode) and validates all requests. Key isolation features:
+- **Customer validation**: Third parties can only access their contracted customer's data
+- **Site filtering**: Access restricted to `allowedSites` array from ThirdPartyCompany
+- **Zone filtering**: Access restricted to `allowedZones` array from ThirdPartyCompany
+- **Asset visibility**: Two modes via `assetVisibilityMode` - `ALL` (all assets in allowed zones) or `CONTRACT_ONLY` (only assets with company ID in `contractedThirdPartyIds` array)
+
+Helper functions (`getFilteredSitesForThirdParty`, `getFilteredZonesForThirdParty`, `getFilteredEquipmentForThirdParty`) automatically apply isolation filters. The `validateThirdPartyDataAccess` function provides centralized access validation for any resource.
+
 The authentication system includes single-session control, invalidating previous sessions via WebSocket when a user logs in from a new device. Performance optimizations include database indexing, parallel query execution, and real-time data reporting. Photo uploads are optimized with automatic compression. An offline-first Android APK is supported by a comprehensive sync infrastructure using IndexedDB.
 
 ### System Design Choices
