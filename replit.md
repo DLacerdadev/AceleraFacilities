@@ -18,6 +18,8 @@ The system implements a fully reactive model with WebSockets for instant updates
 
 A comprehensive Parts Inventory module is integrated with Work Orders and Maintenance Plans. It supports CRUD operations for parts, tracks stock movements, provides low-stock alerts, integrates with Work Orders for part selection and availability validation, and automatically deducts stock upon Work Order completion.
 
+An optional "Terceiros" (Third Party) submodule is available, controlled by the `thirdPartyEnabled` flag per customer (default: false for backward compatibility). The `requireThirdPartyEnabled` middleware guards all third-party related routes, ensuring existing customers are not impacted unless the module is explicitly enabled.
+
 The authentication system includes single-session control, invalidating previous sessions via WebSocket when a user logs in from a new device. Performance optimizations include database indexing, parallel query execution, and real-time data reporting. Photo uploads are optimized with automatic compression. An offline-first Android APK is supported by a comprehensive sync infrastructure using IndexedDB.
 
 ### System Design Choices
