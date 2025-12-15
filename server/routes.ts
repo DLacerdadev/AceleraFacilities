@@ -2655,14 +2655,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const workOrder = insertWorkOrderSchema.partial().parse(req.body);
       
+      // Obter O.S. atual para verificar status e mudança
+      const currentWO = await storage.getWorkOrder(req.params.id);
+      
+      // 🔒 REGRA DE IMUTABILIDADE: Bloquear edição após conclusão
+      if (currentWO && currentWO.status === 'concluida') {
+        // Campos permitidos após conclusão: avaliação apenas
+        const allowedFieldsAfterConclusion = ['customerRating', 'customerRatingComment', 'customerRatingDate', 'ratedBy'];
+        const attemptedFields = Object.keys(req.body);
+        const blockedFields = attemptedFields.filter(f => !allowedFieldsAfterConclusion.includes(f));
+        
+        if (blockedFields.length > 0) {
+          console.log(`[WO IMMUTABILITY] Bloqueando edição de OS concluída ${req.params.id}. Campos bloqueados:`, blockedFields);
+          return res.status(403).json({ 
+            message: "Ordem de serviço já foi concluída e não pode ser editada",
+            details: "Após a conclusão, apenas avaliações e comentários são permitidos.",
+            blockedFields 
+          });
+        }
+      }
+      
       // Se está sendo cancelada, adicionar timestamp e usuário
       if (workOrder.status === 'cancelada') {
         workOrder.cancelledAt = new Date();
         workOrder.cancelledBy = req.user?.id;
       }
-      
-      // Obter O.S. atual para verificar mudança de status
-      const currentWO = await storage.getWorkOrder(req.params.id);
       
       // 🔥 ATUALIZADO: Adicionar colaborador ao array de responsáveis em QUALQUER alteração
       if (req.user?.id) {
@@ -2716,14 +2733,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const workOrder = insertWorkOrderSchema.partial().parse(req.body);
       
+      // Obter O.S. atual para verificar status e mudança
+      const currentWO = await storage.getWorkOrder(req.params.id);
+      
+      // 🔒 REGRA DE IMUTABILIDADE: Bloquear edição após conclusão
+      if (currentWO && currentWO.status === 'concluida') {
+        // Campos permitidos após conclusão: avaliação apenas
+        const allowedFieldsAfterConclusion = ['customerRating', 'customerRatingComment', 'customerRatingDate', 'ratedBy'];
+        const attemptedFields = Object.keys(req.body);
+        const blockedFields = attemptedFields.filter(f => !allowedFieldsAfterConclusion.includes(f));
+        
+        if (blockedFields.length > 0) {
+          console.log(`[WO IMMUTABILITY] Bloqueando edição de OS concluída ${req.params.id}. Campos bloqueados:`, blockedFields);
+          return res.status(403).json({ 
+            message: "Ordem de serviço já foi concluída e não pode ser editada",
+            details: "Após a conclusão, apenas avaliações e comentários são permitidos.",
+            blockedFields 
+          });
+        }
+      }
+      
       // Se está sendo cancelada, adicionar timestamp e usuário
       if (workOrder.status === 'cancelada') {
         workOrder.cancelledAt = new Date();
         workOrder.cancelledBy = req.user?.id;
       }
-      
-      // Obter O.S. atual para verificar mudança de status
-      const currentWO = await storage.getWorkOrder(req.params.id);
       
       // 🔥 ATUALIZADO: Adicionar colaborador ao array de responsáveis em QUALQUER alteração
       if (req.user?.id) {
