@@ -8287,6 +8287,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Approve supplier work order (client action - approves for sending to supplier)
+  app.post('/api/supplier-work-orders/:id/approve', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user?.id;
+      
+      // Get the work order
+      const wo = await storage.getSupplierWorkOrderById(req.params.id);
+      if (!wo) {
+        return res.status(404).json({ message: 'Pedido não encontrado' });
+      }
+      
+      // Validate that order is awaiting approval
+      if (wo.status !== 'aguardando_aprovacao') {
+        return res.status(400).json({ message: 'Este pedido não está aguardando aprovação' });
+      }
+      
+      // Update the work order with approval info
+      const updated = await storage.updateSupplierWorkOrder(wo.id, {
+        approvedAt: new Date(),
+        approvedBy: userId,
+        status: 'pendente' // Now it goes to supplier
+      });
+      
+      broadcast({ type: 'update', resource: 'supplierWorkOrders', data: updated });
+      
+      res.json({ 
+        message: 'Pedido aprovado e enviado ao fornecedor',
+        workOrder: updated
+      });
+    } catch (error) {
+      console.error('Error approving supplier work order:', error);
+      res.status(500).json({ message: 'Erro ao aprovar pedido' });
+    }
+  });
+
+  // Reject supplier work order (client action)
+  app.post('/api/supplier-work-orders/:id/reject', requireAuth, async (req, res) => {
+    try {
+      const { reason } = req.body;
+      const userId = req.user?.id;
+      
+      // Get the work order
+      const wo = await storage.getSupplierWorkOrderById(req.params.id);
+      if (!wo) {
+        return res.status(404).json({ message: 'Pedido não encontrado' });
+      }
+      
+      // Validate that order is awaiting approval
+      if (wo.status !== 'aguardando_aprovacao') {
+        return res.status(400).json({ message: 'Este pedido não está aguardando aprovação' });
+      }
+      
+      // Update the work order with rejection info
+      const updated = await storage.updateSupplierWorkOrder(wo.id, {
+        rejectedAt: new Date(),
+        rejectedBy: userId,
+        rejectionReason: reason || null,
+        status: 'cancelado'
+      });
+      
+      broadcast({ type: 'update', resource: 'supplierWorkOrders', data: updated });
+      
+      res.json({ 
+        message: 'Pedido rejeitado',
+        workOrder: updated
+      });
+    } catch (error) {
+      console.error('Error rejecting supplier work order:', error);
+      res.status(500).json({ message: 'Erro ao rejeitar pedido' });
+    }
+  });
+
   // ===== MAINTENANCE PLAN PROPOSALS =====
 
   // Get proposals by supplier
