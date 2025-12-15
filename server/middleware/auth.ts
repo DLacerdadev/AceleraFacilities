@@ -615,3 +615,96 @@ export function logAccessDenied(
   console.warn(`[ACCESS DENIED] User ${userId} tentou ${action} em ${resource}. Motivo: ${reason}`);
   // TODO: Salvar em audit_logs no banco de dados
 }
+
+/**
+ * Middleware para verificar se o cliente tem o submódulo "Terceiros" habilitado
+ * 
+ * Este middleware deve ser usado em todas as rotas relacionadas a terceiros.
+ * Se o cliente não tiver third_party_enabled = true, bloqueia o acesso.
+ * 
+ * Compatibilidade retroativa:
+ * - Clientes existentes sem a flag continuam funcionando normalmente em outras áreas
+ * - Apenas rotas de terceiros exigem a flag ativada
+ * 
+ * @param customerId - Pode vir de req.params.customerId ou req.user.customerId
+ */
+export async function requireThirdPartyEnabled(req: Request, res: Response, next: NextFunction) {
+  const user = await getUserFromToken(req);
+  
+  if (!user) {
+    return res.status(401).json({ 
+      error: 'Não autenticado',
+      message: 'Você precisa estar logado para acessar este recurso.' 
+    });
+  }
+  
+  // Buscar customerId do parâmetro da rota ou do usuário
+  const customerId = req.params.customerId || req.params.id || user.customerId;
+  
+  if (!customerId) {
+    return res.status(400).json({ 
+      error: 'Cliente não identificado',
+      message: 'Não foi possível identificar o cliente para verificar permissões de terceiros.' 
+    });
+  }
+  
+  try {
+    // Buscar dados do cliente
+    const customer = await storage.getCustomer(customerId);
+    
+    if (!customer) {
+      return res.status(404).json({ 
+        error: 'Cliente não encontrado',
+        message: 'O cliente especificado não foi encontrado.' 
+      });
+    }
+    
+    // Verificar se o submódulo de terceiros está habilitado
+    if (!customer.thirdPartyEnabled) {
+      console.warn(`[THIRD_PARTY] ❌ Acesso negado - Cliente ${customerId} não tem submódulo de Terceiros habilitado`);
+      return res.status(403).json({ 
+        error: 'Submódulo não habilitado',
+        message: 'O submódulo de Terceiros não está habilitado para este cliente. Entre em contato com o administrador para ativar.',
+        code: 'THIRD_PARTY_DISABLED'
+      });
+    }
+    
+    console.log(`[THIRD_PARTY] ✅ Acesso permitido - Cliente ${customerId} tem submódulo de Terceiros habilitado`);
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error(`[THIRD_PARTY] Erro ao verificar submódulo de terceiros:`, error);
+    return res.status(500).json({ 
+      error: 'Erro interno',
+      message: 'Erro ao verificar permissões do submódulo de Terceiros.' 
+    });
+  }
+}
+
+/**
+ * Middleware combinado: requireAuth + requireThirdPartyEnabled
+ * Útil para rotas que precisam de autenticação E verificação de terceiros
+ */
+export async function requireAuthAndThirdParty(req: Request, res: Response, next: NextFunction) {
+  // Primeiro verifica autenticação
+  const user = await getUserFromToken(req);
+  
+  if (!user) {
+    return res.status(401).json({ 
+      error: 'Não autenticado',
+      message: 'Você precisa estar logado para acessar este recurso.' 
+    });
+  }
+  
+  if (!user.isActive) {
+    return res.status(403).json({ 
+      error: 'Conta desativada',
+      message: 'Sua conta está desativada. Entre em contato com o administrador.' 
+    });
+  }
+  
+  req.user = user;
+  
+  // Depois verifica terceiros
+  return requireThirdPartyEnabled(req, res, next);
+}
