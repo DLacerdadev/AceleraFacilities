@@ -35,6 +35,8 @@ A comprehensive data isolation system ensures third-party users can only access 
 
 Helper functions (`getFilteredSitesForThirdParty`, `getFilteredZonesForThirdParty`, `getFilteredEquipmentForThirdParty`) automatically apply isolation filters. The `validateThirdPartyDataAccess` function provides centralized access validation for any resource.
 
+Work Orders support execution by third parties through dedicated fields: `executedByType` (INTERNAL or THIRD_PARTY), `thirdPartyCompanyId`, `thirdPartyTeamId`, and `thirdPartyOperatorId`. This enables tracking whether a work order is executed by internal staff or a third-party company, with full traceability of the executing team and operator.
+
 The authentication system includes single-session control, invalidating previous sessions via WebSocket when a user logs in from a new device. Performance optimizations include database indexing, parallel query execution, and real-time data reporting. Photo uploads are optimized with automatic compression. An offline-first Android APK is supported by a comprehensive sync infrastructure using IndexedDB.
 
 ### System Design Choices
