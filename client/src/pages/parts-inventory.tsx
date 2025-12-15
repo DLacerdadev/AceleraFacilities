@@ -85,6 +85,9 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
   const [isConfirmReceiptDialogOpen, setIsConfirmReceiptDialogOpen] = useState(false);
   const [selectedOrderForReceipt, setSelectedOrderForReceipt] = useState<any>(null);
   const [receiptNotes, setReceiptNotes] = useState("");
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [selectedOrderForReject, setSelectedOrderForReject] = useState<any>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const { toast } = useToast();
 
@@ -161,6 +164,11 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
     status: string;
     priority: string;
     createdAt: string | null;
+    approvedAt: string | null;
+    approvedBy: string | null;
+    rejectedAt: string | null;
+    rejectedBy: string | null;
+    rejectionReason: string | null;
     confirmedAt: string | null;
     shippedAt: string | null;
     receivedAt: string | null;
@@ -212,6 +220,37 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
     },
     onError: (error: any) => {
       toast({ title: "Erro", description: error.message || "Falha ao confirmar recebimento", variant: "destructive" });
+    }
+  });
+
+  const approveOrderMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await apiRequest('POST', `/api/supplier-work-orders/${orderId}/approve`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/customers', customerId, 'supplier-work-orders'] });
+      toast({ title: "Sucesso", description: "Pedido aprovado! Será enviado ao fornecedor." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message || "Falha ao aprovar pedido", variant: "destructive" });
+    }
+  });
+
+  const rejectOrderMutation = useMutation({
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
+      const response = await apiRequest('POST', `/api/supplier-work-orders/${orderId}/reject`, { reason });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/customers', customerId, 'supplier-work-orders'] });
+      toast({ title: "Pedido Rejeitado", description: "O pedido foi cancelado." });
+      setIsRejectDialogOpen(false);
+      setSelectedOrderForReject(null);
+      setRejectionReason("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message || "Falha ao rejeitar pedido", variant: "destructive" });
     }
   });
 
@@ -935,6 +974,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                       
                       const getStatusBadge = (status: string) => {
                         switch (status) {
+                          case 'aguardando_aprovacao': return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Aguardando Aprovação</Badge>;
                           case 'pendente': return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Aguardando Confirmação</Badge>;
                           case 'confirmado': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Confirmado</Badge>;
                           case 'enviado': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Enviado</Badge>;
@@ -945,6 +985,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                       };
 
                       const canConfirmReceipt = order.shippedAt && !order.receivedAt;
+                      const canApprove = order.status === 'aguardando_aprovacao';
 
                       return (
                         <div key={order.id} className="border rounded-lg p-4 space-y-4" data-testid={`order-card-${order.id}`}>
@@ -963,20 +1004,52 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                                 </p>
                               )}
                             </div>
-                            {canConfirmReceipt && (
-                              <Button
-                                onClick={() => {
-                                  setSelectedOrderForReceipt(order);
-                                  setIsConfirmReceiptDialogOpen(true);
-                                }}
-                                className={theme.buttons.primary}
-                                style={theme.buttons.primaryStyle}
-                                data-testid={`button-confirm-receipt-${order.id}`}
-                              >
-                                <PackageCheck className="w-4 h-4 mr-2" />
-                                Confirmar Recebimento
-                              </Button>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {canApprove && (
+                                <>
+                                  <Button
+                                    onClick={() => approveOrderMutation.mutate(order.id)}
+                                    disabled={approveOrderMutation.isPending}
+                                    className={theme.buttons.primary}
+                                    style={theme.buttons.primaryStyle}
+                                    data-testid={`button-approve-order-${order.id}`}
+                                  >
+                                    {approveOrderMutation.isPending ? (
+                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    ) : (
+                                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                                    )}
+                                    Aprovar
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedOrderForReject(order);
+                                      setIsRejectDialogOpen(true);
+                                    }}
+                                    className="border-red-200 text-red-700 hover:bg-red-50"
+                                    data-testid={`button-reject-order-${order.id}`}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Rejeitar
+                                  </Button>
+                                </>
+                              )}
+                              {canConfirmReceipt && (
+                                <Button
+                                  onClick={() => {
+                                    setSelectedOrderForReceipt(order);
+                                    setIsConfirmReceiptDialogOpen(true);
+                                  }}
+                                  className={theme.buttons.primary}
+                                  style={theme.buttons.primaryStyle}
+                                  data-testid={`button-confirm-receipt-${order.id}`}
+                                >
+                                  <PackageCheck className="w-4 h-4 mr-2" />
+                                  Confirmar Recebimento
+                                </Button>
+                              )}
+                            </div>
                           </div>
 
                           <div className="border-t pt-4">
@@ -1014,6 +1087,54 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                               <div className="relative pb-4">
                                 <div className={cn(
                                   "absolute left-[-18px] w-4 h-4 rounded-full flex items-center justify-center",
+                                  order.status === 'cancelado' && order.rejectedAt
+                                    ? "bg-red-100 border-2 border-red-500"
+                                    : order.approvedAt
+                                    ? "bg-green-100 border-2 border-green-500"
+                                    : order.status === 'aguardando_aprovacao'
+                                    ? "bg-orange-100 border-2 border-orange-500"
+                                    : "bg-gray-100 border-2 border-gray-300"
+                                )}>
+                                  {order.status === 'cancelado' && order.rejectedAt ? (
+                                    <Trash2 className="w-2.5 h-2.5 text-red-600" />
+                                  ) : order.approvedAt ? (
+                                    <CheckCircle2 className="w-2.5 h-2.5 text-green-600" />
+                                  ) : order.status === 'aguardando_aprovacao' ? (
+                                    <Clock className="w-2.5 h-2.5 text-orange-600" />
+                                  ) : (
+                                    <CheckCircle2 className="w-2.5 h-2.5 text-gray-400" />
+                                  )}
+                                </div>
+                                <div className="text-sm">
+                                  <span className={cn(
+                                    "font-medium",
+                                    order.status === 'cancelado' && order.rejectedAt && "text-red-600",
+                                    order.status === 'aguardando_aprovacao' && "text-orange-600"
+                                  )}>
+                                    {order.status === 'cancelado' && order.rejectedAt
+                                      ? "Rejeitado pelo Cliente"
+                                      : order.approvedAt
+                                      ? "Aprovado pelo Cliente"
+                                      : order.status === 'aguardando_aprovacao'
+                                      ? "Aguardando Aprovação"
+                                      : "Aprovado pelo Cliente"}
+                                  </span>
+                                  {order.approvedAt && (
+                                    <span className="text-muted-foreground ml-2">{formatDate(order.approvedAt)}</span>
+                                  )}
+                                  {order.rejectedAt && (
+                                    <span className="text-muted-foreground ml-2">{formatDate(order.rejectedAt)}</span>
+                                  )}
+                                  {order.rejectionReason && (
+                                    <p className="text-xs text-red-500 mt-1">Motivo: {order.rejectionReason}</p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {order.status !== 'cancelado' && (
+                              <div className="relative pb-4">
+                                <div className={cn(
+                                  "absolute left-[-18px] w-4 h-4 rounded-full flex items-center justify-center",
                                   order.confirmedAt 
                                     ? "bg-green-100 border-2 border-green-500" 
                                     : "bg-gray-100 border-2 border-gray-300"
@@ -1032,7 +1153,9 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                                   )}
                                 </div>
                               </div>
+                              )}
 
+                              {order.status !== 'cancelado' && (
                               <div className="relative pb-4">
                                 <div className={cn(
                                   "absolute left-[-18px] w-4 h-4 rounded-full flex items-center justify-center",
@@ -1054,7 +1177,9 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                                   )}
                                 </div>
                               </div>
+                              )}
 
+                              {order.status !== 'cancelado' && (
                               <div className="relative">
                                 <div className={cn(
                                   "absolute left-[-18px] w-4 h-4 rounded-full flex items-center justify-center",
@@ -1076,6 +1201,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                                   )}
                                 </div>
                               </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1146,6 +1272,56 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
             >
               {confirmReceiptMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar Recebimento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rejeitar Pedido</DialogTitle>
+            <DialogDescription>
+              Informe o motivo da rejeição do pedido {selectedOrderForReject?.orderNumber || selectedOrderForReject?.id?.slice(0, 8)}.
+              Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejection-reason">Motivo da Rejeição *</Label>
+              <Textarea
+                id="rejection-reason"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Ex: Quantidade incorreta, fornecedor não aprovado, etc."
+                data-testid="input-rejection-reason"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setIsRejectDialogOpen(false);
+              setRejectionReason("");
+            }}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (selectedOrderForReject && rejectionReason.trim()) {
+                  rejectOrderMutation.mutate({
+                    orderId: selectedOrderForReject.id,
+                    reason: rejectionReason
+                  });
+                }
+              }}
+              disabled={rejectOrderMutation.isPending || !rejectionReason.trim()}
+              data-testid="button-submit-rejection"
+            >
+              {rejectOrderMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Confirmar Rejeição
             </Button>
           </DialogFooter>
         </DialogContent>
