@@ -21,7 +21,7 @@ export const aiIntegrationStatusEnum = pgEnum('ai_integration_status', ['ativa',
 export const syncStatusEnum = pgEnum('sync_status', ['pending', 'syncing', 'synced', 'failed']);
 export const proposalStatusEnum = pgEnum('proposal_status', ['em_espera', 'aprovado', 'recusado']);
 export const partBatchStatusEnum = pgEnum('part_batch_status', ['planejado', 'enviado', 'recebido', 'cancelado']);
-export const supplierWorkOrderStatusEnum = pgEnum('supplier_work_order_status', ['pendente', 'confirmado', 'enviado', 'recebido', 'cancelado']);
+export const supplierWorkOrderStatusEnum = pgEnum('supplier_work_order_status', ['aguardando_aprovacao', 'pendente', 'confirmado', 'enviado', 'recebido', 'cancelado']);
 
 // Sistema de permissões granulares
 export const permissionKeyEnum = pgEnum('permission_key', [
@@ -997,10 +997,18 @@ export const supplierWorkOrders = pgTable("supplier_work_orders", {
   customerId: varchar("customer_id").notNull().references(() => customers.id),
   
   orderNumber: varchar("order_number"), // Número do pedido gerado
-  status: supplierWorkOrderStatusEnum("status").notNull().default('pendente'),
+  status: supplierWorkOrderStatusEnum("status").notNull().default('aguardando_aprovacao'),
   priority: priorityEnum("priority").notNull().default('media'),
   
   expectedDeliveryDate: date("expected_delivery_date"),
+  
+  // Aprovação do cliente
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at"),
+  rejectedBy: varchar("rejected_by").references(() => users.id),
+  rejectionReason: text("rejection_reason"),
+  
   confirmedAt: timestamp("confirmed_at"),
   shippedAt: timestamp("shipped_at"),
   receivedAt: timestamp("received_at"),
