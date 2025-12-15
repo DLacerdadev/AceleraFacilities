@@ -20,6 +20,13 @@ A comprehensive Parts Inventory module is integrated with Work Orders and Mainte
 
 An optional "Terceiros" (Third Party) submodule is available, controlled by the `thirdPartyEnabled` flag per customer (default: false for backward compatibility). The `requireThirdPartyEnabled` middleware guards all third-party related routes, ensuring existing customers are not impacted unless the module is explicitly enabled. The core entity is `ThirdPartyCompany`, which represents external vendors linked to a single customer. Key features include: site/zone access control via `allowedSites`/`allowedZones` arrays, asset visibility modes (ALL or CONTRACT_ONLY), user limits for billing, and contract date tracking for future billing integration.
 
+The third-party module implements a three-tier user hierarchy with strict access control:
+- **THIRD_PARTY_MANAGER**: Full control over their company's users, work orders, and reports
+- **THIRD_PARTY_TEAM_LEADER**: Can view/create operators only, execute work orders, view reports
+- **THIRD_PARTY_OPERATOR**: Mobile-only access for work order execution
+
+Users table extended with `thirdPartyCompanyId` and `thirdPartyRole` fields. New middlewares enforce hierarchical permissions: `requireThirdPartyUser`, `requireThirdPartyRole(minRole)`, and `validateThirdPartyUserCreation` for role-based user creation validation. Dedicated permissions added: `third_party_view/create/edit/delete`, `third_party_users_*`, `third_party_workorders_*`, and `third_party_reports_view`.
+
 The authentication system includes single-session control, invalidating previous sessions via WebSocket when a user logs in from a new device. Performance optimizations include database indexing, parallel query execution, and real-time data reporting. Photo uploads are optimized with automatic compression. An offline-first Android APK is supported by a comprehensive sync infrastructure using IndexedDB.
 
 ### System Design Choices
