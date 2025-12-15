@@ -6,10 +6,14 @@ const JWT_SECRET = process.env.JWT_SECRET || 'kJsXXrXanldoNcZJG/iHeTEI8WdMch4PFW
 
 export type UserRole = 'admin' | 'gestor_cliente' | 'supervisor_site' | 'operador' | 'auditor';
 
+export type ThirdPartyRole = 'third_party_manager' | 'third_party_team_leader' | 'third_party_operator';
+
 export interface SessionUser {
   id: string;
   companyId: string;
   customerId?: string;
+  thirdPartyCompanyId?: string;
+  thirdPartyRole?: ThirdPartyRole;
   username: string;
   email: string;
   name: string;
@@ -273,6 +277,8 @@ export async function getUserFromToken(req: Request): Promise<SessionUser | null
         id: user.id,
         companyId: user.companyId || '',
         customerId: user.customerId || undefined,
+        thirdPartyCompanyId: user.thirdPartyCompanyId || undefined,
+        thirdPartyRole: user.thirdPartyRole as ThirdPartyRole || undefined,
         username: user.username,
         email: user.email,
         name: user.name,
@@ -311,6 +317,8 @@ export async function getUserFromToken(req: Request): Promise<SessionUser | null
           id: user.id,
           companyId: user.companyId || '',
           customerId: user.customerId || undefined,
+          thirdPartyCompanyId: user.thirdPartyCompanyId || undefined,
+          thirdPartyRole: user.thirdPartyRole as ThirdPartyRole || undefined,
           username: user.username,
           email: user.email,
           name: user.name,
@@ -707,4 +715,199 @@ export async function requireAuthAndThirdParty(req: Request, res: Response, next
   
   // Depois verifica terceiros
   return requireThirdPartyEnabled(req, res, next);
+}
+
+// ============================================================================
+// SISTEMA DE HIERARQUIA DE TERCEIROS
+// ============================================================================
+
+/**
+ * Hierarquia de roles de terceiros (do maior para o menor)
+ */
+export const THIRD_PARTY_ROLE_HIERARCHY: ThirdPartyRole[] = [
+  'third_party_manager',
+  'third_party_team_leader', 
+  'third_party_operator'
+];
+
+/**
+ * Permissões padrão por role de terceiro
+ */
+export const THIRD_PARTY_ROLE_PERMISSIONS: Record<ThirdPartyRole, string[]> = {
+  third_party_manager: [
+    'third_party_users_view',
+    'third_party_users_create',
+    'third_party_users_edit',
+    'third_party_users_delete',
+    'third_party_workorders_view',
+    'third_party_workorders_execute',
+    'third_party_reports_view'
+  ],
+  third_party_team_leader: [
+    'third_party_users_view',
+    'third_party_users_create', // Só pode criar operadores (validado em runtime)
+    'third_party_workorders_view',
+    'third_party_workorders_execute',
+    'third_party_reports_view'
+  ],
+  third_party_operator: [
+    'third_party_workorders_view',
+    'third_party_workorders_execute'
+  ]
+};
+
+/**
+ * Verifica se um role de terceiro pode gerenciar outro role
+ * Manager > Team Leader > Operator
+ */
+export function canManageThirdPartyRole(managerRole: ThirdPartyRole, targetRole: ThirdPartyRole): boolean {
+  const managerIndex = THIRD_PARTY_ROLE_HIERARCHY.indexOf(managerRole);
+  const targetIndex = THIRD_PARTY_ROLE_HIERARCHY.indexOf(targetRole);
+  
+  // Só pode gerenciar roles abaixo na hierarquia
+  return managerIndex < targetIndex;
+}
+
+/**
+ * Middleware para verificar se o usuário é um terceiro autenticado
+ */
+export async function requireThirdPartyUser(req: Request, res: Response, next: NextFunction) {
+  const user = await getUserFromToken(req);
+  
+  if (!user) {
+    return res.status(401).json({ 
+      error: 'Não autenticado',
+      message: 'Você precisa estar logado para acessar este recurso.' 
+    });
+  }
+  
+  if (user.userType !== 'third_party_user') {
+    return res.status(403).json({ 
+      error: 'Acesso negado',
+      message: 'Este recurso está disponível apenas para usuários de terceiros.',
+      code: 'NOT_THIRD_PARTY_USER'
+    });
+  }
+  
+  if (!user.thirdPartyCompanyId || !user.thirdPartyRole) {
+    return res.status(403).json({ 
+      error: 'Configuração incompleta',
+      message: 'Usuário de terceiro sem empresa ou role definido.',
+      code: 'INVALID_THIRD_PARTY_CONFIG'
+    });
+  }
+  
+  req.user = user;
+  next();
+}
+
+/**
+ * Middleware para verificar role mínimo de terceiro
+ * @param minRole - Role mínimo necessário na hierarquia
+ */
+export function requireThirdPartyRole(minRole: ThirdPartyRole) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user = await getUserFromToken(req);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Não autenticado' });
+    }
+    
+    if (user.userType !== 'third_party_user' || !user.thirdPartyRole) {
+      return res.status(403).json({ 
+        error: 'Acesso negado',
+        message: 'Este recurso requer um usuário de terceiro com role definido.'
+      });
+    }
+    
+    const userRoleIndex = THIRD_PARTY_ROLE_HIERARCHY.indexOf(user.thirdPartyRole);
+    const minRoleIndex = THIRD_PARTY_ROLE_HIERARCHY.indexOf(minRole);
+    
+    // Quanto menor o índice, maior o poder
+    if (userRoleIndex > minRoleIndex) {
+      console.warn(`[THIRD_PARTY] ❌ Acesso negado - User ${user.id} (${user.thirdPartyRole}) tentou acessar recurso que requer: ${minRole}`);
+      return res.status(403).json({ 
+        error: 'Permissão insuficiente',
+        message: `Este recurso requer o role mínimo de: ${minRole}`,
+        userRole: user.thirdPartyRole,
+        requiredRole: minRole
+      });
+    }
+    
+    console.log(`[THIRD_PARTY] ✅ Acesso permitido - User ${user.id} (${user.thirdPartyRole}) para recurso que requer: ${minRole}`);
+    req.user = user;
+    next();
+  };
+}
+
+/**
+ * Middleware para validar que um usuário de terceiro só pode criar/editar
+ * usuários abaixo dele na hierarquia
+ */
+export async function validateThirdPartyUserCreation(req: Request, res: Response, next: NextFunction) {
+  const user = req.user;
+  
+  if (!user || user.userType !== 'third_party_user') {
+    return next(); // Não é terceiro, passar adiante
+  }
+  
+  const targetRole = req.body.thirdPartyRole as ThirdPartyRole;
+  
+  if (!targetRole) {
+    return res.status(400).json({ 
+      error: 'Role obrigatório',
+      message: 'É necessário especificar o role do usuário de terceiro.' 
+    });
+  }
+  
+  const creatorRole = user.thirdPartyRole;
+  
+  if (!creatorRole) {
+    return res.status(403).json({ error: 'Configuração inválida do usuário' });
+  }
+  
+  // Verificar hierarquia
+  if (!canManageThirdPartyRole(creatorRole, targetRole)) {
+    console.warn(`[THIRD_PARTY] ❌ User ${user.id} (${creatorRole}) tentou criar usuário com role ${targetRole}`);
+    
+    if (creatorRole === 'third_party_team_leader') {
+      return res.status(403).json({ 
+        error: 'Permissão insuficiente',
+        message: 'Líderes de equipe só podem criar operadores.',
+        allowedRoles: ['third_party_operator']
+      });
+    }
+    
+    return res.status(403).json({ 
+      error: 'Permissão insuficiente',
+      message: 'Você não pode criar usuários com esse role.',
+      userRole: creatorRole,
+      targetRole: targetRole
+    });
+  }
+  
+  // Garantir que o novo usuário seja da mesma empresa
+  if (req.body.thirdPartyCompanyId && req.body.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+    return res.status(403).json({ 
+      error: 'Empresa inválida',
+      message: 'Você só pode criar usuários para sua própria empresa de terceiros.'
+    });
+  }
+  
+  // Forçar mesma empresa
+  req.body.thirdPartyCompanyId = user.thirdPartyCompanyId;
+  
+  next();
+}
+
+/**
+ * Verifica se usuário de terceiro tem permissão específica baseado no seu role
+ */
+export function hasThirdPartyPermission(user: SessionUser, permission: string): boolean {
+  if (user.userType !== 'third_party_user' || !user.thirdPartyRole) {
+    return false;
+  }
+  
+  const rolePermissions = THIRD_PARTY_ROLE_PERMISSIONS[user.thirdPartyRole] || [];
+  return rolePermissions.includes(permission);
 }

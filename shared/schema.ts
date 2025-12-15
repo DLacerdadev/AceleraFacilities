@@ -6,7 +6,10 @@ import { z } from "zod";
 
 // Enums baseados no backup real
 export const userRoleEnum = pgEnum('user_role', ['admin', 'gestor_cliente', 'supervisor_site', 'operador', 'auditor']);
-export const userTypeEnum = pgEnum('user_type', ['opus_user', 'customer_user', 'supplier_user']);
+export const userTypeEnum = pgEnum('user_type', ['opus_user', 'customer_user', 'supplier_user', 'third_party_user']);
+
+// Roles específicos para usuários de terceiros (hierarquia própria)
+export const thirdPartyRoleEnum = pgEnum('third_party_role', ['third_party_manager', 'third_party_team_leader', 'third_party_operator']);
 export const authProviderEnum = pgEnum('auth_provider', ['local', 'microsoft']);
 export const workOrderStatusEnum = pgEnum('work_order_status', ['aberta', 'em_execucao', 'pausada', 'vencida', 'concluida', 'cancelada']);
 export const workOrderTypeEnum = pgEnum('work_order_type', ['programada', 'corretiva_interna', 'corretiva_publica']);
@@ -91,7 +94,19 @@ export const permissionKeyEnum = pgEnum('permission_key', [
   'maintenance_plan_propose',
   'supplier_parts_manage',
   'supplier_reports_view',
-  'maintenance_plan_approve'
+  'maintenance_plan_approve',
+  // Permissões para submódulo Terceiros
+  'third_party_view',
+  'third_party_create',
+  'third_party_edit',
+  'third_party_delete',
+  'third_party_users_view',
+  'third_party_users_create',
+  'third_party_users_edit',
+  'third_party_users_delete',
+  'third_party_workorders_view',
+  'third_party_workorders_execute',
+  'third_party_reports_view'
 ]);
 
 // 1. TABELA: companies (Empresas)
@@ -206,6 +221,9 @@ export const users = pgTable("users", {
   userNumber: integer("user_number").unique(),
   companyId: varchar("company_id").references(() => companies.id),
   customerId: varchar("customer_id").references(() => customers.id),
+  // Campos para usuários de terceiros
+  thirdPartyCompanyId: varchar("third_party_company_id").references(() => thirdPartyCompanies.id),
+  thirdPartyRole: thirdPartyRoleEnum("third_party_role"),
   username: varchar("username").notNull(),
   email: varchar("email").notNull().unique(),
   password: varchar("password"),
