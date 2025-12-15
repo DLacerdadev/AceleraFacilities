@@ -32,7 +32,10 @@ import {
   Clock,
   CircleDot,
   PackageCheck,
-  Loader2
+  Loader2,
+  Eye,
+  User,
+  Bot
 } from "lucide-react";
 import type { Part, PartMovement, Supplier } from "@shared/schema";
 
@@ -88,6 +91,8 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [selectedOrderForReject, setSelectedOrderForReject] = useState<any>(null);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [isOrderDetailsDialogOpen, setIsOrderDetailsDialogOpen] = useState(false);
+  const [selectedOrderForDetails, setSelectedOrderForDetails] = useState<any>(null);
 
   const { toast } = useToast();
 
@@ -1049,6 +1054,17 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                                   Confirmar Recebimento
                                 </Button>
                               )}
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedOrderForDetails(order);
+                                  setIsOrderDetailsDialogOpen(true);
+                                }}
+                                data-testid={`button-view-details-${order.id}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
                             </div>
                           </div>
 
@@ -1322,6 +1338,128 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
             >
               {rejectOrderMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar Rejeição
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isOrderDetailsDialogOpen} onOpenChange={setIsOrderDetailsDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="w-5 h-5" />
+              Detalhes do Pedido #{selectedOrderForDetails?.orderNumber || selectedOrderForDetails?.id?.slice(0, 8)}
+            </DialogTitle>
+            <DialogDescription>
+              Informações completas do pedido de reabastecimento
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedOrderForDetails && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Fornecedor</span>
+                  <p className="font-medium">{selectedOrderForDetails.supplier?.name || 'Não definido'}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Status</span>
+                  <div>
+                    {(() => {
+                      switch (selectedOrderForDetails.status) {
+                        case 'aguardando_aprovacao': return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">Aguardando Aprovação</Badge>;
+                        case 'pendente': return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Aguardando Confirmação</Badge>;
+                        case 'confirmado': return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Confirmado</Badge>;
+                        case 'enviado': return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Enviado</Badge>;
+                        case 'recebido': return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Recebido</Badge>;
+                        case 'cancelado': return <Badge variant="destructive">Cancelado</Badge>;
+                        default: return <Badge variant="secondary">{selectedOrderForDetails.status}</Badge>;
+                      }
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Data de Criação</span>
+                  <p className="font-medium">
+                    {selectedOrderForDetails.createdAt 
+                      ? new Date(selectedOrderForDetails.createdAt).toLocaleString('pt-BR', {
+                          day: '2-digit', month: '2-digit', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        })
+                      : '-'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Origem</span>
+                  <div className="flex items-center gap-2">
+                    {selectedOrderForDetails.source === 'manual' ? (
+                      <>
+                        <User className="w-4 h-4 text-blue-600" />
+                        <span className="font-medium">Manual</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="w-4 h-4 text-purple-600" />
+                        <span className="font-medium">Automático</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {selectedOrderForDetails.notes && (
+                <div className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Observações</span>
+                  <p className="text-sm bg-muted/30 p-2 rounded">{selectedOrderForDetails.notes}</p>
+                </div>
+              )}
+
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium mb-3">Itens do Pedido</p>
+                <div className="space-y-2">
+                  {selectedOrderForDetails.items?.map((item: any) => {
+                    const qty = parseFloat(item.quantityRequested || '0');
+                    const unitPrice = parseFloat(item.part?.costPrice || '0');
+                    const totalPrice = qty * unitPrice;
+                    return (
+                      <div key={item.id} className="flex items-center justify-between text-sm bg-muted/30 rounded p-2">
+                        <div>
+                          <span className="font-medium">{item.part?.name || 'Peça desconhecida'}</span>
+                          <div className="text-xs text-muted-foreground">
+                            Qtd: {qty} {item.part?.unit || 'un'}
+                            {unitPrice > 0 && ` × R$ ${unitPrice.toFixed(2)}`}
+                          </div>
+                        </div>
+                        <span className="font-mono font-medium">
+                          {totalPrice > 0 ? `R$ ${totalPrice.toFixed(2)}` : '-'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Valor Total Estimado</span>
+                  <span className="text-lg font-bold" style={{ color: theme.styles.color.color }}>
+                    R$ {selectedOrderForDetails.items?.reduce((sum: number, item: any) => {
+                      const qty = parseFloat(item.quantityRequested || '0');
+                      const unitPrice = parseFloat(item.part?.costPrice || '0');
+                      return sum + (qty * unitPrice);
+                    }, 0).toFixed(2) || '0.00'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsOrderDetailsDialogOpen(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
