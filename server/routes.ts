@@ -45,6 +45,7 @@ import {
   getUserPermissions,
   validatePermissionsByUserType,
   getUserFromToken,
+  requireThirdPartyEnabled,
   ALL_PERMISSIONS,
   CLIENT_ALLOWED_PERMISSIONS
 } from "./middleware/auth";
