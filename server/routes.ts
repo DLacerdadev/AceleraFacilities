@@ -5609,7 +5609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               supplierId,
               customerId: customer.id,
               orderNumber,
-              status: 'pendente',
+              status: 'aguardando_aprovacao',
               priority: 'media',
               notes: `Gerado automaticamente por estoque baixo. Valor total estimado: R$ ${orderTotalValue.toFixed(2)}`,
               source: 'auto'
@@ -8010,7 +8010,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         supplierId,
         customerId,
         orderNumber,
-        status: 'pendente',
+        status: 'aguardando_aprovacao',
         priority: priority || 'media',
         expectedDeliveryDate,
         notes,
@@ -8103,7 +8103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           supplierId,
           customerId,
           orderNumber,
-          status: 'pendente',
+          status: 'aguardando_aprovacao',
           priority: 'media',
           notes: `Gerado automaticamente por estoque baixo. Valor total estimado: R$ ${orderTotalValue.toFixed(2)}`,
           source: 'auto'
