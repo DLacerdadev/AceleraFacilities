@@ -1457,7 +1457,41 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
             </div>
           )}
           
-          <DialogFooter>
+          <DialogFooter className="flex-wrap gap-2">
+            {selectedOrderForDetails?.status === 'aguardando_aprovacao' && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedOrderForReject(selectedOrderForDetails);
+                    setIsOrderDetailsDialogOpen(false);
+                    setIsRejectDialogOpen(true);
+                  }}
+                  className="border-red-200 text-red-700"
+                  data-testid="button-reject-order-details"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Rejeitar
+                </Button>
+                <Button
+                  onClick={() => {
+                    approveOrderMutation.mutate(selectedOrderForDetails.id);
+                    setIsOrderDetailsDialogOpen(false);
+                  }}
+                  disabled={approveOrderMutation.isPending}
+                  className={theme.buttons.primary}
+                  style={theme.buttons.primaryStyle}
+                  data-testid="button-approve-order-details"
+                >
+                  {approveOrderMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                  )}
+                  Aprovar
+                </Button>
+              </>
+            )}
             <Button variant="outline" onClick={() => setIsOrderDetailsDialogOpen(false)}>
               Fechar
             </Button>
