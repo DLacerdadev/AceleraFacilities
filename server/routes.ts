@@ -9291,7 +9291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { customerId } = req.params;
       
       const user = req.user!;
-      if (user.customerId !== customerId && user.userType !== 'platform_user') {
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
         return res.status(403).json({ message: 'Acesso negado a este cliente' });
       }
       
@@ -9312,7 +9312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = req.user!;
-      if (user.customerId !== company.customerId && user.userType !== 'platform_user') {
+      if (user.customerId !== company.customerId && user.userType !== 'opus_user') {
         return res.status(403).json({ message: 'Acesso negado a esta empresa terceira' });
       }
       
@@ -9329,7 +9329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { customerId } = req.params;
       
       const user = req.user!;
-      if (user.customerId !== customerId && user.userType !== 'platform_user') {
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
         return res.status(403).json({ message: 'Acesso negado a este cliente' });
       }
       
@@ -9365,7 +9365,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = req.user!;
-      if (user.customerId !== existingCompany.customerId && user.userType !== 'platform_user') {
+      if (user.customerId !== existingCompany.customerId && user.userType !== 'opus_user') {
         return res.status(403).json({ message: 'Acesso negado a esta empresa terceira' });
       }
       
@@ -9417,7 +9417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = req.user!;
-      if (user.customerId !== customerId && user.userType !== 'platform_user') {
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
         return res.status(403).json({ message: 'Acesso negado a este cliente' });
       }
       
