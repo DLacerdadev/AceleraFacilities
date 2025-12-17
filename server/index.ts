@@ -144,6 +144,9 @@ app.use((req, res, next) => {
     
     // Schedule daily auto-replenishment check for low stock parts
     scheduleDailyAutoReplenishment();
+    
+    // Schedule daily third-party overdue notifications
+    scheduleThirdPartyOverdueNotifications();
   });
 })();
 
@@ -218,4 +221,25 @@ function scheduleDailyAutoReplenishment() {
   });
   
   log('[AUTO-REPLENISHMENT SCHEDULER] Agendamento diário ativado via node-cron - roda todo dia às 08:00');
+}
+
+// Third-party overdue notification scheduler - runs every day at 09:00 to notify third parties about overdue WOs
+// Cron: "0 9 * * *" = At 09:00 every day
+function scheduleThirdPartyOverdueNotifications() {
+  cron.schedule('0 9 * * *', async () => {
+    log('[THIRD-PARTY OVERDUE SCHEDULER] Verificando OSs em atraso de terceiros...');
+    
+    try {
+      const response = await fetch(`http://localhost:${parseInt(process.env.PORT || '5000', 10)}/api/scheduler/notify-third-party-overdue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      log(`[THIRD-PARTY OVERDUE SCHEDULER] ✅ ${data.notificationsSent} notificações enviadas`);
+    } catch (error) {
+      console.error('[THIRD-PARTY OVERDUE SCHEDULER] ❌ Erro na verificação:', error);
+    }
+  });
+  
+  log('[THIRD-PARTY OVERDUE SCHEDULER] Agendamento diário ativado via node-cron - roda todo dia às 09:00');
 }

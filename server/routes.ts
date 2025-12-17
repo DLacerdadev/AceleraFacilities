@@ -51,6 +51,7 @@ import {
 } from "./middleware/auth";
 import { sanitizeUser, sanitizeUsers } from "./utils/security";
 import { serializeForAI } from "./utils/serialization";
+import { thirdPartyNotificationService } from "./services/third-party-notifications";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'kJsXXrXanldoNcZJG/iHeTEI8WdMch4PFWNIao1llTU=';
 
@@ -2712,6 +2713,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // 🔔 NOTIFICAÇÕES PARA TERCEIROS: Quando OS é atribuída a equipe/operador terceirizado
+      if (currentWO && updatedWorkOrder) {
+        const woCode = updatedWorkOrder.code || req.params.id;
+        
+        // Nova atribuição a empresa terceirizada
+        if (workOrder.thirdPartyCompanyId && workOrder.thirdPartyCompanyId !== currentWO.thirdPartyCompanyId) {
+          await thirdPartyNotificationService.onWorkOrderAssignedToTeam(
+            req.params.id,
+            woCode,
+            workOrder.thirdPartyCompanyId,
+            workOrder.thirdPartyOperatorId || undefined
+          );
+        }
+        // Nova atribuição a operador terceirizado (sem mudança de empresa)
+        else if (workOrder.thirdPartyOperatorId && workOrder.thirdPartyOperatorId !== currentWO.thirdPartyOperatorId) {
+          await thirdPartyNotificationService.onWorkOrderAssignedToOperator(
+            req.params.id,
+            woCode,
+            workOrder.thirdPartyOperatorId
+          );
+        }
+      }
+      
       // Send webhook notification if configured
       // TODO: Implement webhook sending logic
       
@@ -2787,6 +2811,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (stockError) {
           console.error(`[WO COMPLETE] Erro ao descontar estoque para O.S. ${req.params.id}:`, stockError);
           // Não bloquear a conclusão da O.S., apenas logar o erro
+        }
+      }
+      
+      // 🔔 NOTIFICAÇÕES PARA TERCEIROS: Quando OS é atribuída a equipe/operador terceirizado (PATCH)
+      if (currentWO && updatedWorkOrder) {
+        const woCode = updatedWorkOrder.code || req.params.id;
+        
+        // Nova atribuição a empresa terceirizada
+        if (workOrder.thirdPartyCompanyId && workOrder.thirdPartyCompanyId !== currentWO.thirdPartyCompanyId) {
+          await thirdPartyNotificationService.onWorkOrderAssignedToTeam(
+            req.params.id,
+            woCode,
+            workOrder.thirdPartyCompanyId,
+            workOrder.thirdPartyOperatorId || undefined
+          );
+        }
+        // Nova atribuição a operador terceirizado (sem mudança de empresa)
+        else if (workOrder.thirdPartyOperatorId && workOrder.thirdPartyOperatorId !== currentWO.thirdPartyOperatorId) {
+          await thirdPartyNotificationService.onWorkOrderAssignedToOperator(
+            req.params.id,
+            woCode,
+            workOrder.thirdPartyOperatorId
+          );
         }
       }
       
@@ -5752,6 +5799,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Third-party overdue work order notifications
+  app.post("/api/scheduler/notify-third-party-overdue", async (req, res) => {
+    try {
+      console.log(`[THIRD-PARTY OVERDUE SCHEDULER] Verificando OSs em atraso atribuídas a terceiros`);
+      
+      const workOrders = await storage.getWorkOrders();
+      const now = new Date();
+      let notificationsSent = 0;
+      
+      // Filter overdue work orders assigned to third parties
+      const overdueThirdPartyWOs = workOrders.filter(wo => 
+        wo.thirdPartyCompanyId && 
+        wo.status !== 'concluida' && 
+        wo.status !== 'cancelada' &&
+        wo.scheduledEndAt && 
+        new Date(wo.scheduledEndAt) < now
+      );
+      
+      // Group by third-party company to avoid duplicate notifications
+      const woByCompany = new Map<string, typeof overdueThirdPartyWOs>();
+      for (const wo of overdueThirdPartyWOs) {
+        if (!wo.thirdPartyCompanyId) continue;
+        const list = woByCompany.get(wo.thirdPartyCompanyId) || [];
+        list.push(wo);
+        woByCompany.set(wo.thirdPartyCompanyId, list);
+      }
+      
+      // Send notifications for each overdue WO
+      for (const [companyId, wos] of woByCompany) {
+        for (const wo of wos) {
+          await thirdPartyNotificationService.onWorkOrderOverdue(
+            wo.id,
+            wo.code || wo.id,
+            companyId
+          );
+          notificationsSent++;
+        }
+      }
+      
+      console.log(`[THIRD-PARTY OVERDUE SCHEDULER] ✅ ${notificationsSent} notificações enviadas para ${woByCompany.size} empresas`);
+      
+      res.json({
+        message: `Third-party overdue notifications sent`,
+        notificationsSent,
+        companiesNotified: woByCompany.size,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[THIRD-PARTY OVERDUE SCHEDULER] Erro:', error);
+      res.status(500).json({ message: 'Erro ao enviar notificações de atraso' });
+    }
+  });
+
   // Auto-replenishment scheduler endpoint - processes all customers
   app.post("/api/scheduler/auto-replenishment-all", async (req, res) => {
     try {
@@ -8666,6 +8766,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `Sua proposta de plano de manutenção foi aprovada.`,
           { proposalId: proposal.id }
         );
+        
+        // Notify third-party team leaders if proposal was created by a third-party user
+        const creatorUser = await storage.getUser(proposal.createdByUserId);
+        if (creatorUser?.thirdPartyCompanyId) {
+          const planName = (proposal.proposedPlanData as any)?.name || 'Plano de Manutenção';
+          await thirdPartyNotificationService.onMaintenancePlanApproved(
+            proposal.id,
+            planName,
+            creatorUser.thirdPartyCompanyId
+          );
+        }
       }
       
       res.json(updatedProposal);
@@ -8702,6 +8813,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           `Sua proposta de plano de manutenção foi recusada.${rejectionReason ? ` Motivo: ${rejectionReason}` : ''}`,
           { proposalId: proposal.id, rejectionReason }
         );
+        
+        // Notify third-party team leaders if proposal was created by a third-party user
+        const creatorUser = await storage.getUser(proposal.createdByUserId);
+        if (creatorUser?.thirdPartyCompanyId) {
+          const planName = (proposal.proposedPlanData as any)?.name || 'Plano de Manutenção';
+          await thirdPartyNotificationService.onMaintenancePlanRejected(
+            proposal.id,
+            planName,
+            creatorUser.thirdPartyCompanyId,
+            rejectionReason
+          );
+        }
       }
       
       res.json(updatedProposal);
@@ -8950,6 +9073,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting notification:', error);
       res.status(500).json({ message: 'Erro ao excluir notificação' });
+    }
+  });
+
+  // Register push token for mobile notifications (Expo Push)
+  app.post('/api/notifications/push-token', requireAuth, async (req, res) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ message: 'Não autenticado' });
+      }
+      
+      const { pushToken, enabled } = req.body;
+      
+      if (!pushToken || typeof pushToken !== 'string') {
+        return res.status(400).json({ message: 'Token inválido' });
+      }
+      
+      // Update user with push token
+      await storage.updateUser(req.user.id, {
+        pushToken,
+        pushEnabled: enabled !== false
+      });
+      
+      console.log(`[PUSH] Token registered for user ${req.user.id}: ${pushToken.substring(0, 20)}...`);
+      res.json({ message: 'Token registrado com sucesso' });
+    } catch (error) {
+      console.error('Error registering push token:', error);
+      res.status(500).json({ message: 'Erro ao registrar token' });
+    }
+  });
+
+  // Disable push notifications for current user
+  app.delete('/api/notifications/push-token', requireAuth, async (req, res) => {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ message: 'Não autenticado' });
+      }
+      
+      await storage.updateUser(req.user.id, {
+        pushToken: null,
+        pushEnabled: false
+      });
+      
+      console.log(`[PUSH] Token removed for user ${req.user.id}`);
+      res.json({ message: 'Token removido com sucesso' });
+    } catch (error) {
+      console.error('Error removing push token:', error);
+      res.status(500).json({ message: 'Erro ao remover token' });
     }
   });
 

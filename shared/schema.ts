@@ -243,6 +243,9 @@ export const users = pgTable("users", {
   msTenantId: varchar("ms_tenant_id"),
   modules: text("modules").array().notNull().default(sql`ARRAY['clean']::text[]`),
   isActive: boolean("is_active").default(true),
+  // Push notification fields
+  pushToken: varchar("push_token"),
+  pushEnabled: boolean("push_enabled").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
