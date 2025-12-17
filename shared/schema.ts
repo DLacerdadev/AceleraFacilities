@@ -37,6 +37,25 @@ export const evaluatorTypeEnum = pgEnum('evaluator_type', ['CLIENT', 'SYSTEM']);
 // Enum para tipo de autor de comentário em OS
 export const commentAuthorTypeEnum = pgEnum('comment_author_type', ['CLIENT', 'THIRD_PARTY', 'SYSTEM']);
 
+// Enum para ações de auditoria de OS (logs imutáveis)
+export const workOrderAuditActionEnum = pgEnum('work_order_audit_action', [
+  'CREATED',           // OS criada
+  'UPDATED',           // OS alterada (campos gerais)
+  'STATUS_CHANGED',    // Mudança de status
+  'ASSIGNED',          // Atribuída a operador/terceiro
+  'APPROVED',          // Aprovada (ex: reabertura)
+  'REJECTED',          // Recusada
+  'EXECUTION_STARTED', // Execução iniciada
+  'EXECUTION_PAUSED',  // Execução pausada
+  'EXECUTION_RESUMED', // Execução retomada
+  'COMPLETED',         // Concluída
+  'EVALUATED',         // Avaliada
+  'COMMENTED',         // Comentário adicionado
+  'ATTACHMENT_ADDED',  // Anexo adicionado
+  'REOPENED',          // Reaberta
+  'CANCELLED'          // Cancelada
+]);
+
 // Sistema de permissões granulares
 export const permissionKeyEnum = pgEnum('permission_key', [
   'dashboard_view',
@@ -696,6 +715,46 @@ export const workOrderEvaluations = pgTable("work_order_evaluations", {
 }, (table) => ({
   workOrderIdx: index("work_order_evaluations_work_order_idx").on(table.workOrderId),
   evaluatorIdx: index("work_order_evaluations_evaluator_idx").on(table.evaluatorUserId),
+}));
+
+// 28. TABELA: work_order_audit_logs (Logs Imutáveis de Auditoria de OS)
+// Registra todas as ações realizadas em ordens de serviço para rastreabilidade completa
+export const workOrderAuditLogs = pgTable("work_order_audit_logs", {
+  id: varchar("id").primaryKey(),
+  workOrderId: varchar("work_order_id").notNull().references(() => workOrders.id, { onDelete: 'cascade' }),
+  
+  // Ação realizada
+  action: workOrderAuditActionEnum("action").notNull(),
+  
+  // Informações do usuário que realizou a ação
+  userId: varchar("user_id").references(() => users.id),
+  userType: userTypeEnum("user_type"), // opus_user | customer_user | supplier_user | third_party_user
+  userName: varchar("user_name"), // Nome do usuário no momento da ação (snapshot)
+  
+  // Contexto organizacional
+  customerId: varchar("customer_id").references(() => customers.id),
+  customerName: varchar("customer_name"), // Snapshot do nome do cliente
+  thirdPartyCompanyId: varchar("third_party_company_id").references(() => thirdPartyCompanies.id),
+  thirdPartyCompanyName: varchar("third_party_company_name"), // Snapshot do nome do terceiro
+  
+  // Detalhes da alteração
+  previousValue: jsonb("previous_value"), // Estado anterior (para alterações)
+  newValue: jsonb("new_value"), // Novo estado
+  description: text("description"), // Descrição legível da ação
+  
+  // Metadados
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  source: varchar("source").default('web'), // web | mobile | api | system
+  
+  // Timestamp imutável
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (table) => ({
+  workOrderIdx: index("work_order_audit_logs_work_order_idx").on(table.workOrderId),
+  userIdx: index("work_order_audit_logs_user_idx").on(table.userId),
+  actionIdx: index("work_order_audit_logs_action_idx").on(table.action),
+  createdAtIdx: index("work_order_audit_logs_created_at_idx").on(table.createdAt),
+  customerIdx: index("work_order_audit_logs_customer_idx").on(table.customerId),
 }));
 
 // ============================================================================
@@ -1529,6 +1588,25 @@ export const workOrderCommentsRelations = relations(workOrderComments, ({ one })
   }),
 }));
 
+export const workOrderAuditLogsRelations = relations(workOrderAuditLogs, ({ one }) => ({
+  workOrder: one(workOrders, {
+    fields: [workOrderAuditLogs.workOrderId],
+    references: [workOrders.id],
+  }),
+  user: one(users, {
+    fields: [workOrderAuditLogs.userId],
+    references: [users.id],
+  }),
+  customer: one(customers, {
+    fields: [workOrderAuditLogs.customerId],
+    references: [customers.id],
+  }),
+  thirdPartyCompany: one(thirdPartyCompanies, {
+    fields: [workOrderAuditLogs.thirdPartyCompanyId],
+    references: [thirdPartyCompanies.id],
+  }),
+}));
+
 // Maintenance Relations
 export const equipmentRelations = relations(equipment, ({ one, many }) => ({
   company: one(companies, {
@@ -1770,6 +1848,8 @@ export const insertBathroomCounterLogSchema = createInsertSchema(bathroomCounter
 export const insertPublicRequestLogSchema = createInsertSchema(publicRequestLogs);
 export const insertWorkOrderCommentSchema = createInsertSchema(workOrderComments);
 
+export const insertWorkOrderAuditLogSchema = createInsertSchema(workOrderAuditLogs).omit({ id: true });
+
 export const insertWorkOrderEvaluationSchema = createInsertSchema(workOrderEvaluations).omit({ id: true }).extend({
   rating: z.number().min(1).max(10).optional().nullable(),
   comment: z.string().optional().nullable(),
@@ -1916,6 +1996,10 @@ export type InsertPublicRequestLog = z.infer<typeof insertPublicRequestLogSchema
 
 export type WorkOrderComment = typeof workOrderComments.$inferSelect;
 export type InsertWorkOrderComment = z.infer<typeof insertWorkOrderCommentSchema>;
+
+export type WorkOrderAuditLog = typeof workOrderAuditLogs.$inferSelect;
+export type InsertWorkOrderAuditLog = z.infer<typeof insertWorkOrderAuditLogSchema>;
+export type WorkOrderAuditAction = typeof workOrderAuditActionEnum.enumValues[number];
 
 export type WorkOrderEvaluation = typeof workOrderEvaluations.$inferSelect;
 export type InsertWorkOrderEvaluation = z.infer<typeof insertWorkOrderEvaluationSchema>;

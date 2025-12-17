@@ -3,7 +3,7 @@ import {
   slaConfigs, cleaningActivities, workOrders, bathroomCounters, webhookConfigs, services,
   serviceTypes, serviceCategories, serviceZones, dashboardGoals, auditLogs, customers,
   userSiteAssignments, userAllowedCustomers, publicRequestLogs, siteShifts, bathroomCounterLogs, companyCounters, customerCounters,
-  workOrderComments, workOrderAttachments, workOrderEvaluations,
+  workOrderComments, workOrderAttachments, workOrderEvaluations, workOrderAuditLogs,
   equipment, equipmentTypes, maintenanceChecklistTemplates,
   maintenanceChecklistExecutions, maintenancePlans, maintenancePlanEquipments, maintenanceActivities,
   parts, workOrderParts, maintenancePlanParts, maintenanceActivityParts, partMovements,
@@ -28,6 +28,7 @@ import {
   type WorkOrderComment, type InsertWorkOrderComment,
   type WorkOrderAttachment, type InsertWorkOrderAttachment,
   type WorkOrderEvaluation, type InsertWorkOrderEvaluation,
+  type WorkOrderAuditLog, type InsertWorkOrderAuditLog,
   customRoles, rolePermissions, userRoleAssignments,
   type CustomRole, type CustomRoleWithPermissions, type InsertCustomRole, type RolePermission, type InsertRolePermission,
   type UserRoleAssignment, type InsertUserRoleAssignment,
@@ -56,7 +57,7 @@ import {
   type SupplierWorkOrderItem, type InsertSupplierWorkOrderItem
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, sql, count, inArray, isNull, isNotNull, ne, gte, lte, lt, not } from "drizzle-orm";
+import { eq, and, or, desc, asc, sql, count, inArray, isNull, isNotNull, ne, gte, lte, lt, not } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
@@ -297,6 +298,10 @@ export interface IStorage {
   getWorkOrderEvaluations(workOrderId: string): Promise<WorkOrderEvaluation[]>;
   getWorkOrderEvaluation(id: string): Promise<WorkOrderEvaluation | undefined>;
   createWorkOrderEvaluation(evaluation: InsertWorkOrderEvaluation & { id: string }): Promise<WorkOrderEvaluation>;
+
+  // Work Order Audit Logs (Logs Imutáveis)
+  getWorkOrderAuditLogs(workOrderId: string): Promise<WorkOrderAuditLog[]>;
+  createWorkOrderAuditLog(log: InsertWorkOrderAuditLog & { id: string }): Promise<WorkOrderAuditLog>;
 
   // Bathroom Counters
   getBathroomCounterByZone(zoneId: string): Promise<BathroomCounter | undefined>;
@@ -4462,6 +4467,21 @@ export class DatabaseStorage implements IStorage {
       .values(evaluation)
       .returning();
     return newEvaluation;
+  }
+
+  // Work Order Audit Logs (Logs Imutáveis)
+  async getWorkOrderAuditLogs(workOrderId: string): Promise<WorkOrderAuditLog[]> {
+    return await db.select()
+      .from(workOrderAuditLogs)
+      .where(eq(workOrderAuditLogs.workOrderId, workOrderId))
+      .orderBy(asc(workOrderAuditLogs.createdAt));
+  }
+
+  async createWorkOrderAuditLog(log: InsertWorkOrderAuditLog & { id: string }): Promise<WorkOrderAuditLog> {
+    const [newLog] = await db.insert(workOrderAuditLogs)
+      .values(log)
+      .returning();
+    return newLog;
   }
 
   // Work Order Attachments - File Upload Helpers
