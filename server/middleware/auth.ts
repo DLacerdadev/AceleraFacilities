@@ -646,17 +646,33 @@ export async function requireThirdPartyEnabled(req: Request, res: Response, next
     });
   }
   
-  // Buscar customerId do parâmetro da rota ou do usuário
-  const customerId = req.params.customerId || req.params.id || user.customerId;
-  
-  if (!customerId) {
-    return res.status(400).json({ 
-      error: 'Cliente não identificado',
-      message: 'Não foi possível identificar o cliente para verificar permissões de terceiros.' 
-    });
-  }
-  
   try {
+    let customerId = req.params.customerId || user.customerId;
+    
+    // Se não encontrou customerId mas temos um :id param, pode ser um ID de empresa terceirizada
+    // Nesse caso, precisamos buscar a empresa para obter o customerId
+    if (!customerId && req.params.id) {
+      const thirdPartyCompany = await storage.getThirdPartyCompany(req.params.id);
+      if (thirdPartyCompany) {
+        customerId = thirdPartyCompany.customerId;
+      }
+    }
+    
+    // Também tentar buscar pelo :companyId (usado em rotas de SLA)
+    if (!customerId && req.params.companyId) {
+      const thirdPartyCompany = await storage.getThirdPartyCompany(req.params.companyId);
+      if (thirdPartyCompany) {
+        customerId = thirdPartyCompany.customerId;
+      }
+    }
+    
+    if (!customerId) {
+      return res.status(400).json({ 
+        error: 'Cliente não identificado',
+        message: 'Não foi possível identificar o cliente para verificar permissões de terceiros.' 
+      });
+    }
+    
     // Buscar dados do cliente
     const customer = await storage.getCustomer(customerId);
     
