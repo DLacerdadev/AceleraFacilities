@@ -20,6 +20,7 @@ import {
   Trash2,
   Layers,
   Building,
+  Building2,
   Users as UsersIcon,
   Cog,
   Target,
@@ -41,6 +42,7 @@ import Sites from "./sites";
 import Users from "./users";
 import Services from "./services";
 import Suppliers from "./suppliers";
+import ThirdPartyCompanies from "./third-party-companies";
 import { useClient } from "@/contexts/ClientContext";
 import { useModule } from "@/contexts/ModuleContext";
 import { useEffect } from "react";
@@ -444,7 +446,7 @@ export default function Settings() {
   const [editingGoal, setEditingGoal] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { activeClientId: customerId } = useClient();
+  const { activeClientId: customerId, activeClient } = useClient();
   const { currentModule } = useModule();
   const theme = useModuleTheme();
 
@@ -803,6 +805,16 @@ export default function Settings() {
                 <Truck className="w-4 h-4" />
                 Fornecedores
               </TabsTrigger>
+              {activeClient?.thirdPartyEnabled && (
+                <TabsTrigger 
+                  value="third-party" 
+                  className="flex items-center gap-2 text-sm rounded-lg px-4 py-2.5 transition-all whitespace-nowrap data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900 data-[state=active]:shadow-sm"
+                  data-testid="tab-third-party"
+                >
+                  <Building2 className="w-4 h-4" />
+                  Terceiros
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
@@ -1397,6 +1409,12 @@ export default function Settings() {
           <TabsContent value="suppliers" className="space-y-6">
             <Suppliers />
           </TabsContent>
+
+          {activeClient?.thirdPartyEnabled && (
+            <TabsContent value="third-party" className="space-y-6">
+              <ThirdPartyCompanies />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
