@@ -25,6 +25,70 @@ export class ThirdPartyCleanupService {
       throw new Error(`Third party company ${thirdPartyCompanyId} not found`);
     }
     
+    const result = await this.cleanupThirdPartyCompany(
+      thirdPartyCompanyId,
+      performedBy,
+      `Empresa terceira desativada: ${reason}`
+    );
+    
+    await storage.updateThirdPartyCompany(thirdPartyCompanyId, {
+      status: 'inactive',
+    });
+    
+    console.log(`[THIRD_PARTY_CLEANUP] Company ${thirdPartyCompanyId} deactivated. Cancelled ${result.cancelledWorkOrders} WOs, deactivated ${result.deactivatedUsers} users`);
+    
+    return {
+      cancelledWorkOrders: result.cancelledWorkOrders,
+      deactivatedUsers: result.deactivatedUsers,
+      thirdPartyCompanyId,
+      customerId: company.customerId,
+    };
+  }
+  
+  async deactivateThirdPartyModule(
+    customerId: string,
+    performedBy: { id: string; name: string; userType: string },
+    reason: string
+  ): Promise<CleanupResult> {
+    console.log(`[THIRD_PARTY_CLEANUP] Disabling third-party module for customer ${customerId}`);
+    
+    const companies = await storage.getThirdPartyCompaniesByCustomer(customerId);
+    
+    let totalCancelledWOs = 0;
+    let totalDeactivatedUsers = 0;
+    
+    for (const company of companies) {
+      const result = await this.cleanupThirdPartyCompany(
+        company.id,
+        performedBy,
+        `Módulo de terceiros desabilitado para o cliente: ${reason}`
+      );
+      totalCancelledWOs += result.cancelledWorkOrders;
+      totalDeactivatedUsers += result.deactivatedUsers;
+      
+      if (company.status === 'active') {
+        await storage.updateThirdPartyCompany(company.id, { status: 'inactive' });
+      }
+    }
+    
+    await storage.updateCustomer(customerId, {
+      thirdPartyEnabled: false,
+    });
+    
+    console.log(`[THIRD_PARTY_CLEANUP] Module disabled for customer ${customerId}. Total: ${totalCancelledWOs} WOs cancelled, ${totalDeactivatedUsers} users deactivated`);
+    
+    return {
+      cancelledWorkOrders: totalCancelledWOs,
+      deactivatedUsers: totalDeactivatedUsers,
+      customerId,
+    };
+  }
+  
+  private async cleanupThirdPartyCompany(
+    thirdPartyCompanyId: string,
+    performedBy: { id: string; name: string; userType: string },
+    reason: string
+  ): Promise<{ cancelledWorkOrders: number; deactivatedUsers: number }> {
     const openWorkOrders = await storage.getOpenWorkOrdersByThirdParty(thirdPartyCompanyId);
     
     for (const wo of openWorkOrders) {
@@ -44,59 +108,14 @@ export class ThirdPartyCleanupService {
     
     const cancelledCount = await storage.cancelWorkOrdersByThirdParty(
       thirdPartyCompanyId,
-      `Empresa terceira desativada: ${reason}`
+      reason
     );
     
     const deactivatedUsers = await this.deactivateThirdPartyUsers(thirdPartyCompanyId);
     
-    await storage.updateThirdPartyCompany(thirdPartyCompanyId, {
-      status: 'inactive',
-    });
-    
-    console.log(`[THIRD_PARTY_CLEANUP] Company ${thirdPartyCompanyId} deactivated. Cancelled ${cancelledCount} WOs, deactivated ${deactivatedUsers} users`);
-    
     return {
       cancelledWorkOrders: cancelledCount,
       deactivatedUsers,
-      thirdPartyCompanyId,
-      customerId: company.customerId,
-    };
-  }
-  
-  async deactivateThirdPartyModule(
-    customerId: string,
-    performedBy: { id: string; name: string; userType: string },
-    reason: string
-  ): Promise<CleanupResult> {
-    console.log(`[THIRD_PARTY_CLEANUP] Disabling third-party module for customer ${customerId}`);
-    
-    const companies = await storage.getThirdPartyCompaniesByCustomer(customerId);
-    
-    let totalCancelledWOs = 0;
-    let totalDeactivatedUsers = 0;
-    
-    for (const company of companies) {
-      if (company.status === 'active') {
-        const result = await this.deactivateThirdPartyCompany(
-          company.id,
-          performedBy,
-          `Módulo de terceiros desabilitado para o cliente: ${reason}`
-        );
-        totalCancelledWOs += result.cancelledWorkOrders;
-        totalDeactivatedUsers += result.deactivatedUsers;
-      }
-    }
-    
-    await storage.updateCustomer(customerId, {
-      thirdPartyEnabled: false,
-    });
-    
-    console.log(`[THIRD_PARTY_CLEANUP] Module disabled for customer ${customerId}. Total: ${totalCancelledWOs} WOs cancelled, ${totalDeactivatedUsers} users deactivated`);
-    
-    return {
-      cancelledWorkOrders: totalCancelledWOs,
-      deactivatedUsers: totalDeactivatedUsers,
-      customerId,
     };
   }
   
