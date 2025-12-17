@@ -57,6 +57,7 @@ import {
 import { sanitizeUser, sanitizeUsers } from "./utils/security";
 import { serializeForAI } from "./utils/serialization";
 import { thirdPartyNotificationService } from "./services/third-party-notifications";
+import { workOrderAuditService } from "./services/work-order-audit";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'kJsXXrXanldoNcZJG/iHeTEI8WdMch4PFWNIao1llTU=';
 
@@ -2618,8 +2619,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workOrder = insertWorkOrderSchema.parse(dataWithModule);
       const newWorkOrder = await storage.createWorkOrder(workOrder);
       
-      // Send webhook notification if configured
-      // TODO: Implement webhook sending logic
+      // Log de auditoria imutável
+      await workOrderAuditService.logCreation(newWorkOrder.id, newWorkOrder, {
+        user: req.user,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        source: 'web',
+      });
       
       res.status(201).json(newWorkOrder);
     } catch (error: any) {
@@ -2722,6 +2728,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedWorkOrder = await storage.updateWorkOrder(req.params.id, workOrder);
       
+      // Log de auditoria imutável (PUT)
+      const auditContextPut = { user: req.user, ipAddress: req.ip, userAgent: req.get('user-agent'), source: 'web' as const };
+      if (currentWO && workOrder.status && workOrder.status !== currentWO.status) {
+        await workOrderAuditService.logStatusChange(req.params.id, currentWO.status, workOrder.status, auditContextPut);
+        if (workOrder.status === 'concluida') {
+          await workOrderAuditService.logCompleted(req.params.id, { completedBy: req.user?.name }, auditContextPut);
+        } else if (workOrder.status === 'cancelada') {
+          await workOrderAuditService.logCancelled(req.params.id, undefined, auditContextPut);
+        }
+      } else if (currentWO) {
+        await workOrderAuditService.logUpdate(req.params.id, currentWO, workOrder, auditContextPut);
+      }
+      
       // 🔧 DESCONTO AUTOMÁTICO DE ESTOQUE: Quando O.S. é concluída
       if (currentWO && currentWO.status !== 'concluida' && workOrder.status === 'concluida') {
         console.log(`[WO COMPLETE] O.S. ${req.params.id} concluída - Processando desconto de estoque...`);
@@ -2729,7 +2748,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await deductStockForWorkOrder(req.params.id, req.user?.id);
         } catch (stockError) {
           console.error(`[WO COMPLETE] Erro ao descontar estoque para O.S. ${req.params.id}:`, stockError);
-          // Não bloquear a conclusão da O.S., apenas logar o erro
         }
       }
       
@@ -3053,7 +3071,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const newComment = await storage.createWorkOrderComment(comment);
       
-      console.log(`[COMMENT] ✅ Novo comentário criado para OS ${req.params.workOrderId} por ${user.name} (${authorType})`);
+      // Log de auditoria para comentários
+      await workOrderAuditService.logCommented(req.params.workOrderId, {
+        text: req.body.comment,
+        isReopenRequest: req.body.isReopenRequest || false,
+      }, {
+        user: req.user,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        source: 'web',
+      });
+      
+      console.log(`[COMMENT] Novo comentário criado para OS ${req.params.workOrderId} por ${user.name} (${authorType})`);
       res.status(201).json(newComment);
     } catch (error) {
       console.error("Error creating comment:", error);
@@ -3097,6 +3126,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WORK ORDER EVALUATIONS - Avaliações de OS (Novo Sistema)
   // ============================================================
   
+  // GET - Listar logs de auditoria de uma OS (histórico imutável)
+  app.get("/api/work-orders/:workOrderId/audit-logs", requirePermission('audit_logs_view'), async (req, res) => {
+    try {
+      const workOrder = await storage.getWorkOrder(req.params.workOrderId);
+      if (!workOrder) {
+        return res.status(404).json({ message: "Ordem de serviço não encontrada" });
+      }
+      
+      // Verificar isolamento de dados
+      const user = req.user;
+      if (user?.userType === 'third_party_user' || user?.userType === 'customer_user') {
+        if (workOrder.customerId !== user.customerId) {
+          return res.status(403).json({ message: "Acesso negado a esta ordem de serviço" });
+        }
+      }
+      
+      const auditLogs = await storage.getWorkOrderAuditLogs(req.params.workOrderId);
+      res.json(auditLogs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Erro ao buscar histórico de auditoria" });
+    }
+  });
+
   // GET - Listar avaliações de uma OS
   app.get("/api/work-orders/:workOrderId/evaluations", requirePermission('workorders_view'), async (req, res) => {
     try {
@@ -3193,7 +3246,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         comment: comment ?? null,
       });
 
-      console.log(`[EVALUATION] ✅ Nova avaliação criada para OS ${req.params.workOrderId} por ${user.name} (${evaluatorType})`);
+      // Log de auditoria para avaliações
+      await workOrderAuditService.logEvaluated(req.params.workOrderId, {
+        rating: validRating ?? undefined,
+        comment: comment ?? undefined,
+        evaluatorType,
+      }, {
+        user: req.user,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        source: 'web',
+      });
+
+      console.log(`[EVALUATION] Nova avaliação criada para OS ${req.params.workOrderId} por ${user.name} (${evaluatorType})`);
       res.status(201).json(evaluation);
     } catch (error) {
       console.error("Error creating evaluation:", error);
@@ -3211,6 +3276,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reason,
         attachments
       );
+      
+      // Log de auditoria para reabertura
+      await workOrderAuditService.logReopened(req.params.workOrderId, reason, {
+        user: req.user,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        source: 'web',
+      });
+      
       res.json(reopenedWorkOrder);
     } catch (error) {
       res.status(500).json({ message: "Failed to reopen work order" });
@@ -3247,6 +3321,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startedAt: new Date(),
         assignedUserId: req.user?.id,
         assignedUserIds: newIds as string[],
+      });
+      
+      // Log de auditoria para início de execução
+      await workOrderAuditService.logExecutionStarted(workOrderId, {
+        user: req.user,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        source: 'mobile',
       });
       
       console.log(`[MOBILE] O.S. ${workOrderId} iniciada por ${req.user?.username}`);
@@ -3306,6 +3388,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedWorkOrder = await storage.updateWorkOrder(workOrderId, {
         status: 'concluida',
         completedAt: new Date(),
+      });
+      
+      // Log de auditoria para conclusão
+      await workOrderAuditService.logCompleted(workOrderId, {
+        completedBy: req.user?.name,
+        notes: notes?.substring(0, 200),
+        photosCount: uploadedPhotos.length,
+      }, {
+        user: req.user,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        source: 'mobile',
       });
       
       // Adicionar comentário com fotos se houver
@@ -3381,6 +3475,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'pausada',
       });
       
+      // Log de auditoria para pausa
+      await workOrderAuditService.logExecutionPaused(workOrderId, reason, {
+        user: req.user,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        source: 'mobile',
+      });
+      
       // Adicionar comentário com motivo da pausa
       await storage.createWorkOrderComment({
         id: nanoid(),
@@ -3424,6 +3526,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedWorkOrder = await storage.updateWorkOrder(workOrderId, {
         status: 'em_execucao',
+      });
+      
+      // Log de auditoria para retomada
+      await workOrderAuditService.logExecutionResumed(workOrderId, {
+        user: req.user,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        source: 'mobile',
       });
       
       // Adicionar comentário de retomada
