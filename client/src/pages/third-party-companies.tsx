@@ -53,6 +53,7 @@ const thirdPartyCompanySchema = z.object({
   contractStartDate: z.string().optional(),
   contractEndDate: z.string().optional(),
   assetVisibilityMode: z.enum(["ALL", "CONTRACT_ONLY"]),
+  workOrderApprovalMode: z.enum(["always_accept", "require_approval", "always_reject"]),
 });
 
 type ThirdPartyCompanyFormData = z.infer<typeof thirdPartyCompanySchema>;
@@ -119,6 +120,7 @@ export default function ThirdPartyCompanies() {
       contractStartDate: "",
       contractEndDate: "",
       assetVisibilityMode: "CONTRACT_ONLY",
+      workOrderApprovalMode: "require_approval",
     },
   });
 
@@ -133,6 +135,7 @@ export default function ThirdPartyCompanies() {
       contractStartDate: "",
       contractEndDate: "",
       assetVisibilityMode: "CONTRACT_ONLY",
+      workOrderApprovalMode: "require_approval",
     },
   });
 
@@ -266,6 +269,7 @@ export default function ThirdPartyCompanies() {
       contractStartDate: company.contractStartDate || "",
       contractEndDate: company.contractEndDate || "",
       assetVisibilityMode: company.assetVisibilityMode,
+      workOrderApprovalMode: (company as any).workOrderApprovalMode || "require_approval",
     });
     setIsEditDialogOpen(true);
   };
@@ -457,6 +461,31 @@ export default function ThirdPartyCompanies() {
                                   <SelectItem value="CONTRACT_ONLY">Apenas Ativos Contratados</SelectItem>
                                 </SelectContent>
                               </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={createForm.control}
+                          name="workOrderApprovalMode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Aprovação de Propostas</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-work-order-approval">
+                                    <SelectValue placeholder="Selecione" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="always_accept">Aceitar Automaticamente</SelectItem>
+                                  <SelectItem value="require_approval">Requerer Aprovação</SelectItem>
+                                  <SelectItem value="always_reject">Recusar Automaticamente</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Define como lidar com propostas de O.S. desta empresa
+                              </p>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -878,6 +907,31 @@ export default function ThirdPartyCompanies() {
                         <SelectItem value="CONTRACT_ONLY">Apenas Ativos Contratados</SelectItem>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="workOrderApprovalMode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Aprovação de Propostas</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || "require_approval"}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-work-order-approval">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="always_accept">Aceitar Automaticamente</SelectItem>
+                        <SelectItem value="require_approval">Requerer Aprovação</SelectItem>
+                        <SelectItem value="always_reject">Recusar Automaticamente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Define como lidar com propostas de O.S. desta empresa
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
