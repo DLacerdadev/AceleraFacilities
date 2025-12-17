@@ -9456,6 +9456,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // THIRD PARTY USERS ROUTES
+  // ============================================================================
+
+  // GET - List users for a third-party company
+  app.get('/api/third-party-companies/:id/users', requireAuth, requireThirdPartyEnabled, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const company = await storage.getThirdPartyCompany(id);
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa terceira não encontrada' });
+      }
+      
+      const user = req.user!;
+      if (user.customerId !== company.customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa terceira' });
+      }
+      
+      const users = await storage.getUsersByThirdPartyCompany(id);
+      res.json(users.map(u => sanitizeUser(u)));
+    } catch (error) {
+      console.error('Error fetching third-party users:', error);
+      res.status(500).json({ message: 'Erro ao buscar usuários terceirizados' });
+    }
+  });
+
+  // POST - Create a user for a third-party company
+  app.post('/api/third-party-companies/:id/users', requireAuth, requireThirdPartyEnabled, requirePermission('third_party_users_create'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, username, email, password, thirdPartyRole } = req.body;
+      
+      const company = await storage.getThirdPartyCompany(id);
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa terceira não encontrada' });
+      }
+      
+      const user = req.user!;
+      if (user.customerId !== company.customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa terceira' });
+      }
+      
+      // Check user limit
+      const existingUsers = await storage.getUsersByThirdPartyCompany(id);
+      if (company.userLimit && existingUsers.length >= company.userLimit) {
+        return res.status(400).json({ message: `Limite de ${company.userLimit} usuários atingido para esta empresa` });
+      }
+      
+      // Check if username already exists
+      const existingByUsername = await storage.getUserByUsername(username);
+      if (existingByUsername) {
+        return res.status(400).json({ message: 'Nome de usuário já está em uso' });
+      }
+      
+      // Check if email already exists
+      const existingByEmail = await storage.getUserByEmail(email);
+      if (existingByEmail) {
+        return res.status(400).json({ message: 'Email já está em uso' });
+      }
+      
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Map role from frontend to backend format
+      const roleMap: Record<string, string> = {
+        'Gerente': 'third_party_manager',
+        'Líder de Equipe': 'third_party_team_leader',
+        'Operador': 'third_party_operator'
+      };
+      const mappedRole = roleMap[thirdPartyRole] || 'third_party_operator';
+      
+      const newUser = await storage.createUser({
+        id: nanoid(),
+        name,
+        username,
+        email,
+        password: hashedPassword,
+        customerId: company.customerId,
+        userType: 'third_party_user',
+        thirdPartyCompanyId: id,
+        thirdPartyRole: mappedRole,
+        isActive: true,
+        modules: ['clean', 'maintenance'],
+      });
+      
+      broadcast({
+        type: 'create',
+        resource: 'users',
+        data: sanitizeUser(newUser),
+        customerId: company.customerId,
+      });
+      
+      res.status(201).json(sanitizeUser(newUser));
+    } catch (error) {
+      console.error('Error creating third-party user:', error);
+      res.status(500).json({ message: 'Erro ao criar usuário terceirizado' });
+    }
+  });
+
+  // PUT - Update a third-party user
+  app.put('/api/third-party-companies/:id/users/:userId', requireAuth, requireThirdPartyEnabled, requirePermission('third_party_users_edit'), async (req, res) => {
+    try {
+      const { id, userId } = req.params;
+      const updateData = req.body;
+      
+      const company = await storage.getThirdPartyCompany(id);
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa terceira não encontrada' });
+      }
+      
+      const user = req.user!;
+      if (user.customerId !== company.customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa terceira' });
+      }
+      
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser || existingUser.thirdPartyCompanyId !== id) {
+        return res.status(404).json({ message: 'Usuário não encontrado nesta empresa terceira' });
+      }
+      
+      // If password is being updated, hash it
+      if (updateData.password) {
+        updateData.password = await bcrypt.hash(updateData.password, 10);
+      }
+      
+      // Map role from frontend to backend format if provided
+      if (updateData.thirdPartyRole) {
+        const roleMap: Record<string, string> = {
+          'Gerente': 'third_party_manager',
+          'Líder de Equipe': 'third_party_team_leader',
+          'Operador': 'third_party_operator'
+        };
+        updateData.thirdPartyRole = roleMap[updateData.thirdPartyRole] || updateData.thirdPartyRole;
+      }
+      
+      const updatedUser = await storage.updateUser(userId, updateData);
+      
+      broadcast({
+        type: 'update',
+        resource: 'users',
+        data: sanitizeUser(updatedUser!),
+        id: userId,
+        customerId: company.customerId,
+      });
+      
+      res.json(sanitizeUser(updatedUser!));
+    } catch (error) {
+      console.error('Error updating third-party user:', error);
+      res.status(500).json({ message: 'Erro ao atualizar usuário terceirizado' });
+    }
+  });
+
+  // DELETE - Delete a third-party user
+  app.delete('/api/third-party-companies/:id/users/:userId', requireAuth, requireThirdPartyEnabled, requirePermission('third_party_users_delete'), async (req, res) => {
+    try {
+      const { id, userId } = req.params;
+      
+      const company = await storage.getThirdPartyCompany(id);
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa terceira não encontrada' });
+      }
+      
+      const user = req.user!;
+      if (user.customerId !== company.customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa terceira' });
+      }
+      
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser || existingUser.thirdPartyCompanyId !== id) {
+        return res.status(404).json({ message: 'Usuário não encontrado nesta empresa terceira' });
+      }
+      
+      await storage.deleteUser(userId);
+      
+      broadcast({
+        type: 'delete',
+        resource: 'users',
+        id: userId,
+        customerId: company.customerId,
+      });
+      
+      res.json({ message: 'Usuário removido com sucesso' });
+    } catch (error) {
+      console.error('Error deleting third-party user:', error);
+      res.status(500).json({ message: 'Erro ao remover usuário terceirizado' });
+    }
+  });
+
+  // ============================================================================
   // THIRD PARTY SLA DASHBOARD ROUTES
   // ============================================================================
 
