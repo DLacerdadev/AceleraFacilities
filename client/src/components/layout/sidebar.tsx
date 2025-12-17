@@ -56,10 +56,10 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
   const { currentModule, setModule, moduleConfig, allowedModules, hasMultipleModules } = useModule();
   const { branding } = useBranding();
   
-  // Query para buscar peças com estoque baixo (apenas para módulo manutenção)
+  // Query para buscar peças com estoque baixo (para ambos os módulos)
   const { data: lowStockParts = [] } = useQuery<Part[]>({
-    queryKey: ['/api/customers', activeClientId, 'parts', 'low-stock'],
-    enabled: !!activeClientId && currentModule === 'maintenance'
+    queryKey: ['/api/customers', activeClientId, 'parts', 'low-stock', currentModule],
+    enabled: !!activeClientId
   });
   const lowStockCount = lowStockParts.length;
   
@@ -118,15 +118,17 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
     ...(currentModule === 'clean' && can.viewSchedule(activeClientId) ? [{ path: "/schedule", label: "Plano de Limpeza", icon: Calendar }] : []),
     ...(currentModule === 'clean' && can.viewChecklists(activeClientId) ? [{ path: "/checklists", label: "Checklists", icon: Fan }] : []),
     
-    // OPUS Manutenção - Menu items específicos
-    ...(currentModule === 'maintenance' && can.viewQRCodes(activeClientId) ? [{ path: "/equipment", label: "Equipamentos", icon: Wrench }] : []),
-    ...(currentModule === 'maintenance' && can.viewSchedule(activeClientId) ? [{ 
+    // Estoque - disponível para ambos os módulos (clean e maintenance)
+    ...(can.viewSchedule(activeClientId) ? [{ 
       path: "/parts-inventory", 
-      label: "Estoque de Peças", 
+      label: "Estoque", 
       icon: Package,
       badge: lowStockCount > 0 ? lowStockCount : undefined,
       badgeVariant: 'destructive' as const
     }] : []),
+    
+    // OPUS Manutenção - Menu items específicos
+    ...(currentModule === 'maintenance' && can.viewQRCodes(activeClientId) ? [{ path: "/equipment", label: "Equipamentos", icon: Wrench }] : []),
     ...(currentModule === 'maintenance' && can.viewSchedule(activeClientId) ? [{ path: "/maintenance-plans", label: "Planos de Manutenção", icon: CalendarCheck }] : []),
     ...(currentModule === 'maintenance' && can.viewChecklists(activeClientId) ? [{ path: "/maintenance-checklist-templates", label: "Checklists", icon: List }] : []),
     ...(currentModule === 'maintenance' && can.viewReports(activeClientId) ? [{ path: "/asset-report", label: "Relatório de Patrimônio", icon: FileBarChart }] : []),

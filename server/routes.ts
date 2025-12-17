@@ -7227,7 +7227,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get parts with low stock for a customer
   app.get("/api/customers/:customerId/parts/low-stock", async (req, res) => {
     try {
-      const parts = await storage.getPartsWithLowStock(req.params.customerId);
+      const module = req.query.module as 'clean' | 'maintenance' | undefined;
+      const parts = await storage.getPartsWithLowStock(req.params.customerId, module);
       res.json(parts);
     } catch (error) {
       console.error("Error fetching low stock parts:", error);

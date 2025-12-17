@@ -116,9 +116,9 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
   });
 
   const { data: lowStockParts } = useQuery<Part[]>({
-    queryKey: [`/api/customers/${customerId}/parts/low-stock`],
+    queryKey: [`/api/customers/${customerId}/parts/low-stock`, currentModule],
     queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/parts/low-stock`, {
+      const response = await fetch(`/api/customers/${customerId}/parts/low-stock?module=${currentModule}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('acelera_token')}` }
       });
       if (!response.ok) throw new Error('Failed to fetch low stock parts');
@@ -542,8 +542,8 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50/30 to-white">
       <div className="w-full px-6 py-6">
         <ModernPageHeader
-          title="Estoque de Peças"
-          description="Gerencie peças e componentes de manutenção"
+          title="Estoque"
+          description={currentModule === 'maintenance' ? "Gerencie peças e componentes de manutenção" : "Gerencie materiais e produtos de limpeza"}
           icon={Package}
         />
         

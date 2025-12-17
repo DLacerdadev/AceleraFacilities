@@ -517,7 +517,7 @@ export interface IStorage {
   deletePart(id: string): Promise<void>;
   
   // Parts with low stock
-  getPartsWithLowStock(customerId: string): Promise<Part[]>;
+  getPartsWithLowStock(customerId: string, module?: 'clean' | 'maintenance'): Promise<Part[]>;
   
   // Monthly Cost Report
   getMonthlyCostReport(customerId: string, year: number, month: number): Promise<{
@@ -6508,13 +6508,19 @@ export class DatabaseStorage implements IStorage {
     await db.delete(parts).where(eq(parts.id, id));
   }
 
-  async getPartsWithLowStock(customerId: string): Promise<Part[]> {
+  async getPartsWithLowStock(customerId: string, module?: 'clean' | 'maintenance'): Promise<Part[]> {
+    const conditions = [
+      eq(parts.customerId, customerId),
+      eq(parts.isActive, true),
+      sql`CAST(${parts.currentQuantity} AS DECIMAL) <= CAST(${parts.minimumQuantity} AS DECIMAL)`
+    ];
+    
+    if (module) {
+      conditions.push(eq(parts.module, module));
+    }
+    
     return await db.select().from(parts)
-      .where(and(
-        eq(parts.customerId, customerId),
-        eq(parts.isActive, true),
-        sql`CAST(${parts.currentQuantity} AS DECIMAL) <= CAST(${parts.minimumQuantity} AS DECIMAL)`
-      ))
+      .where(and(...conditions))
       .orderBy(parts.name);
   }
 
