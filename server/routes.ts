@@ -9521,9 +9521,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Map role from frontend to backend format
       const roleMap: Record<string, string> = {
-        'Gerente': 'third_party_manager',
-        'Líder de Equipe': 'third_party_team_leader',
-        'Operador': 'third_party_operator'
+        'THIRD_PARTY_MANAGER': 'third_party_manager',
+        'THIRD_PARTY_TEAM_LEADER': 'third_party_team_leader',
+        'THIRD_PARTY_OPERATOR': 'third_party_operator'
       };
       const mappedRole = roleMap[thirdPartyRole] || 'third_party_operator';
       
@@ -9585,9 +9585,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Map role from frontend to backend format if provided
       if (updateData.thirdPartyRole) {
         const roleMap: Record<string, string> = {
-          'Gerente': 'third_party_manager',
-          'Líder de Equipe': 'third_party_team_leader',
-          'Operador': 'third_party_operator'
+          'THIRD_PARTY_MANAGER': 'third_party_manager',
+          'THIRD_PARTY_TEAM_LEADER': 'third_party_team_leader',
+          'THIRD_PARTY_OPERATOR': 'third_party_operator'
         };
         updateData.thirdPartyRole = roleMap[updateData.thirdPartyRole] || updateData.thirdPartyRole;
       }
