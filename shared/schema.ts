@@ -30,6 +30,7 @@ export const supplierWorkOrderStatusEnum = pgEnum('supplier_work_order_status', 
 // Enums para submódulo Terceiros
 export const thirdPartyStatusEnum = pgEnum('third_party_status', ['active', 'inactive']);
 export const assetVisibilityModeEnum = pgEnum('asset_visibility_mode', ['ALL', 'CONTRACT_ONLY']);
+export const thirdPartyWorkOrderApprovalEnum = pgEnum('third_party_work_order_approval', ['always_accept', 'require_approval', 'always_reject']);
 
 // Enum para tipo de avaliador de OS
 export const evaluatorTypeEnum = pgEnum('evaluator_type', ['CLIENT', 'SYSTEM']);
@@ -171,6 +172,7 @@ export const customers = pgTable("customers", {
   favicon: text("favicon"),
   moduleColors: jsonb("module_colors"),
   thirdPartyEnabled: boolean("third_party_enabled").default(false),
+  thirdPartyWorkOrderApproval: thirdPartyWorkOrderApprovalEnum("third_party_work_order_approval").default('require_approval'),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -181,13 +183,13 @@ export const customers = pgTable("customers", {
 export const thirdPartyCompanies = pgTable("third_party_companies", {
   id: varchar("id").primaryKey(),
   customerId: varchar("customer_id").notNull().references(() => customers.id),
+  companyId: varchar("company_id").references(() => companies.id),
   name: varchar("name").notNull(),
   status: thirdPartyStatusEnum("status").notNull().default('active'),
   allowedSites: text("allowed_sites").array().default(sql`ARRAY[]::text[]`),
   allowedZones: text("allowed_zones").array().default(sql`ARRAY[]::text[]`),
   assetVisibilityMode: assetVisibilityModeEnum("asset_visibility_mode").notNull().default('CONTRACT_ONLY'),
   userLimit: integer("user_limit").default(5),
-  // Campos para billing futuro
   billingEmail: varchar("billing_email"),
   billingDocument: varchar("billing_document"),
   contractStartDate: date("contract_start_date"),
@@ -197,6 +199,46 @@ export const thirdPartyCompanies = pgTable("third_party_companies", {
 }, (table) => ({
   customerIdx: index("third_party_companies_customer_idx").on(table.customerId),
   statusIdx: index("third_party_companies_status_idx").on(table.status),
+}));
+
+// 2.2 TABELA: third_party_teams (Equipes de Terceiros)
+export const thirdPartyTeams = pgTable("third_party_teams", {
+  id: varchar("id").primaryKey(),
+  thirdPartyCompanyId: varchar("third_party_company_id").notNull().references(() => thirdPartyCompanies.id),
+  name: varchar("name").notNull(),
+  leaderId: varchar("leader_id"),
+  memberIds: text("member_ids").array().default(sql`ARRAY[]::text[]`),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  companyIdx: index("third_party_teams_company_idx").on(table.thirdPartyCompanyId),
+}));
+
+// 2.3 TABELA: third_party_work_order_proposals (Propostas de O.S. de Terceiros)
+export const thirdPartyWorkOrderProposals = pgTable("third_party_work_order_proposals", {
+  id: varchar("id").primaryKey(),
+  thirdPartyCompanyId: varchar("third_party_company_id").notNull().references(() => thirdPartyCompanies.id),
+  customerId: varchar("customer_id").notNull().references(() => customers.id),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  zoneId: varchar("zone_id"),
+  equipmentId: varchar("equipment_id"),
+  priority: varchar("priority").notNull().default('media'),
+  dueDate: timestamp("due_date"),
+  module: varchar("module").notNull().default('maintenance'),
+  status: varchar("status").notNull().default('em_espera'),
+  workOrderId: varchar("work_order_id"),
+  createdBy: varchar("created_by"),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  companyIdx: index("third_party_proposals_company_idx").on(table.thirdPartyCompanyId),
+  customerIdx: index("third_party_proposals_customer_idx").on(table.customerId),
+  statusIdx: index("third_party_proposals_status_idx").on(table.status),
 }));
 
 // 3. TABELA: sites (Locais)

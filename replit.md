@@ -37,6 +37,19 @@ Helper functions (`getFilteredSitesForThirdParty`, `getFilteredZonesForThirdPart
 
 Work Orders support execution by third parties through dedicated fields: `executedByType` (INTERNAL or THIRD_PARTY), `thirdPartyCompanyId`, `thirdPartyTeamId`, and `thirdPartyOperatorId`. This enables tracking whether a work order is executed by internal staff or a third-party company, with full traceability of the executing team and operator.
 
+A dedicated **Third-Party Portal** is available at `/third-party` for third-party company managers to access their isolated workspace. The portal includes:
+- **Dashboard**: Overview of work order statistics, completion rates, and team metrics
+- **Work Orders**: View assigned work orders, track progress, and create work order proposals
+- **Users**: Manage team members (create/edit/activate/deactivate users with team leader or operator roles)
+- **Teams**: Create and manage work teams, assign leaders and members
+- **Reports**: View performance reports by user and team with export capabilities
+
+The portal implements automatic routing based on user type - when a user with `thirdPartyCompanyId` logs in, they are automatically redirected to the third-party portal. The `third_party_work_order_approval` field on customers controls how work order proposals from third parties are handled: `always_accept` (auto-approve), `require_approval` (manual review), or `always_reject` (auto-reject).
+
+New database tables support the portal:
+- `third_party_teams`: Teams within a third-party company with leader and member assignments
+- `third_party_work_order_proposals`: Work order proposals submitted by third parties pending customer approval
+
 The authentication system includes single-session control, invalidating previous sessions via WebSocket when a user logs in from a new device. Performance optimizations include database indexing, parallel query execution, and real-time data reporting. Photo uploads are optimized with automatic compression. An offline-first Android APK is supported by a comprehensive sync infrastructure using IndexedDB.
 
 An immutable audit logging system tracks all work order lifecycle events in the `work_order_audit_logs` table. The `WorkOrderAuditService` (at `server/services/work-order-audit.ts`) provides helper methods for logging: creation, updates, status changes, comments, evaluations, execution start/pause/resume/complete, reopening, and approval/rejection. Each log entry captures the user, user type (platform_user, customer_user, third_party_user), customer ID, third-party company ID (if applicable), timestamp, action type, changes (before/after values), and metadata (IP address, user agent, source). Logs are append-only with no update or delete operations, ensuring full traceability and compliance. The endpoint `GET /api/work-orders/:workOrderId/audit-logs` retrieves the complete audit history for a work order with proper tenant isolation.

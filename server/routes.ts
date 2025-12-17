@@ -10158,6 +10158,628 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // END OF THIRD PARTY OFFLINE SYNC ENDPOINTS
   // ============================================================================
 
+  // ============================================================================
+  // THIRD PARTY PORTAL API ENDPOINTS
+  // ============================================================================
+
+  // Get company info for third-party user
+  app.get('/api/third-party-portal/company-info', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+
+      const customer = await db.select()
+        .from(customers)
+        .where(eq(customers.id, company[0].customerId))
+        .limit(1);
+
+      res.json({
+        id: company[0].id,
+        name: company[0].name,
+        customerId: company[0].customerId,
+        customerName: customer[0]?.name || 'Cliente',
+      });
+    } catch (error) {
+      console.error('Error fetching company info:', error);
+      res.status(500).json({ message: 'Erro ao buscar informações da empresa' });
+    }
+  });
+
+  // Get stats for third-party portal
+  app.get('/api/third-party-portal/stats', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const companyWorkOrders = await db.select()
+        .from(workOrders)
+        .where(eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId));
+
+      const total = companyWorkOrders.length;
+      const pending = companyWorkOrders.filter(wo => wo.status === 'aberta').length;
+      const inProgress = companyWorkOrders.filter(wo => wo.status === 'em_execucao').length;
+      const completed = companyWorkOrders.filter(wo => wo.status === 'concluida').length;
+      const overdue = companyWorkOrders.filter(wo => wo.status === 'vencida').length;
+
+      const companyUsers = await db.select()
+        .from(users)
+        .where(eq(users.thirdPartyCompanyId, user.thirdPartyCompanyId));
+
+      const teamsData = await db.select()
+        .from(thirdPartyTeams)
+        .where(eq(thirdPartyTeams.thirdPartyCompanyId, user.thirdPartyCompanyId));
+
+      res.json({
+        total,
+        pending,
+        inProgress,
+        completed,
+        overdue,
+        usersCount: companyUsers.length,
+        teamsCount: teamsData.length,
+      });
+    } catch (error) {
+      console.error('Error fetching portal stats:', error);
+      res.status(500).json({ message: 'Erro ao buscar estatísticas' });
+    }
+  });
+
+  // Get work orders for third-party portal
+  app.get('/api/third-party-portal/work-orders', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const companyWorkOrders = await db.select({
+        id: workOrders.id,
+        title: workOrders.title,
+        description: workOrders.description,
+        status: workOrders.status,
+        priority: workOrders.priority,
+        dueDate: workOrders.dueDate,
+        completedAt: workOrders.completedAt,
+        zoneId: workOrders.zoneId,
+        zoneName: zones.name,
+      })
+        .from(workOrders)
+        .leftJoin(zones, eq(workOrders.zoneId, zones.id))
+        .where(eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId))
+        .orderBy(desc(workOrders.createdAt));
+
+      res.json(companyWorkOrders);
+    } catch (error) {
+      console.error('Error fetching work orders:', error);
+      res.status(500).json({ message: 'Erro ao buscar ordens de serviço' });
+    }
+  });
+
+  // Get zones available for third-party company
+  app.get('/api/third-party-portal/zones', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.json([]);
+      }
+
+      const allowedZoneIds = company[0].allowedZones || [];
+      if (allowedZoneIds.length === 0) {
+        return res.json([]);
+      }
+
+      const zonesData = await db.select()
+        .from(zones)
+        .where(inArray(zones.id, allowedZoneIds));
+
+      res.json(zonesData);
+    } catch (error) {
+      console.error('Error fetching zones:', error);
+      res.status(500).json({ message: 'Erro ao buscar zonas' });
+    }
+  });
+
+  // Get equipment available for third-party company
+  app.get('/api/third-party-portal/equipment', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.json([]);
+      }
+
+      const allowedZoneIds = company[0].allowedZones || [];
+      if (allowedZoneIds.length === 0) {
+        return res.json([]);
+      }
+
+      const equipmentData = await db.select()
+        .from(equipment)
+        .where(inArray(equipment.zoneId, allowedZoneIds));
+
+      res.json(equipmentData);
+    } catch (error) {
+      console.error('Error fetching equipment:', error);
+      res.status(500).json({ message: 'Erro ao buscar equipamentos' });
+    }
+  });
+
+  // Get users for third-party portal
+  app.get('/api/third-party-portal/users', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const companyUsers = await db.select({
+        id: users.id,
+        name: users.name,
+        username: users.username,
+        email: users.email,
+        isActive: users.isActive,
+        thirdPartyRole: users.thirdPartyRole,
+      })
+        .from(users)
+        .where(eq(users.thirdPartyCompanyId, user.thirdPartyCompanyId));
+
+      res.json(companyUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: 'Erro ao buscar usuários' });
+    }
+  });
+
+  // Create user for third-party portal
+  app.post('/api/third-party-portal/users', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem criar usuários' });
+      }
+
+      const { name, username, email, password, thirdPartyRole } = req.body;
+
+      const roleMapping: Record<string, string> = {
+        'THIRD_PARTY_TEAM_LEADER': 'third_party_team_leader',
+        'THIRD_PARTY_OPERATOR': 'third_party_operator',
+      };
+
+      const mappedRole = roleMapping[thirdPartyRole] || thirdPartyRole;
+
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+
+      const { nanoid } = await import('nanoid');
+      const bcrypt = await import('bcryptjs');
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const newUser = await db.insert(users).values({
+        id: nanoid(),
+        name,
+        username,
+        email,
+        password: hashedPassword,
+        role: 'operador',
+        userType: 'third_party_user',
+        thirdPartyCompanyId: user.thirdPartyCompanyId,
+        thirdPartyRole: mappedRole,
+        companyId: company[0].companyId,
+        customerId: company[0].customerId,
+        isActive: true,
+      }).returning();
+
+      res.json(newUser[0]);
+    } catch (error) {
+      console.error('Error creating user:', error);
+      res.status(500).json({ message: 'Erro ao criar usuário' });
+    }
+  });
+
+  // Update user for third-party portal
+  app.put('/api/third-party-portal/users/:userId', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { userId } = req.params;
+
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem editar usuários' });
+      }
+
+      const targetUser = await db.select()
+        .from(users)
+        .where(and(
+          eq(users.id, userId),
+          eq(users.thirdPartyCompanyId, user.thirdPartyCompanyId)
+        ))
+        .limit(1);
+
+      if (!targetUser.length) {
+        return res.status(404).json({ message: 'Usuário não encontrado' });
+      }
+
+      const { name, email, thirdPartyRole, isActive } = req.body;
+      const updates: any = {};
+
+      if (name !== undefined) updates.name = name;
+      if (email !== undefined) updates.email = email;
+      if (isActive !== undefined) updates.isActive = isActive;
+      if (thirdPartyRole !== undefined) {
+        const roleMapping: Record<string, string> = {
+          'THIRD_PARTY_TEAM_LEADER': 'third_party_team_leader',
+          'THIRD_PARTY_OPERATOR': 'third_party_operator',
+        };
+        updates.thirdPartyRole = roleMapping[thirdPartyRole] || thirdPartyRole;
+      }
+
+      const updatedUser = await db.update(users)
+        .set(updates)
+        .where(eq(users.id, userId))
+        .returning();
+
+      res.json(updatedUser[0]);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({ message: 'Erro ao atualizar usuário' });
+    }
+  });
+
+  // Get teams for third-party portal
+  app.get('/api/third-party-portal/teams', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const teams = await db.select()
+        .from(thirdPartyTeams)
+        .where(eq(thirdPartyTeams.thirdPartyCompanyId, user.thirdPartyCompanyId));
+
+      const teamsWithLeaders = await Promise.all(teams.map(async (team) => {
+        let leader = null;
+        if (team.leaderId) {
+          const leaderData = await db.select({ id: users.id, name: users.name })
+            .from(users)
+            .where(eq(users.id, team.leaderId))
+            .limit(1);
+          leader = leaderData[0] || null;
+        }
+        return {
+          ...team,
+          leader,
+        };
+      }));
+
+      res.json(teamsWithLeaders);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+      res.status(500).json({ message: 'Erro ao buscar equipes' });
+    }
+  });
+
+  // Create team for third-party portal
+  app.post('/api/third-party-portal/teams', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem criar equipes' });
+      }
+
+      const { name, leaderId } = req.body;
+      const { nanoid } = await import('nanoid');
+
+      const newTeam = await db.insert(thirdPartyTeams).values({
+        id: nanoid(),
+        name,
+        leaderId: leaderId || null,
+        thirdPartyCompanyId: user.thirdPartyCompanyId,
+        memberIds: [],
+        isActive: true,
+      }).returning();
+
+      res.json(newTeam[0]);
+    } catch (error) {
+      console.error('Error creating team:', error);
+      res.status(500).json({ message: 'Erro ao criar equipe' });
+    }
+  });
+
+  // Update team for third-party portal
+  app.put('/api/third-party-portal/teams/:teamId', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { teamId } = req.params;
+
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem editar equipes' });
+      }
+
+      const team = await db.select()
+        .from(thirdPartyTeams)
+        .where(and(
+          eq(thirdPartyTeams.id, teamId),
+          eq(thirdPartyTeams.thirdPartyCompanyId, user.thirdPartyCompanyId)
+        ))
+        .limit(1);
+
+      if (!team.length) {
+        return res.status(404).json({ message: 'Equipe não encontrada' });
+      }
+
+      const { name, leaderId } = req.body;
+      const updates: any = {};
+
+      if (name !== undefined) updates.name = name;
+      if (leaderId !== undefined) updates.leaderId = leaderId;
+
+      const updatedTeam = await db.update(thirdPartyTeams)
+        .set(updates)
+        .where(eq(thirdPartyTeams.id, teamId))
+        .returning();
+
+      res.json(updatedTeam[0]);
+    } catch (error) {
+      console.error('Error updating team:', error);
+      res.status(500).json({ message: 'Erro ao atualizar equipe' });
+    }
+  });
+
+  // Update team members
+  app.put('/api/third-party-portal/teams/:teamId/members', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { teamId } = req.params;
+
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem editar membros' });
+      }
+
+      const { memberIds } = req.body;
+
+      const updatedTeam = await db.update(thirdPartyTeams)
+        .set({ memberIds })
+        .where(and(
+          eq(thirdPartyTeams.id, teamId),
+          eq(thirdPartyTeams.thirdPartyCompanyId, user.thirdPartyCompanyId)
+        ))
+        .returning();
+
+      res.json(updatedTeam[0]);
+    } catch (error) {
+      console.error('Error updating team members:', error);
+      res.status(500).json({ message: 'Erro ao atualizar membros' });
+    }
+  });
+
+  // Delete team
+  app.delete('/api/third-party-portal/teams/:teamId', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { teamId } = req.params;
+
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem excluir equipes' });
+      }
+
+      await db.delete(thirdPartyTeams)
+        .where(and(
+          eq(thirdPartyTeams.id, teamId),
+          eq(thirdPartyTeams.thirdPartyCompanyId, user.thirdPartyCompanyId)
+        ));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      res.status(500).json({ message: 'Erro ao excluir equipe' });
+    }
+  });
+
+  // Get work order proposals
+  app.get('/api/third-party-portal/proposals', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const proposals = await db.select()
+        .from(thirdPartyWorkOrderProposals)
+        .where(eq(thirdPartyWorkOrderProposals.thirdPartyCompanyId, user.thirdPartyCompanyId))
+        .orderBy(desc(thirdPartyWorkOrderProposals.createdAt));
+
+      res.json(proposals);
+    } catch (error) {
+      console.error('Error fetching proposals:', error);
+      res.status(500).json({ message: 'Erro ao buscar propostas' });
+    }
+  });
+
+  // Create work order proposal
+  app.post('/api/third-party-portal/proposals', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const { title, description, zoneId, equipmentId, priority, dueDate, module } = req.body;
+      const { nanoid } = await import('nanoid');
+
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+
+      const customer = await db.select()
+        .from(customers)
+        .where(eq(customers.id, company[0].customerId))
+        .limit(1);
+
+      const approvalSetting = customer[0]?.thirdPartyWorkOrderApproval || 'require_approval';
+      let status = 'em_espera';
+
+      if (approvalSetting === 'always_accept') {
+        status = 'aprovado';
+      } else if (approvalSetting === 'always_reject') {
+        status = 'recusado';
+      }
+
+      const newProposal = await db.insert(thirdPartyWorkOrderProposals).values({
+        id: nanoid(),
+        title,
+        description,
+        zoneId,
+        equipmentId: equipmentId || null,
+        priority,
+        dueDate: new Date(dueDate),
+        module,
+        thirdPartyCompanyId: user.thirdPartyCompanyId,
+        customerId: company[0].customerId,
+        createdBy: user.id,
+        status,
+      }).returning();
+
+      if (status === 'aprovado') {
+        const workOrderId = nanoid();
+        await db.insert(workOrders).values({
+          id: workOrderId,
+          title,
+          description,
+          zoneId,
+          equipmentId: equipmentId || null,
+          priority,
+          dueDate: new Date(dueDate),
+          module,
+          customerId: company[0].customerId,
+          companyId: company[0].companyId,
+          thirdPartyCompanyId: user.thirdPartyCompanyId,
+          executedByType: 'THIRD_PARTY',
+          status: 'aberta',
+          createdBy: user.id,
+        });
+
+        await db.update(thirdPartyWorkOrderProposals)
+          .set({ workOrderId })
+          .where(eq(thirdPartyWorkOrderProposals.id, newProposal[0].id));
+      }
+
+      res.json(newProposal[0]);
+    } catch (error) {
+      console.error('Error creating proposal:', error);
+      res.status(500).json({ message: 'Erro ao criar proposta' });
+    }
+  });
+
+  // Get reports for third-party portal
+  app.get('/api/third-party-portal/reports', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const period = parseInt(req.query.period as string) || 30;
+
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - period);
+
+      const companyWorkOrders = await db.select()
+        .from(workOrders)
+        .where(and(
+          eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId),
+          gte(workOrders.createdAt, startDate)
+        ));
+
+      const total = companyWorkOrders.length;
+      const completed = companyWorkOrders.filter(wo => wo.status === 'concluida').length;
+      const overdue = companyWorkOrders.filter(wo => wo.status === 'vencida').length;
+
+      res.json({
+        summary: {
+          totalWorkOrders: total,
+          completedWorkOrders: completed,
+          completionRate: total ? Math.round((completed / total) * 100) : 0,
+          onTimeRate: total ? Math.round(((total - overdue) / total) * 100) : 0,
+          averageCompletionTime: 0,
+        },
+        byUser: [],
+        byTeam: [],
+      });
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      res.status(500).json({ message: 'Erro ao buscar relatórios' });
+    }
+  });
+
+  // ============================================================================
+  // END OF THIRD PARTY PORTAL API ENDPOINTS
+  // ============================================================================
+
   const httpServer = createServer(app);
   return httpServer;
 }

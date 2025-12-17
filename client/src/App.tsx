@@ -36,6 +36,7 @@ import PublicZoneTv from "@/pages/public-zone-tv";
 import BrandingSettings from "@/pages/branding-settings";
 import SupplierPortal from "@/pages/supplier-portal";
 import SupplierProposals from "@/pages/supplier-proposals";
+import ThirdPartyPortal from "@/pages/third-party-portal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import QrExecution from "@/pages/qr-execution";
 import QrPublic from "@/pages/qr-public";
@@ -333,6 +334,18 @@ function SupplierRouter() {
   );
 }
 
+function ThirdPartyRouter() {
+  return (
+    <Switch>
+      <Route path="/third-party/:rest*" component={ThirdPartyPortal} />
+      <Route path="/third-party" component={ThirdPartyPortal} />
+      <Route>
+        <Redirect to="/third-party" />
+      </Route>
+    </Switch>
+  );
+}
+
 function MobileRouter() {
   return (
     <Switch>
@@ -386,6 +399,11 @@ function Router() {
   // Se é usuário de fornecedor, mostrar rotas do portal do fornecedor com sidebar
   if (user.userType === 'supplier_user') {
     return <SupplierRouter />;
+  }
+
+  // Se é usuário terceirizado, mostrar portal de terceiros
+  if (user.userType === 'third_party_user' || user.thirdPartyCompanyId) {
+    return <ThirdPartyRouter />;
   }
 
   // Se é colaborador (operador com apenas permissões mobile), mostrar interface móvel
