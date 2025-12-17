@@ -34,6 +34,9 @@ export const assetVisibilityModeEnum = pgEnum('asset_visibility_mode', ['ALL', '
 // Enum para tipo de avaliador de OS
 export const evaluatorTypeEnum = pgEnum('evaluator_type', ['CLIENT', 'SYSTEM']);
 
+// Enum para tipo de autor de comentário em OS
+export const commentAuthorTypeEnum = pgEnum('comment_author_type', ['CLIENT', 'THIRD_PARTY', 'SYSTEM']);
+
 // Sistema de permissões granulares
 export const permissionKeyEnum = pgEnum('permission_key', [
   'dashboard_view',
@@ -636,10 +639,12 @@ export const publicRequestLogs = pgTable("public_request_logs", {
 });
 
 // 27. TABELA: work_order_comments (Comentários em Work Orders)
+// Comentários são somente leitura após criação e auditáveis
 export const workOrderComments = pgTable("work_order_comments", {
   id: varchar("id").primaryKey(),
   workOrderId: varchar("work_order_id").notNull().references(() => workOrders.id),
   userId: varchar("user_id").notNull().references(() => users.id),
+  authorType: commentAuthorTypeEnum("author_type"), // CLIENT | THIRD_PARTY | SYSTEM (nullable para retrocompatibilidade)
   comment: text("comment").notNull(),
   attachments: jsonb("attachments"),
   isReopenRequest: boolean("is_reopen_request").default(false),

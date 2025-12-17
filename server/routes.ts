@@ -2822,11 +2822,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Work Order Comments
-  app.get("/api/work-orders/:workOrderId/comments", async (req, res) => {
+  app.get("/api/work-orders/:workOrderId/comments", requirePermission('workorders_view'), async (req, res) => {
     try {
+      // Verificar se a OS existe e se o usuário tem acesso
+      const workOrder = await storage.getWorkOrder(req.params.workOrderId);
+      if (!workOrder) {
+        return res.status(404).json({ message: "Ordem de serviço não encontrada" });
+      }
+      
+      // Verificar isolamento de dados para third-party e customer_user
+      const user = req.user;
+      if (user?.userType === 'third_party_user' || user?.userType === 'customer_user') {
+        if (workOrder.customerId !== user.customerId) {
+          return res.status(403).json({ message: "Acesso negado a esta ordem de serviço" });
+        }
+      }
+      
       const comments = await storage.getWorkOrderComments(req.params.workOrderId);
       res.json(comments);
     } catch (error) {
+      console.error("Error fetching comments:", error);
       res.status(500).json({ message: "Failed to get comments" });
     }
   });
@@ -2928,17 +2943,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/work-orders/:workOrderId/comments", requirePermission('workorders_comment'), async (req, res) => {
     try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "Usuário não autenticado" });
+      }
+      
+      // Verificar se a OS existe
+      const workOrder = await storage.getWorkOrder(req.params.workOrderId);
+      if (!workOrder) {
+        return res.status(404).json({ message: "Ordem de serviço não encontrada" });
+      }
+      
+      // Verificar isolamento de dados para third-party e customer_user
+      if (user.userType === 'third_party_user' || user.userType === 'customer_user') {
+        if (workOrder.customerId !== user.customerId) {
+          return res.status(403).json({ message: "Acesso negado a esta ordem de serviço" });
+        }
+      }
+      
+      // Suportar userId no body para retrocompatibilidade, mas usar req.user como fallback
+      const commentUserId = req.body.userId || user.id;
+      
+      // Determinar o tipo de autor baseado no userType do usuário autenticado
+      // (quem está criando o comentário, não necessariamente o userId no body)
+      let authorType: 'CLIENT' | 'THIRD_PARTY' | 'SYSTEM' | null = null;
+      if (user.userType === 'customer_user') {
+        authorType = 'CLIENT';
+      } else if (user.userType === 'third_party_user') {
+        authorType = 'THIRD_PARTY';
+      } else if (user.userType === 'opus_user') {
+        authorType = 'SYSTEM';
+      }
+      
       const comment = {
         id: crypto.randomUUID(),
         workOrderId: req.params.workOrderId,
-        userId: req.body.userId,
+        userId: commentUserId,
+        authorType,
         comment: req.body.comment,
         attachments: req.body.attachments,
         isReopenRequest: req.body.isReopenRequest || false,
       };
       const newComment = await storage.createWorkOrderComment(comment);
+      
+      console.log(`[COMMENT] ✅ Novo comentário criado para OS ${req.params.workOrderId} por ${user.name} (${authorType})`);
       res.status(201).json(newComment);
     } catch (error) {
+      console.error("Error creating comment:", error);
       res.status(500).json({ message: "Failed to create comment" });
     }
   });
