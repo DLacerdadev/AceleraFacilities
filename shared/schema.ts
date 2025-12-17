@@ -189,6 +189,7 @@ export const thirdPartyCompanies = pgTable("third_party_companies", {
   allowedSites: text("allowed_sites").array().default(sql`ARRAY[]::text[]`),
   allowedZones: text("allowed_zones").array().default(sql`ARRAY[]::text[]`),
   assetVisibilityMode: assetVisibilityModeEnum("asset_visibility_mode").notNull().default('CONTRACT_ONLY'),
+  workOrderApprovalMode: thirdPartyWorkOrderApprovalEnum("work_order_approval_mode").default('require_approval'),
   userLimit: integer("user_limit").default(5),
   billingEmail: varchar("billing_email"),
   billingDocument: varchar("billing_document"),
