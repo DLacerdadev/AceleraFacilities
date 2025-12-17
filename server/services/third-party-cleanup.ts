@@ -92,13 +92,12 @@ export class ThirdPartyCleanupService {
     const openWorkOrders = await storage.getOpenWorkOrdersByThirdParty(thirdPartyCompanyId);
     
     for (const wo of openWorkOrders) {
-      await workOrderAuditService.logStatusChanged(
+      await workOrderAuditService.logStatusChange(
         wo.id,
         wo.status || 'pendente',
         'cancelada',
-        `Terceiro desativado: ${reason}`,
         {
-          user: { id: performedBy.id, name: performedBy.name },
+          user: { id: performedBy.id, name: performedBy.name } as any,
           ipAddress: 'system',
           userAgent: 'ThirdPartyCleanupService',
           source: 'system',
