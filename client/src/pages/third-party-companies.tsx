@@ -283,7 +283,8 @@ export default function ThirdPartyCompanies() {
   };
 
   const getRoleBadge = (role: string) => {
-    switch (role) {
+    const normalizedRole = role?.toUpperCase();
+    switch (normalizedRole) {
       case 'THIRD_PARTY_MANAGER':
         return <Badge className="bg-purple-500/10 text-purple-600">Gerente</Badge>;
       case 'THIRD_PARTY_TEAM_LEADER':
