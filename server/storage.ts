@@ -4,6 +4,7 @@ import {
   serviceTypes, serviceCategories, serviceZones, dashboardGoals, auditLogs, customers,
   userSiteAssignments, userAllowedCustomers, publicRequestLogs, siteShifts, bathroomCounterLogs, companyCounters, customerCounters,
   workOrderComments, workOrderAttachments, workOrderEvaluations, workOrderAuditLogs,
+  thirdPartyCompanies,
   equipment, equipmentTypes, maintenanceChecklistTemplates,
   maintenanceChecklistExecutions, maintenancePlans, maintenancePlanEquipments, maintenanceActivities,
   parts, workOrderParts, maintenancePlanParts, maintenanceActivityParts, partMovements,
@@ -54,7 +55,8 @@ import {
   type SupplierPartBatch, type InsertSupplierPartBatch,
   type Notification, type InsertNotification,
   type SupplierWorkOrder, type InsertSupplierWorkOrder,
-  type SupplierWorkOrderItem, type InsertSupplierWorkOrderItem
+  type SupplierWorkOrderItem, type InsertSupplierWorkOrderItem,
+  type ThirdPartyCompany, type InsertThirdPartyCompany
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, count, inArray, isNull, isNotNull, ne, gte, lte, lt, not } from "drizzle-orm";
@@ -302,6 +304,14 @@ export interface IStorage {
   // Work Order Audit Logs (Logs Imutáveis)
   getWorkOrderAuditLogs(workOrderId: string): Promise<WorkOrderAuditLog[]>;
   createWorkOrderAuditLog(log: InsertWorkOrderAuditLog & { id: string }): Promise<WorkOrderAuditLog>;
+
+  // Third Party Companies
+  getThirdPartyCompany(id: string): Promise<ThirdPartyCompany | undefined>;
+  getThirdPartyCompaniesByCustomer(customerId: string): Promise<ThirdPartyCompany[]>;
+  createThirdPartyCompany(company: InsertThirdPartyCompany & { id: string }): Promise<ThirdPartyCompany>;
+  updateThirdPartyCompany(id: string, company: Partial<InsertThirdPartyCompany>): Promise<ThirdPartyCompany>;
+  getOpenWorkOrdersByThirdParty(thirdPartyCompanyId: string): Promise<WorkOrder[]>;
+  cancelWorkOrdersByThirdParty(thirdPartyCompanyId: string, reason: string): Promise<number>;
 
   // Bathroom Counters
   getBathroomCounterByZone(zoneId: string): Promise<BathroomCounter | undefined>;
@@ -4482,6 +4492,64 @@ export class DatabaseStorage implements IStorage {
       .values(log)
       .returning();
     return newLog;
+  }
+
+  // Third Party Companies
+  async getThirdPartyCompany(id: string): Promise<ThirdPartyCompany | undefined> {
+    const [company] = await db.select()
+      .from(thirdPartyCompanies)
+      .where(eq(thirdPartyCompanies.id, id))
+      .limit(1);
+    return company;
+  }
+
+  async getThirdPartyCompaniesByCustomer(customerId: string): Promise<ThirdPartyCompany[]> {
+    return await db.select()
+      .from(thirdPartyCompanies)
+      .where(eq(thirdPartyCompanies.customerId, customerId))
+      .orderBy(thirdPartyCompanies.name);
+  }
+
+  async createThirdPartyCompany(company: InsertThirdPartyCompany & { id: string }): Promise<ThirdPartyCompany> {
+    const [newCompany] = await db.insert(thirdPartyCompanies)
+      .values(company)
+      .returning();
+    return newCompany;
+  }
+
+  async updateThirdPartyCompany(id: string, company: Partial<InsertThirdPartyCompany>): Promise<ThirdPartyCompany> {
+    const [updated] = await db.update(thirdPartyCompanies)
+      .set({ ...company, updatedAt: new Date() })
+      .where(eq(thirdPartyCompanies.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getOpenWorkOrdersByThirdParty(thirdPartyCompanyId: string): Promise<WorkOrder[]> {
+    const openStatuses = ['pendente', 'agendada', 'em_execucao', 'pausada', 'atrasada'];
+    return await db.select()
+      .from(workOrders)
+      .where(and(
+        eq(workOrders.thirdPartyCompanyId, thirdPartyCompanyId),
+        inArray(workOrders.status, openStatuses)
+      ));
+  }
+
+  async cancelWorkOrdersByThirdParty(thirdPartyCompanyId: string, reason: string): Promise<number> {
+    const openStatuses = ['pendente', 'agendada', 'em_execucao', 'pausada', 'atrasada'];
+    const result = await db.update(workOrders)
+      .set({ 
+        status: 'cancelada',
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(workOrders.thirdPartyCompanyId, thirdPartyCompanyId),
+        inArray(workOrders.status, openStatuses)
+      ))
+      .returning({ id: workOrders.id });
+    
+    console.log(`[THIRD_PARTY_CLEANUP] Cancelled ${result.length} open work orders for company ${thirdPartyCompanyId}. Reason: ${reason}`);
+    return result.length;
   }
 
   // Work Order Attachments - File Upload Helpers
