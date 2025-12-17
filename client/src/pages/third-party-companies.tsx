@@ -28,7 +28,10 @@ import {
   Loader2,
   MoreVertical,
   Power,
-  PowerOff
+  PowerOff,
+  Pencil,
+  UserX,
+  UserCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -77,6 +80,8 @@ export default function ThirdPartyCompanies() {
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
   const [siteAccessDialogOpen, setSiteAccessDialogOpen] = useState(false);
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
@@ -222,6 +227,33 @@ export default function ThirdPartyCompanies() {
       toast({ title: "Erro ao criar usuário", description: error?.message, variant: "destructive" });
     },
   });
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: { userId: string; updates: Partial<ThirdPartyUserFormData & { isActive: boolean }> }) => {
+      return await apiRequest("PUT", `/api/third-party-companies/${selectedCompanyId}/users/${data.userId}`, data.updates);
+    },
+    onSuccess: () => {
+      toast({ title: "Usuário atualizado com sucesso" });
+      queryClient.invalidateQueries({ queryKey: ['/api/third-party-companies', selectedCompanyId, 'users'] });
+      setIsEditUserDialogOpen(false);
+      setEditingUser(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro ao atualizar usuário", description: error?.message, variant: "destructive" });
+    },
+  });
+
+  const handleEditUser = (user: any) => {
+    setEditingUser(user);
+    setIsEditUserDialogOpen(true);
+  };
+
+  const handleToggleUserStatus = (user: any) => {
+    updateUserMutation.mutate({
+      userId: user.id,
+      updates: { isActive: !user.isActive },
+    });
+  };
 
   const handleEdit = (company: ThirdPartyCompany) => {
     setEditingCompany(company);
@@ -708,6 +740,7 @@ export default function ThirdPartyCompanies() {
                         <TableHead>Email</TableHead>
                         <TableHead>Função</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="w-[50px]">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -723,6 +756,34 @@ export default function ThirdPartyCompanies() {
                             ) : (
                               <Badge variant="outline">Inativo</Badge>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" data-testid={`button-user-actions-${user.id}`}>
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditUser(user)} data-testid={`button-edit-user-${user.id}`}>
+                                  <Pencil className="w-4 h-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleToggleUserStatus(user)} data-testid={`button-toggle-user-${user.id}`}>
+                                  {user.isActive ? (
+                                    <>
+                                      <UserX className="w-4 h-4 mr-2" />
+                                      Desativar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <UserCheck className="w-4 h-4 mr-2" />
+                                      Ativar
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -878,6 +939,78 @@ export default function ThirdPartyCompanies() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={isEditUserDialogOpen} onOpenChange={setIsEditUserDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              Atualize as informações do usuário terceirizado
+            </DialogDescription>
+          </DialogHeader>
+          {editingUser && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nome Completo</Label>
+                <Input 
+                  defaultValue={editingUser.name}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  data-testid="input-edit-user-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input 
+                  type="email"
+                  defaultValue={editingUser.email}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  data-testid="input-edit-user-email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Função</Label>
+                <Select 
+                  defaultValue={editingUser.thirdPartyRole?.toUpperCase()}
+                  onValueChange={(value) => setEditingUser({ ...editingUser, thirdPartyRole: value })}
+                >
+                  <SelectTrigger data-testid="select-edit-user-role">
+                    <SelectValue placeholder="Selecione a função" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="THIRD_PARTY_MANAGER">Gerente</SelectItem>
+                    <SelectItem value="THIRD_PARTY_TEAM_LEADER">Líder de Equipe</SelectItem>
+                    <SelectItem value="THIRD_PARTY_OPERATOR">Operador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsEditUserDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={() => {
+                    updateUserMutation.mutate({
+                      userId: editingUser.id,
+                      updates: {
+                        name: editingUser.name,
+                        email: editingUser.email,
+                        thirdPartyRole: editingUser.thirdPartyRole,
+                      },
+                    });
+                  }}
+                  disabled={updateUserMutation.isPending}
+                  className={theme.buttons.primary}
+                  style={theme.buttons.primaryStyle}
+                  data-testid="button-save-user"
+                >
+                  {updateUserMutation.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
