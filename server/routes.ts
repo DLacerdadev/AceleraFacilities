@@ -24,13 +24,18 @@ import {
   insertMaintenancePlanProposalSchema, insertSupplierPartBatchSchema, insertNotificationSchema,
   syncBatchRequestSchema,
   customers,
-  type User, type InsertUser
+  type User, type InsertUser, type InsertWorkOrder
 } from "@shared/schema";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import crypto from "crypto";
 import { db } from "./db";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, gte, desc, asc, inArray, sql, type SQL } from "drizzle-orm";
+import { 
+  workOrders, zones, equipment, services, checklistTemplates, 
+  workOrderExecutionLogs, workOrderAttachments 
+} from "@shared/schema";
+import multer from "multer";
 import {
   requireAuth,
   requireAdmin,
@@ -70,6 +75,21 @@ const publicEndpointLimiter = rateLimit({
   message: { message: "Too many requests. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+// Multer configuration for file uploads (offline sync attachments)
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: './uploads/offline-sync',
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + '-' + file.originalname);
+    }
+  }),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max per file
+    files: 10 // Max 10 files per request
+  }
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -9333,6 +9353,332 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============================================================================
   // END OF THIRD PARTY SLA DASHBOARD ROUTES
+  // ============================================================================
+
+  // ============================================================================
+  // THIRD PARTY OFFLINE SYNC ENDPOINTS
+  // ============================================================================
+
+  // Download sync - Get work orders and related data for offline use
+  app.get('/api/third-party/sync/download', requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { since } = req.query; // ISO timestamp for delta sync
+      
+      if (user.userType !== 'third_party_user' || !user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Apenas usuários de terceiros podem usar sync offline' });
+      }
+      
+      const sinceDate = since ? new Date(since as string) : null;
+      
+      // Get work orders assigned to this third-party company/team/operator
+      const conditions: SQL<unknown>[] = [
+        eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId),
+        inArray(workOrders.status, ['aberta', 'em_execucao', 'pausada']),
+      ];
+      
+      // Filter by team if team leader
+      if (user.thirdPartyRole === 'THIRD_PARTY_TEAM_LEADER' && user.thirdPartyTeamId) {
+        conditions.push(eq(workOrders.thirdPartyTeamId, user.thirdPartyTeamId));
+      }
+      
+      // Filter by operator if operator role
+      if (user.thirdPartyRole === 'THIRD_PARTY_OPERATOR') {
+        conditions.push(eq(workOrders.thirdPartyOperatorId, user.id));
+      }
+      
+      // Delta sync - only changes since last sync
+      if (sinceDate) {
+        conditions.push(gte(workOrders.updatedAt, sinceDate));
+      }
+      
+      const workOrderList = await db.select()
+        .from(workOrders)
+        .where(and(...conditions))
+        .orderBy(desc(workOrders.updatedAt));
+      
+      // Get related data for work orders
+      const zoneIds = [...new Set(workOrderList.map(wo => wo.zoneId).filter(Boolean))];
+      const equipmentIds = [...new Set(workOrderList.map(wo => wo.equipmentId).filter(Boolean))];
+      const serviceIds = [...new Set(workOrderList.map(wo => wo.serviceId).filter(Boolean))];
+      
+      const [zoneList, equipmentList, serviceList] = await Promise.all([
+        zoneIds.length > 0 
+          ? db.select().from(zones).where(inArray(zones.id, zoneIds as string[]))
+          : [],
+        equipmentIds.length > 0
+          ? db.select().from(equipment).where(inArray(equipment.id, equipmentIds as string[]))
+          : [],
+        serviceIds.length > 0
+          ? db.select().from(services).where(inArray(services.id, serviceIds as string[]))
+          : [],
+      ]);
+      
+      // Get checklists for work orders
+      const checklistTemplateIds = [...new Set(workOrderList.map(wo => 
+        wo.checklistTemplateId || wo.maintenanceChecklistTemplateId
+      ).filter(Boolean))];
+      
+      const checklistList = checklistTemplateIds.length > 0
+        ? await db.select().from(checklistTemplates).where(inArray(checklistTemplates.id, checklistTemplateIds as string[]))
+        : [];
+      
+      res.json({
+        syncTimestamp: new Date().toISOString(),
+        workOrders: workOrderList.map(wo => ({
+          ...wo,
+          syncVersion: wo.syncVersion || 1,
+        })),
+        zones: zoneList,
+        equipment: equipmentList,
+        services: serviceList,
+        checklists: checklistList,
+      });
+    } catch (error) {
+      console.error('Error in third-party sync download:', error);
+      res.status(500).json({ message: 'Erro ao baixar dados para offline' });
+    }
+  });
+
+  // Upload sync - Receive offline executions and merge them
+  app.post('/api/third-party/sync/upload', requireAuth, async (req, res) => {
+    try {
+      const user = req.user!;
+      const { executions, executionLogs, attachments } = req.body;
+      
+      if (user.userType !== 'third_party_user' || !user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Apenas usuários de terceiros podem usar sync offline' });
+      }
+      
+      const results = {
+        workOrders: { synced: 0, conflicts: 0, errors: [] as string[] },
+        logs: { synced: 0, duplicates: 0, errors: [] as string[] },
+        attachments: { synced: 0, errors: [] as string[] },
+      };
+      
+      // Process work order executions
+      if (Array.isArray(executions)) {
+        for (const exec of executions) {
+          try {
+            const { workOrderId, status, observations, checklistData, startedAt, completedAt, 
+                    offlineExecutedAt, deviceId, baseSyncVersion, localId } = exec;
+            
+            // Get current work order
+            const [currentWO] = await db.select()
+              .from(workOrders)
+              .where(eq(workOrders.id, workOrderId));
+            
+            if (!currentWO) {
+              results.workOrders.errors.push(`OS ${workOrderId} não encontrada`);
+              continue;
+            }
+            
+            // Check version conflict
+            const serverVersion = currentWO.syncVersion || 1;
+            if (baseSyncVersion && baseSyncVersion < serverVersion) {
+              // Conflict - server has newer version
+              results.workOrders.conflicts++;
+              results.workOrders.errors.push(`Conflito em OS ${workOrderId}: versão local ${baseSyncVersion} vs servidor ${serverVersion}`);
+              continue;
+            }
+            
+            // Validate user can update this work order
+            if (currentWO.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+              results.workOrders.errors.push(`Sem permissão para OS ${workOrderId}`);
+              continue;
+            }
+            
+            // Apply offline execution
+            const updateData: Partial<InsertWorkOrder> = {
+              syncVersion: serverVersion + 1,
+              offlineExecutedAt: offlineExecutedAt ? new Date(offlineExecutedAt) : undefined,
+              offlineDeviceId: deviceId,
+              syncedAt: new Date(),
+              syncStatus: 'synced',
+            };
+            
+            if (status) updateData.status = status;
+            if (observations) updateData.observations = observations;
+            if (checklistData) updateData.checklistData = checklistData;
+            if (startedAt) updateData.startedAt = new Date(startedAt);
+            if (completedAt) updateData.completedAt = new Date(completedAt);
+            
+            await db.update(workOrders)
+              .set({ ...updateData, updatedAt: sql`now()` })
+              .where(eq(workOrders.id, workOrderId));
+            
+            results.workOrders.synced++;
+          } catch (execError) {
+            console.error('Error processing execution:', execError);
+            results.workOrders.errors.push(`Erro ao processar execução: ${execError}`);
+          }
+        }
+      }
+      
+      // Process execution logs (preserve original timestamps)
+      if (Array.isArray(executionLogs)) {
+        for (const log of executionLogs) {
+          try {
+            const { workOrderId, action, previousStatus, newStatus, details, 
+                    originTimestamp, deviceId, localLogId } = log;
+            
+            // Check for duplicate log (by localLogId)
+            if (localLogId) {
+              const [existing] = await db.select()
+                .from(workOrderExecutionLogs)
+                .where(and(
+                  eq(workOrderExecutionLogs.workOrderId, workOrderId),
+                  eq(workOrderExecutionLogs.localLogId, localLogId)
+                ));
+              
+              if (existing) {
+                results.logs.duplicates++;
+                continue;
+              }
+            }
+            
+            // Insert execution log preserving original timestamp
+            const { nanoid } = await import('nanoid');
+            await db.insert(workOrderExecutionLogs).values({
+              id: nanoid(),
+              workOrderId,
+              userId: user.id,
+              action,
+              previousStatus,
+              newStatus,
+              details,
+              originTimestamp: new Date(originTimestamp),
+              recordedAt: new Date(),
+              source: 'offline',
+              deviceId,
+              localLogId,
+              syncedAt: new Date(),
+            });
+            
+            results.logs.synced++;
+          } catch (logError) {
+            console.error('Error processing log:', logError);
+            results.logs.errors.push(`Erro ao processar log: ${logError}`);
+          }
+        }
+      }
+      
+      res.json({
+        success: true,
+        syncTimestamp: new Date().toISOString(),
+        results,
+      });
+    } catch (error) {
+      console.error('Error in third-party sync upload:', error);
+      res.status(500).json({ message: 'Erro ao sincronizar dados offline' });
+    }
+  });
+
+  // Upload offline attachments
+  app.post('/api/third-party/sync/attachments', requireAuth, upload.array('files', 10), async (req, res) => {
+    try {
+      const user = req.user!;
+      const { metadata } = req.body; // JSON string with attachment metadata
+      const files = req.files as Express.Multer.File[];
+      
+      if (user.userType !== 'third_party_user' || !user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Apenas usuários de terceiros podem usar sync offline' });
+      }
+      
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: 'Nenhum arquivo enviado' });
+      }
+      
+      const attachmentMetadata = metadata ? JSON.parse(metadata) : [];
+      const results = { synced: 0, errors: [] as string[] };
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const meta = attachmentMetadata[i] || {};
+        
+        try {
+          const { workOrderId, localId, originTimestamp, caption } = meta;
+          
+          // Validate work order belongs to user's company
+          const [wo] = await db.select()
+            .from(workOrders)
+            .where(eq(workOrders.id, workOrderId));
+          
+          if (!wo || wo.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+            results.errors.push(`OS ${workOrderId} não encontrada ou sem permissão`);
+            continue;
+          }
+          
+          // Check for duplicate by localId
+          if (localId) {
+            const [existing] = await db.select()
+              .from(workOrderAttachments)
+              .where(and(
+                eq(workOrderAttachments.workOrderId, workOrderId),
+                eq(workOrderAttachments.localId, localId)
+              ));
+            
+            if (existing) {
+              results.synced++; // Consider as synced (already exists)
+              continue;
+            }
+          }
+          
+          // Save attachment
+          const { nanoid } = await import('nanoid');
+          await db.insert(workOrderAttachments).values({
+            id: nanoid(),
+            workOrderId,
+            fileName: file.originalname,
+            fileType: file.mimetype,
+            fileSize: file.size,
+            localPath: file.path,
+            caption,
+            uploadedBy: user.id,
+            uploadedAt: originTimestamp ? new Date(originTimestamp) : new Date(),
+            localId,
+            syncStatus: 'synced',
+            createdOffline: true,
+            syncedAt: new Date(),
+          });
+          
+          results.synced++;
+        } catch (attachError) {
+          console.error('Error processing attachment:', attachError);
+          results.errors.push(`Erro ao processar anexo: ${attachError}`);
+        }
+      }
+      
+      res.json({
+        success: true,
+        syncTimestamp: new Date().toISOString(),
+        results,
+      });
+    } catch (error) {
+      console.error('Error in third-party attachment sync:', error);
+      res.status(500).json({ message: 'Erro ao sincronizar anexos offline' });
+    }
+  });
+
+  // Get execution logs for a work order
+  app.get('/api/work-orders/:id/execution-logs', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const logs = await db.select()
+        .from(workOrderExecutionLogs)
+        .where(eq(workOrderExecutionLogs.workOrderId, id))
+        .orderBy(asc(workOrderExecutionLogs.originTimestamp));
+      
+      res.json(logs);
+    } catch (error) {
+      console.error('Error fetching execution logs:', error);
+      res.status(500).json({ message: 'Erro ao buscar logs de execução' });
+    }
+  });
+
+  // ============================================================================
+  // END OF THIRD PARTY OFFLINE SYNC ENDPOINTS
   // ============================================================================
 
   const httpServer = createServer(app);

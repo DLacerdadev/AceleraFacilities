@@ -404,6 +404,10 @@ export const workOrders = pgTable("work_orders", {
   syncRetryCount: integer("sync_retry_count").default(0),
   syncError: text("sync_error"),
   syncedAt: timestamp("synced_at"),
+  // Version tracking for offline sync
+  syncVersion: integer("sync_version").default(1),
+  offlineExecutedAt: timestamp("offline_executed_at"),
+  offlineDeviceId: varchar("offline_device_id"),
   // Campos para execução por terceiros
   executedByType: executedByTypeEnum("executed_by_type").default('INTERNAL'),
   thirdPartyCompanyId: varchar("third_party_company_id").references(() => thirdPartyCompanies.id),
@@ -446,6 +450,30 @@ export const workOrderAttachments = pgTable("work_order_attachments", {
   syncedAt: timestamp("synced_at"),
 }, (table) => ({
   uniqueWorkOrderLocalId: uniqueIndex("work_order_attachments_wo_local_id_unique").on(table.workOrderId, table.localId).where(sql`local_id IS NOT NULL`),
+}));
+
+// 11b. TABELA: work_order_execution_logs (Logs de Execução com suporte offline)
+export const workOrderExecutionLogs = pgTable("work_order_execution_logs", {
+  id: varchar("id").primaryKey(),
+  workOrderId: varchar("work_order_id").notNull().references(() => workOrders.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id),
+  action: varchar("action").notNull(), // started, paused, resumed, completed, status_change, checklist_update, photo_added
+  previousStatus: workOrderStatusEnum("previous_status"),
+  newStatus: workOrderStatusEnum("new_status"),
+  details: jsonb("details"), // checklist changes, observations, etc.
+  // Offline sync - preserve original timestamps
+  originTimestamp: timestamp("origin_timestamp").notNull(), // When action actually happened (offline or online)
+  recordedAt: timestamp("recorded_at").default(sql`now()`), // When server received it
+  source: varchar("source").notNull().default('online'), // 'online' or 'offline'
+  deviceId: varchar("device_id"),
+  // Sync tracking
+  localLogId: varchar("local_log_id"), // Client-side ID for deduplication
+  syncedAt: timestamp("synced_at"),
+}, (table) => ({
+  workOrderIdx: index("wo_exec_logs_work_order_idx").on(table.workOrderId),
+  userIdx: index("wo_exec_logs_user_idx").on(table.userId),
+  originTimestampIdx: index("wo_exec_logs_origin_timestamp_idx").on(table.originTimestamp),
+  uniqueLocalLog: uniqueIndex("wo_exec_logs_local_id_unique").on(table.workOrderId, table.localLogId).where(sql`local_log_id IS NOT NULL`),
 }));
 
 // 12. TABELA: audit_logs (Logs de Auditoria)
@@ -1708,6 +1736,12 @@ export const insertWorkOrderSchema = createInsertSchema(workOrders).omit({ id: t
   }),
 });
 export const insertWorkOrderAttachmentSchema = createInsertSchema(workOrderAttachments).omit({ id: true });
+export const insertWorkOrderExecutionLogSchema = createInsertSchema(workOrderExecutionLogs).omit({ id: true }).extend({
+  originTimestamp: z.union([z.date(), z.string().datetime()]).transform((val) => {
+    if (typeof val === 'string') return new Date(val);
+    return val;
+  }),
+});
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true });
 export const insertDashboardGoalSchema = createInsertSchema(dashboardGoals).omit({ id: true });
 export const insertCustomRoleSchema = createInsertSchema(customRoles);
@@ -1828,6 +1862,8 @@ export type InsertWorkOrder = z.infer<typeof insertWorkOrderSchema>;
 
 export type WorkOrderAttachment = typeof workOrderAttachments.$inferSelect;
 export type InsertWorkOrderAttachment = z.infer<typeof insertWorkOrderAttachmentSchema>;
+export type WorkOrderExecutionLog = typeof workOrderExecutionLogs.$inferSelect;
+export type InsertWorkOrderExecutionLog = z.infer<typeof insertWorkOrderExecutionLogSchema>;
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
