@@ -116,14 +116,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
   });
 
   const { data: lowStockParts } = useQuery<Part[]>({
-    queryKey: [`/api/customers/${customerId}/parts/low-stock`, currentModule],
-    queryFn: async () => {
-      const response = await fetch(`/api/customers/${customerId}/parts/low-stock?module=${currentModule}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('acelera_token')}` }
-      });
-      if (!response.ok) throw new Error('Failed to fetch low stock parts');
-      return response.json();
-    },
+    queryKey: ['/api/customers', customerId, 'parts', 'low-stock', { module: currentModule }],
     enabled: !!customerId
   });
 

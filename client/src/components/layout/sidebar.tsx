@@ -56,10 +56,11 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
   const { currentModule, setModule, moduleConfig, allowedModules, hasMultipleModules } = useModule();
   const { branding } = useBranding();
   
-  // Query para buscar peças com estoque baixo (para ambos os módulos)
+  // Query para buscar peças com estoque baixo (filtrado por módulo atual)
+  // Usando formato segmentado compatível com o queryFn padrão
   const { data: lowStockParts = [] } = useQuery<Part[]>({
-    queryKey: ['/api/customers', activeClientId, 'parts', 'low-stock', currentModule],
-    enabled: !!activeClientId
+    queryKey: ['/api/customers', activeClientId, 'parts', 'low-stock', { module: currentModule }],
+    enabled: !!activeClientId && !!currentModule
   });
   const lowStockCount = lowStockParts.length;
   
