@@ -9279,6 +9279,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
 
   // ============================================================================
+  // THIRD PARTY COMPANY MANAGEMENT ROUTES
+  // ============================================================================
+
+  const { thirdPartyCleanupService } = await import('./services/third-party-cleanup');
+
+  // GET - List third-party companies for a customer
+  app.get('/api/customers/:customerId/third-party-companies', requireAuth, requireThirdPartyEnabled, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'platform_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      const companies = await storage.getThirdPartyCompaniesByCustomer(customerId);
+      res.json(companies);
+    } catch (error) {
+      console.error('Error fetching third-party companies:', error);
+      res.status(500).json({ message: 'Erro ao buscar empresas terceiras' });
+    }
+  });
+
+  // GET - Get specific third-party company
+  app.get('/api/third-party-companies/:id', requireAuth, requireThirdPartyEnabled, async (req, res) => {
+    try {
+      const company = await storage.getThirdPartyCompany(req.params.id);
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa terceira não encontrada' });
+      }
+      
+      const user = req.user!;
+      if (user.customerId !== company.customerId && user.userType !== 'platform_user') {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa terceira' });
+      }
+      
+      res.json(company);
+    } catch (error) {
+      console.error('Error fetching third-party company:', error);
+      res.status(500).json({ message: 'Erro ao buscar empresa terceira' });
+    }
+  });
+
+  // POST - Create third-party company
+  app.post('/api/customers/:customerId/third-party-companies', requireAuth, requireThirdPartyEnabled, requirePermission('third_party_create'), async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'platform_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      const newCompany = await storage.createThirdPartyCompany({
+        id: nanoid(),
+        customerId,
+        ...req.body,
+      });
+      
+      broadcast({
+        type: 'create',
+        resource: 'third_party_companies',
+        data: newCompany,
+        customerId,
+      });
+      
+      res.status(201).json(newCompany);
+    } catch (error) {
+      console.error('Error creating third-party company:', error);
+      res.status(500).json({ message: 'Erro ao criar empresa terceira' });
+    }
+  });
+
+  // PUT - Update third-party company (with cleanup on deactivation)
+  app.put('/api/third-party-companies/:id', requireAuth, requireThirdPartyEnabled, requirePermission('third_party_edit'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      const existingCompany = await storage.getThirdPartyCompany(id);
+      if (!existingCompany) {
+        return res.status(404).json({ message: 'Empresa terceira não encontrada' });
+      }
+      
+      const user = req.user!;
+      if (user.customerId !== existingCompany.customerId && user.userType !== 'platform_user') {
+        return res.status(403).json({ message: 'Acesso negado a esta empresa terceira' });
+      }
+      
+      const wasActive = existingCompany.status === 'active';
+      const willBeInactive = updateData.status === 'inactive';
+      
+      let cleanupResult = null;
+      
+      if (wasActive && willBeInactive) {
+        console.log(`[THIRD_PARTY] Deactivating company ${id} - triggering cleanup`);
+        cleanupResult = await thirdPartyCleanupService.deactivateThirdPartyCompany(
+          id,
+          { id: user.id, name: user.name, userType: user.userType },
+          updateData.deactivationReason || 'Empresa desativada pelo administrador'
+        );
+      } else {
+        await storage.updateThirdPartyCompany(id, updateData);
+      }
+      
+      const updatedCompany = await storage.getThirdPartyCompany(id);
+      
+      broadcast({
+        type: 'update',
+        resource: 'third_party_companies',
+        data: updatedCompany,
+        id,
+        customerId: existingCompany.customerId,
+      });
+      
+      res.json({
+        company: updatedCompany,
+        cleanup: cleanupResult,
+      });
+    } catch (error) {
+      console.error('Error updating third-party company:', error);
+      res.status(500).json({ message: 'Erro ao atualizar empresa terceira' });
+    }
+  });
+
+  // PUT - Update customer's thirdPartyEnabled (with cleanup on disable)
+  app.put('/api/customers/:customerId/third-party-module', requireAuth, requirePermission('customers_edit'), async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { enabled, reason } = req.body;
+      
+      const customer = await storage.getCustomer(customerId);
+      if (!customer) {
+        return res.status(404).json({ message: 'Cliente não encontrado' });
+      }
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'platform_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      let cleanupResult = null;
+      
+      if (customer.thirdPartyEnabled && enabled === false) {
+        console.log(`[THIRD_PARTY] Disabling module for customer ${customerId} - triggering cleanup`);
+        cleanupResult = await thirdPartyCleanupService.deactivateThirdPartyModule(
+          customerId,
+          { id: user.id, name: user.name, userType: user.userType },
+          reason || 'Módulo de terceiros desativado pelo administrador'
+        );
+      } else {
+        await storage.updateCustomer(customerId, {
+          thirdPartyEnabled: enabled,
+        });
+      }
+      
+      const updatedCustomer = await storage.getCustomer(customerId);
+      
+      broadcast({
+        type: 'update',
+        resource: 'customers',
+        data: updatedCustomer,
+        id: customerId,
+      });
+      
+      res.json({
+        customer: updatedCustomer,
+        cleanup: cleanupResult,
+      });
+    } catch (error) {
+      console.error('Error updating third-party module:', error);
+      res.status(500).json({ message: 'Erro ao atualizar módulo de terceiros' });
+    }
+  });
+
+  // ============================================================================
   // THIRD PARTY SLA DASHBOARD ROUTES
   // ============================================================================
 
