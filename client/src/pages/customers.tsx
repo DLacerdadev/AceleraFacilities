@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Edit, Trash2, Search, Users, Building2, Palette, TestTube } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Users, Building2, Palette, TestTube, UserCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useModuleTheme } from "@/hooks/use-module-theme";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,6 +42,7 @@ const customerFormSchema = z.object({
   contactPerson: z.string().optional(),
   notes: z.string().optional(),
   modules: z.array(z.enum(['clean', 'maintenance'])).min(1, "Selecione pelo menos um módulo"),
+  thirdPartyEnabled: z.boolean().optional(),
 });
 
 type CustomerFormData = z.infer<typeof customerFormSchema>;
@@ -151,6 +153,7 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
       contactPerson: "",
       notes: "",
       modules: ['clean'],
+      thirdPartyEnabled: false,
     },
   });
 
@@ -169,6 +172,7 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
       contactPerson: "",
       notes: "",
       modules: [],
+      thirdPartyEnabled: false,
     },
   });
 
@@ -191,6 +195,7 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
       contactPerson: customer.contactPerson || "",
       notes: customer.notes || "",
       modules: (customer.modules || ['clean']) as ('clean' | 'maintenance')[],
+      thirdPartyEnabled: customer.thirdPartyEnabled || false,
     });
     setIsEditDialogOpen(true);
   };
@@ -384,6 +389,7 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
                   <TableHead>Documento</TableHead>
                   <TableHead>Cidade</TableHead>
                   <TableHead>Módulos</TableHead>
+                  <TableHead>Terceiros</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
@@ -397,6 +403,19 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
                     <TableCell>{customer.document || "-"}</TableCell>
                     <TableCell>{customer.city || "-"}</TableCell>
                     <TableCell>{getModulesBadges(customer)}</TableCell>
+                    <TableCell>
+                      {customer.thirdPartyEnabled ? (
+                        <Badge className="bg-chart-2/10 text-chart-2">
+                          <UserCheck className="w-3 h-3 mr-1" />
+                          Ativo
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          <UserX className="w-3 h-3 mr-1" />
+                          Inativo
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {customer.isActive ? (
                         <Badge className="bg-chart-2/10 text-chart-2">Ativo</Badge>
@@ -674,6 +693,30 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
 
                 <FormField
                   control={createForm.control}
+                  name="thirdPartyEnabled"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Terceiros</FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Ativar gerenciamento de empresas terceirizadas para este cliente
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-create-customer-third-party"
+                          />
+                        </FormControl>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={createForm.control}
                   name="notes"
                   render={({ field }) => (
                     <FormItem className="col-span-2">
@@ -921,6 +964,30 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
                         </div>
                       </div>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="thirdPartyEnabled"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Terceiros</FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Ativar gerenciamento de empresas terceirizadas para este cliente
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-edit-customer-third-party"
+                          />
+                        </FormControl>
+                      </div>
                     </FormItem>
                   )}
                 />
