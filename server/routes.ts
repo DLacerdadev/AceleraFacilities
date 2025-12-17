@@ -9535,7 +9535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
         customerId: company.customerId,
         userType: 'third_party_user',
-        role: 'user',
+        role: 'operador',
         thirdPartyCompanyId: id,
         thirdPartyRole: mappedRole,
         isActive: true,
