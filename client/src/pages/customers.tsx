@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useModuleTheme } from "@/hooks/use-module-theme";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,6 +44,7 @@ const customerFormSchema = z.object({
   notes: z.string().optional(),
   modules: z.array(z.enum(['clean', 'maintenance'])).min(1, "Selecione pelo menos um módulo"),
   thirdPartyEnabled: z.boolean().optional(),
+  thirdPartyWorkOrderApproval: z.enum(['always_accept', 'require_approval', 'always_reject']).optional(),
 });
 
 type CustomerFormData = z.infer<typeof customerFormSchema>;
@@ -196,6 +198,7 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
       notes: customer.notes || "",
       modules: (customer.modules || ['clean']) as ('clean' | 'maintenance')[],
       thirdPartyEnabled: customer.thirdPartyEnabled || false,
+      thirdPartyWorkOrderApproval: (customer as any).thirdPartyWorkOrderApproval || 'require_approval',
     });
     setIsEditDialogOpen(true);
   };
@@ -991,6 +994,34 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
                     </FormItem>
                   )}
                 />
+
+                {editForm.watch("thirdPartyEnabled") && (
+                  <FormField
+                    control={editForm.control}
+                    name="thirdPartyWorkOrderApproval"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2">
+                        <FormLabel>Aprovação de Propostas de Terceiros</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || 'require_approval'}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-customer-third-party-approval">
+                              <SelectValue placeholder="Selecione o tipo de aprovação" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="always_accept">Aceitar Automaticamente</SelectItem>
+                            <SelectItem value="require_approval">Requerer Aprovação</SelectItem>
+                            <SelectItem value="always_reject">Recusar Automaticamente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-sm text-muted-foreground">
+                          Define como lidar com propostas de O.S. enviadas por empresas terceirizadas
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={editForm.control}
