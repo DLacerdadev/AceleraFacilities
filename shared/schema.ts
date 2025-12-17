@@ -31,6 +31,9 @@ export const supplierWorkOrderStatusEnum = pgEnum('supplier_work_order_status', 
 export const thirdPartyStatusEnum = pgEnum('third_party_status', ['active', 'inactive']);
 export const assetVisibilityModeEnum = pgEnum('asset_visibility_mode', ['ALL', 'CONTRACT_ONLY']);
 
+// Enum para tipo de avaliador de OS
+export const evaluatorTypeEnum = pgEnum('evaluator_type', ['CLIENT', 'SYSTEM']);
+
 // Sistema de permissões granulares
 export const permissionKeyEnum = pgEnum('permission_key', [
   'dashboard_view',
@@ -643,6 +646,21 @@ export const workOrderComments = pgTable("work_order_comments", {
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
+
+// 27. TABELA: work_order_evaluations (Avaliações de OS)
+// Permite múltiplas avaliações por OS (cliente e auditores)
+export const workOrderEvaluations = pgTable("work_order_evaluations", {
+  id: varchar("id").primaryKey(),
+  workOrderId: varchar("work_order_id").notNull().references(() => workOrders.id, { onDelete: 'cascade' }),
+  evaluatorUserId: varchar("evaluator_user_id").notNull().references(() => users.id),
+  evaluatorType: evaluatorTypeEnum("evaluator_type").notNull(),
+  rating: integer("rating"),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  workOrderIdx: index("work_order_evaluations_work_order_idx").on(table.workOrderId),
+  evaluatorIdx: index("work_order_evaluations_evaluator_idx").on(table.evaluatorUserId),
+}));
 
 // ============================================================================
 // MÓDULO DE MANUTENÇÃO - Tabelas Específicas
@@ -1710,6 +1728,11 @@ export const insertBathroomCounterLogSchema = createInsertSchema(bathroomCounter
 export const insertPublicRequestLogSchema = createInsertSchema(publicRequestLogs);
 export const insertWorkOrderCommentSchema = createInsertSchema(workOrderComments);
 
+export const insertWorkOrderEvaluationSchema = createInsertSchema(workOrderEvaluations).omit({ id: true }).extend({
+  rating: z.number().min(1).max(10).optional().nullable(),
+  comment: z.string().optional().nullable(),
+});
+
 // Maintenance insert schemas
 export const insertEquipmentSchema = createInsertSchema(equipment).omit({ id: true }).extend({
   value: z.union([z.string(), z.number(), z.null(), z.undefined()])
@@ -1849,6 +1872,9 @@ export type InsertPublicRequestLog = z.infer<typeof insertPublicRequestLogSchema
 
 export type WorkOrderComment = typeof workOrderComments.$inferSelect;
 export type InsertWorkOrderComment = z.infer<typeof insertWorkOrderCommentSchema>;
+
+export type WorkOrderEvaluation = typeof workOrderEvaluations.$inferSelect;
+export type InsertWorkOrderEvaluation = z.infer<typeof insertWorkOrderEvaluationSchema>;
 
 // Maintenance types
 export type Equipment = typeof equipment.$inferSelect;

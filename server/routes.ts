@@ -2952,7 +2952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Work Order Rating (Customer Feedback)
+  // Work Order Rating (Customer Feedback) - Legacy endpoint
   app.post("/api/work-orders/:workOrderId/rating", requirePermission('workorders_evaluate'), async (req, res) => {
     try {
       const { rating, comment, userId } = req.body;
@@ -2972,6 +2972,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error rating work order:", error);
       res.status(500).json({ message: "Failed to rate work order" });
+    }
+  });
+
+  // ============================================================
+  // WORK ORDER EVALUATIONS - Avaliações de OS (Novo Sistema)
+  // ============================================================
+  
+  // GET - Listar avaliações de uma OS
+  app.get("/api/work-orders/:workOrderId/evaluations", requirePermission('workorders_view'), async (req, res) => {
+    try {
+      // Verificar se a OS existe e se o usuário tem acesso
+      const workOrder = await storage.getWorkOrder(req.params.workOrderId);
+      if (!workOrder) {
+        return res.status(404).json({ message: "Ordem de serviço não encontrada" });
+      }
+      
+      // Verificar isolamento de dados para third-party
+      const user = req.user;
+      if (user?.userType === 'third_party_user') {
+        if (workOrder.customerId !== user.customerId) {
+          return res.status(403).json({ message: "Acesso negado a esta ordem de serviço" });
+        }
+      } else if (user?.userType === 'customer_user') {
+        if (workOrder.customerId !== user.customerId) {
+          return res.status(403).json({ message: "Acesso negado a esta ordem de serviço" });
+        }
+      }
+      
+      const evaluations = await storage.getWorkOrderEvaluations(req.params.workOrderId);
+      res.json(evaluations);
+    } catch (error) {
+      console.error("Error fetching evaluations:", error);
+      res.status(500).json({ message: "Erro ao buscar avaliações" });
+    }
+  });
+
+  // POST - Criar nova avaliação de OS
+  app.post("/api/work-orders/:workOrderId/evaluations", requirePermission('workorders_evaluate'), async (req, res) => {
+    try {
+      const user = req.user;
+      if (!user) {
+        return res.status(401).json({ message: "Usuário não autenticado" });
+      }
+
+      const { rating, comment } = req.body;
+      
+      // Validar tipo do rating (deve ser número ou null/undefined)
+      if (rating !== undefined && rating !== null) {
+        const numRating = Number(rating);
+        if (isNaN(numRating) || !Number.isInteger(numRating)) {
+          return res.status(400).json({ 
+            message: "Avaliação inválida",
+            details: "O rating deve ser um número inteiro"
+          });
+        }
+        if (numRating < 1 || numRating > 10) {
+          return res.status(400).json({ 
+            message: "Avaliação inválida",
+            details: "O rating deve ser um número entre 1 e 10"
+          });
+        }
+      }
+
+      // Verificar se a OS existe
+      const workOrder = await storage.getWorkOrder(req.params.workOrderId);
+      if (!workOrder) {
+        return res.status(404).json({ message: "Ordem de serviço não encontrada" });
+      }
+      
+      // Verificar isolamento de dados para third-party e customer_user
+      if (user.userType === 'third_party_user') {
+        if (workOrder.customerId !== user.customerId) {
+          return res.status(403).json({ message: "Acesso negado a esta ordem de serviço" });
+        }
+      } else if (user.userType === 'customer_user') {
+        if (workOrder.customerId !== user.customerId) {
+          return res.status(403).json({ message: "Acesso negado a esta ordem de serviço" });
+        }
+      }
+
+      // Determinar o tipo de avaliador baseado no userType
+      let evaluatorType: 'CLIENT' | 'SYSTEM';
+      if (user.userType === 'customer_user') {
+        evaluatorType = 'CLIENT';
+      } else if (user.userType === 'opus_user' || user.role === 'auditor' || user.role === 'admin') {
+        evaluatorType = 'SYSTEM';
+      } else {
+        return res.status(403).json({ 
+          message: "Permissão negada",
+          details: "Apenas usuários do cliente ou auditores do sistema podem avaliar ordens de serviço"
+        });
+      }
+
+      const validRating = rating !== undefined && rating !== null ? Number(rating) : null;
+      const evaluation = await storage.createWorkOrderEvaluation({
+        id: crypto.randomUUID(),
+        workOrderId: req.params.workOrderId,
+        evaluatorUserId: user.id,
+        evaluatorType,
+        rating: validRating,
+        comment: comment ?? null,
+      });
+
+      console.log(`[EVALUATION] ✅ Nova avaliação criada para OS ${req.params.workOrderId} por ${user.name} (${evaluatorType})`);
+      res.status(201).json(evaluation);
+    } catch (error) {
+      console.error("Error creating evaluation:", error);
+      res.status(500).json({ message: "Erro ao criar avaliação" });
     }
   });
 

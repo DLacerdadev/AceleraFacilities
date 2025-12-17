@@ -3,7 +3,7 @@ import {
   slaConfigs, cleaningActivities, workOrders, bathroomCounters, webhookConfigs, services,
   serviceTypes, serviceCategories, serviceZones, dashboardGoals, auditLogs, customers,
   userSiteAssignments, userAllowedCustomers, publicRequestLogs, siteShifts, bathroomCounterLogs, companyCounters, customerCounters,
-  workOrderComments, workOrderAttachments,
+  workOrderComments, workOrderAttachments, workOrderEvaluations,
   equipment, equipmentTypes, maintenanceChecklistTemplates,
   maintenanceChecklistExecutions, maintenancePlans, maintenancePlanEquipments, maintenanceActivities,
   parts, workOrderParts, maintenancePlanParts, maintenanceActivityParts, partMovements,
@@ -27,6 +27,7 @@ import {
   type CompanyCounter, type InsertCompanyCounter,
   type WorkOrderComment, type InsertWorkOrderComment,
   type WorkOrderAttachment, type InsertWorkOrderAttachment,
+  type WorkOrderEvaluation, type InsertWorkOrderEvaluation,
   customRoles, rolePermissions, userRoleAssignments,
   type CustomRole, type CustomRoleWithPermissions, type InsertCustomRole, type RolePermission, type InsertRolePermission,
   type UserRoleAssignment, type InsertUserRoleAssignment,
@@ -291,6 +292,11 @@ export interface IStorage {
   getWorkOrderComments(workOrderId: string): Promise<WorkOrderComment[]>;
   createWorkOrderComment(comment: InsertWorkOrderComment): Promise<WorkOrderComment>;
   deleteWorkOrderComment(id: string): Promise<void>;
+
+  // Work Order Evaluations
+  getWorkOrderEvaluations(workOrderId: string): Promise<WorkOrderEvaluation[]>;
+  getWorkOrderEvaluation(id: string): Promise<WorkOrderEvaluation | undefined>;
+  createWorkOrderEvaluation(evaluation: InsertWorkOrderEvaluation & { id: string }): Promise<WorkOrderEvaluation>;
 
   // Bathroom Counters
   getBathroomCounterByZone(zoneId: string): Promise<BathroomCounter | undefined>;
@@ -4433,6 +4439,29 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWorkOrderComment(id: string): Promise<void> {
     await db.delete(workOrderComments).where(eq(workOrderComments.id, id));
+  }
+
+  // Work Order Evaluations
+  async getWorkOrderEvaluations(workOrderId: string): Promise<WorkOrderEvaluation[]> {
+    return await db.select()
+      .from(workOrderEvaluations)
+      .where(eq(workOrderEvaluations.workOrderId, workOrderId))
+      .orderBy(workOrderEvaluations.createdAt);
+  }
+
+  async getWorkOrderEvaluation(id: string): Promise<WorkOrderEvaluation | undefined> {
+    const [evaluation] = await db.select()
+      .from(workOrderEvaluations)
+      .where(eq(workOrderEvaluations.id, id))
+      .limit(1);
+    return evaluation;
+  }
+
+  async createWorkOrderEvaluation(evaluation: InsertWorkOrderEvaluation & { id: string }): Promise<WorkOrderEvaluation> {
+    const [newEvaluation] = await db.insert(workOrderEvaluations)
+      .values(evaluation)
+      .returning();
+    return newEvaluation;
   }
 
   // Work Order Attachments - File Upload Helpers
