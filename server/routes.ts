@@ -10675,12 +10675,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Empresa não encontrada' });
       }
 
-      const customer = await db.select()
-        .from(customers)
-        .where(eq(customers.id, company[0].customerId))
-        .limit(1);
-
-      const approvalSetting = customer[0]?.thirdPartyWorkOrderApproval || 'require_approval';
+      // Use approval mode from third party company, not from customer
+      const approvalSetting = company[0].workOrderApprovalMode || 'require_approval';
       let status = 'em_espera';
 
       if (approvalSetting === 'always_accept') {
@@ -10778,6 +10774,215 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ============================================================================
   // END OF THIRD PARTY PORTAL API ENDPOINTS
+  // ============================================================================
+
+  // ============================================================================
+  // THIRD PARTY WORK ORDER PROPOSALS - Customer Approval Routes
+  // ============================================================================
+
+  // Get pending proposals for a customer (for approval by client)
+  app.get('/api/customers/:customerId/third-party-proposals', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { status, module } = req.query;
+
+      let query = db.select({
+        proposal: thirdPartyWorkOrderProposals,
+        companyName: thirdPartyCompanies.name,
+      })
+        .from(thirdPartyWorkOrderProposals)
+        .leftJoin(thirdPartyCompanies, eq(thirdPartyWorkOrderProposals.thirdPartyCompanyId, thirdPartyCompanies.id))
+        .where(eq(thirdPartyWorkOrderProposals.customerId, customerId))
+        .orderBy(desc(thirdPartyWorkOrderProposals.createdAt));
+
+      const results = await query;
+
+      // Filter by status and module if provided
+      let filteredResults = results;
+      if (status) {
+        filteredResults = filteredResults.filter(r => r.proposal.status === status);
+      }
+      if (module) {
+        filteredResults = filteredResults.filter(r => r.proposal.module === module);
+      }
+
+      const proposals = filteredResults.map(r => ({
+        ...r.proposal,
+        thirdPartyCompanyName: r.companyName,
+      }));
+
+      res.json(proposals);
+    } catch (error) {
+      console.error('Error fetching third-party proposals:', error);
+      res.status(500).json({ message: 'Erro ao buscar propostas de terceiros' });
+    }
+  });
+
+  // Approve a third-party proposal (creates work order)
+  app.post('/api/customers/:customerId/third-party-proposals/:proposalId/approve', requireAuth, async (req, res) => {
+    try {
+      const { customerId, proposalId } = req.params;
+      const user = req.user as any;
+      const { nanoid } = await import('nanoid');
+
+      // Get the proposal
+      const proposal = await db.select()
+        .from(thirdPartyWorkOrderProposals)
+        .where(and(
+          eq(thirdPartyWorkOrderProposals.id, proposalId),
+          eq(thirdPartyWorkOrderProposals.customerId, customerId)
+        ))
+        .limit(1);
+
+      if (!proposal.length) {
+        return res.status(404).json({ message: 'Proposta não encontrada' });
+      }
+
+      if (proposal[0].status !== 'em_espera') {
+        return res.status(400).json({ message: 'Proposta já foi processada' });
+      }
+
+      // Get the third party company for companyId
+      const thirdPartyCompany = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, proposal[0].thirdPartyCompanyId))
+        .limit(1);
+
+      if (!thirdPartyCompany.length) {
+        return res.status(404).json({ message: 'Empresa terceirizada não encontrada' });
+      }
+
+      // Create the work order
+      const workOrderId = nanoid();
+      await db.insert(workOrders).values({
+        id: workOrderId,
+        title: proposal[0].title,
+        description: proposal[0].description,
+        zoneId: proposal[0].zoneId,
+        equipmentId: proposal[0].equipmentId || null,
+        priority: proposal[0].priority,
+        dueDate: proposal[0].dueDate,
+        module: proposal[0].module,
+        customerId: customerId,
+        companyId: thirdPartyCompany[0].companyId,
+        thirdPartyCompanyId: proposal[0].thirdPartyCompanyId,
+        executedByType: 'THIRD_PARTY',
+        status: 'aberta',
+        createdBy: proposal[0].createdBy,
+      });
+
+      // Update the proposal status
+      await db.update(thirdPartyWorkOrderProposals)
+        .set({
+          status: 'aprovado',
+          workOrderId,
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(thirdPartyWorkOrderProposals.id, proposalId));
+
+      // Broadcast work order creation
+      broadcast({
+        type: 'create',
+        resource: 'workorders',
+        data: { id: workOrderId },
+        customerId: customerId
+      });
+
+      // Broadcast proposal update
+      broadcast({
+        type: 'update',
+        resource: 'third_party_proposals',
+        data: { id: proposalId, status: 'aprovado' },
+        customerId: customerId
+      });
+
+      res.json({ success: true, workOrderId, message: 'Proposta aprovada e O.S. criada com sucesso' });
+    } catch (error) {
+      console.error('Error approving proposal:', error);
+      res.status(500).json({ message: 'Erro ao aprovar proposta' });
+    }
+  });
+
+  // Reject a third-party proposal
+  app.post('/api/customers/:customerId/third-party-proposals/:proposalId/reject', requireAuth, async (req, res) => {
+    try {
+      const { customerId, proposalId } = req.params;
+      const user = req.user as any;
+      const { rejectionReason } = req.body;
+
+      // Get the proposal
+      const proposal = await db.select()
+        .from(thirdPartyWorkOrderProposals)
+        .where(and(
+          eq(thirdPartyWorkOrderProposals.id, proposalId),
+          eq(thirdPartyWorkOrderProposals.customerId, customerId)
+        ))
+        .limit(1);
+
+      if (!proposal.length) {
+        return res.status(404).json({ message: 'Proposta não encontrada' });
+      }
+
+      if (proposal[0].status !== 'em_espera') {
+        return res.status(400).json({ message: 'Proposta já foi processada' });
+      }
+
+      // Update the proposal status
+      await db.update(thirdPartyWorkOrderProposals)
+        .set({
+          status: 'recusado',
+          rejectionReason: rejectionReason || null,
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(thirdPartyWorkOrderProposals.id, proposalId));
+
+      // Broadcast proposal update
+      broadcast({
+        type: 'update',
+        resource: 'third_party_proposals',
+        data: { id: proposalId, status: 'recusado' },
+        customerId: customerId
+      });
+
+      res.json({ success: true, message: 'Proposta rejeitada' });
+    } catch (error) {
+      console.error('Error rejecting proposal:', error);
+      res.status(500).json({ message: 'Erro ao rejeitar proposta' });
+    }
+  });
+
+  // Get count of pending proposals for a customer (for badge/notification)
+  app.get('/api/customers/:customerId/third-party-proposals/pending-count', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { module } = req.query;
+
+      let conditions: any[] = [
+        eq(thirdPartyWorkOrderProposals.customerId, customerId),
+        eq(thirdPartyWorkOrderProposals.status, 'em_espera')
+      ];
+
+      if (module) {
+        conditions.push(eq(thirdPartyWorkOrderProposals.module, module as string));
+      }
+
+      const count = await db.select({ count: sql<number>`count(*)::int` })
+        .from(thirdPartyWorkOrderProposals)
+        .where(and(...conditions));
+
+      res.json({ count: count[0]?.count || 0 });
+    } catch (error) {
+      console.error('Error fetching pending proposals count:', error);
+      res.status(500).json({ message: 'Erro ao contar propostas pendentes' });
+    }
+  });
+
+  // ============================================================================
+  // END OF THIRD PARTY PROPOSALS APPROVAL ROUTES
   // ============================================================================
 
   const httpServer = createServer(app);
