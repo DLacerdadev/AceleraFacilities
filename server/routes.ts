@@ -32,9 +32,9 @@ import crypto from "crypto";
 import { db } from "./db";
 import { eq, and, ne, gte, desc, asc, inArray, sql, type SQL } from "drizzle-orm";
 import { 
-  workOrders, zones, equipment, services, checklistTemplates, 
+  workOrders, zones, equipment, services, checklistTemplates, sites,
   workOrderExecutionLogs, workOrderAttachments,
-  thirdPartyCompanies, thirdPartyTeams, thirdPartyWorkOrderProposals, thirdPartyPlanProposals
+  thirdPartyCompanies, thirdPartyTeams, thirdPartyWorkOrderProposals, thirdPartyPlanProposals, thirdPartyChecklists
 } from "@shared/schema";
 import multer from "multer";
 import {
@@ -10302,6 +10302,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get sites available for third-party company
+  app.get('/api/third-party-portal/sites', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.json([]);
+      }
+
+      const allowedSiteIds = company[0].allowedSites || [];
+      if (allowedSiteIds.length === 0) {
+        return res.json([]);
+      }
+
+      const sitesData = await db.select()
+        .from(sites)
+        .where(inArray(sites.id, allowedSiteIds));
+
+      res.json(sitesData);
+    } catch (error) {
+      console.error('Error fetching sites:', error);
+      res.status(500).json({ message: 'Erro ao buscar locais' });
+    }
+  });
+
   // Get equipment available for third-party company
   app.get('/api/third-party-portal/equipment', requireAuth, async (req, res) => {
     try {
@@ -10661,6 +10694,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching allowed modules:', error);
       res.status(500).json({ message: 'Erro ao buscar módulos permitidos' });
+    }
+  });
+
+  // === THIRD-PARTY CHECKLISTS CRUD ===
+  
+  // Get checklists for third-party portal
+  app.get('/api/third-party-portal/checklists', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const { module } = req.query;
+      
+      let query = db.select()
+        .from(thirdPartyChecklists)
+        .where(eq(thirdPartyChecklists.thirdPartyCompanyId, user.thirdPartyCompanyId));
+
+      if (module && typeof module === 'string') {
+        query = db.select()
+          .from(thirdPartyChecklists)
+          .where(and(
+            eq(thirdPartyChecklists.thirdPartyCompanyId, user.thirdPartyCompanyId),
+            eq(thirdPartyChecklists.module, module)
+          ));
+      }
+
+      const checklists = await query.orderBy(desc(thirdPartyChecklists.createdAt));
+
+      res.json(checklists);
+    } catch (error) {
+      console.error('Error fetching checklists:', error);
+      res.status(500).json({ message: 'Erro ao buscar checklists' });
+    }
+  });
+
+  // Create checklist for third-party portal
+  app.post('/api/third-party-portal/checklists', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager' && user.thirdPartyRole !== 'third_party_team_leader') {
+        return res.status(403).json({ message: 'Permissão insuficiente para criar checklists' });
+      }
+
+      const { name, description, module, items } = req.body;
+      const { nanoid } = await import('nanoid');
+
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+
+      // Check if module is in allowed modules
+      const allowedModules = company[0].allowedModules || [];
+      if (!allowedModules.includes(module)) {
+        return res.status(403).json({ message: 'Módulo não permitido para esta empresa' });
+      }
+
+      const newChecklist = await db.insert(thirdPartyChecklists).values({
+        id: nanoid(),
+        name,
+        description: description || null,
+        module,
+        items: items || [],
+        thirdPartyCompanyId: user.thirdPartyCompanyId,
+        customerId: company[0].customerId,
+        createdBy: user.id,
+        isActive: true,
+      }).returning();
+
+      res.json(newChecklist[0]);
+    } catch (error) {
+      console.error('Error creating checklist:', error);
+      res.status(500).json({ message: 'Erro ao criar checklist' });
+    }
+  });
+
+  // Update checklist for third-party portal
+  app.patch('/api/third-party-portal/checklists/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager' && user.thirdPartyRole !== 'third_party_team_leader') {
+        return res.status(403).json({ message: 'Permissão insuficiente para editar checklists' });
+      }
+
+      const { id } = req.params;
+      const { name, description, items, isActive } = req.body;
+
+      const existingChecklist = await db.select()
+        .from(thirdPartyChecklists)
+        .where(and(
+          eq(thirdPartyChecklists.id, id),
+          eq(thirdPartyChecklists.thirdPartyCompanyId, user.thirdPartyCompanyId)
+        ))
+        .limit(1);
+
+      if (!existingChecklist.length) {
+        return res.status(404).json({ message: 'Checklist não encontrado' });
+      }
+
+      const updateData: any = { updatedAt: new Date() };
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (items !== undefined) updateData.items = items;
+      if (isActive !== undefined) updateData.isActive = isActive;
+
+      const updated = await db.update(thirdPartyChecklists)
+        .set(updateData)
+        .where(eq(thirdPartyChecklists.id, id))
+        .returning();
+
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('Error updating checklist:', error);
+      res.status(500).json({ message: 'Erro ao atualizar checklist' });
+    }
+  });
+
+  // Delete checklist for third-party portal
+  app.delete('/api/third-party-portal/checklists/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem excluir checklists' });
+      }
+
+      const { id } = req.params;
+
+      const existingChecklist = await db.select()
+        .from(thirdPartyChecklists)
+        .where(and(
+          eq(thirdPartyChecklists.id, id),
+          eq(thirdPartyChecklists.thirdPartyCompanyId, user.thirdPartyCompanyId)
+        ))
+        .limit(1);
+
+      if (!existingChecklist.length) {
+        return res.status(404).json({ message: 'Checklist não encontrado' });
+      }
+
+      await db.delete(thirdPartyChecklists).where(eq(thirdPartyChecklists.id, id));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting checklist:', error);
+      res.status(500).json({ message: 'Erro ao excluir checklist' });
     }
   });
 
