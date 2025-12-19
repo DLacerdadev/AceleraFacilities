@@ -68,12 +68,18 @@ const getTypeIcon = (type: string) => {
   }
 };
 
-const defaultNewItem: Omit<ChecklistItem, 'id'> = {
+interface ChecklistOption {
+  id: string;
+  value: string;
+}
+
+const defaultNewItem: Omit<ChecklistItem, 'id'> & { optionsWithIds: ChecklistOption[] } = {
   type: 'text',
   label: '',
   required: false,
   description: '',
   options: [],
+  optionsWithIds: [],
   validation: {}
 };
 
@@ -83,7 +89,7 @@ export default function ThirdPartyChecklists() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
-  const [newItem, setNewItem] = useState<Omit<ChecklistItem, 'id'>>(defaultNewItem);
+  const [newItem, setNewItem] = useState<Omit<ChecklistItem, 'id'> & { optionsWithIds: ChecklistOption[] }>(defaultNewItem);
   const [activeTab, setActiveTab] = useState("all");
 
   const { data: modulesData, isLoading: loadingModules } = useQuery<{
