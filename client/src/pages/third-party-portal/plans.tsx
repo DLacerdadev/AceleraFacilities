@@ -63,11 +63,11 @@ export default function ThirdPartyPlans() {
   });
 
   const { data: zones = [] } = useQuery<any[]>({
-    queryKey: ['/api/zones'],
+    queryKey: ['/api/third-party-portal/zones'],
   });
 
   const { data: equipment = [] } = useQuery<any[]>({
-    queryKey: ['/api/equipment'],
+    queryKey: ['/api/third-party-portal/equipment'],
   });
 
   const { data: proposals = [], isLoading: loadingProposals } = useQuery<any[]>({
