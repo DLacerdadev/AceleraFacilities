@@ -54,6 +54,7 @@ const thirdPartyCompanySchema = z.object({
   contractEndDate: z.string().optional(),
   assetVisibilityMode: z.enum(["ALL", "CONTRACT_ONLY"]),
   workOrderApprovalMode: z.enum(["always_accept", "require_approval", "always_reject"]),
+  allowedModules: z.array(z.string()).default([]),
 });
 
 type ThirdPartyCompanyFormData = z.infer<typeof thirdPartyCompanySchema>;
@@ -109,6 +110,9 @@ export default function ThirdPartyCompanies() {
     enabled: !!selectedCompanyId,
   });
 
+  // Módulos disponíveis do cliente
+  const customerModules = activeClient?.modules || ['clean'];
+
   const createForm = useForm<ThirdPartyCompanyFormData>({
     resolver: zodResolver(thirdPartyCompanySchema),
     defaultValues: {
@@ -121,6 +125,7 @@ export default function ThirdPartyCompanies() {
       contractEndDate: "",
       assetVisibilityMode: "CONTRACT_ONLY",
       workOrderApprovalMode: "require_approval",
+      allowedModules: [],
     },
   });
 
@@ -136,6 +141,7 @@ export default function ThirdPartyCompanies() {
       contractEndDate: "",
       assetVisibilityMode: "CONTRACT_ONLY",
       workOrderApprovalMode: "require_approval",
+      allowedModules: [],
     },
   });
 
@@ -270,6 +276,7 @@ export default function ThirdPartyCompanies() {
       contractEndDate: company.contractEndDate || "",
       assetVisibilityMode: company.assetVisibilityMode,
       workOrderApprovalMode: (company as any).workOrderApprovalMode || "require_approval",
+      allowedModules: (company as any).allowedModules || [],
     });
     setIsEditDialogOpen(true);
   };
@@ -485,6 +492,43 @@ export default function ThirdPartyCompanies() {
                               </Select>
                               <p className="text-xs text-muted-foreground mt-1">
                                 Define como lidar com propostas de O.S. desta empresa
+                              </p>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={createForm.control}
+                          name="allowedModules"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Módulos Permitidos</FormLabel>
+                              <div className="flex flex-wrap gap-2">
+                                {customerModules.map((mod: string) => (
+                                  <label 
+                                    key={mod} 
+                                    className="flex items-center gap-2 p-2 border rounded-md cursor-pointer hover-elevate"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={field.value?.includes(mod)}
+                                      onChange={(e) => {
+                                        const newValue = e.target.checked
+                                          ? [...(field.value || []), mod]
+                                          : (field.value || []).filter((m: string) => m !== mod);
+                                        field.onChange(newValue);
+                                      }}
+                                      className="w-4 h-4"
+                                      data-testid={`checkbox-module-${mod}`}
+                                    />
+                                    <span className="capitalize">
+                                      {mod === 'clean' ? 'Limpeza' : mod === 'maintenance' ? 'Manutenção' : mod}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Módulos que esta empresa terceirizada pode acessar
                               </p>
                               <FormMessage />
                             </FormItem>
@@ -931,6 +975,43 @@ export default function ThirdPartyCompanies() {
                     </Select>
                     <p className="text-xs text-muted-foreground mt-1">
                       Define como lidar com propostas de O.S. desta empresa
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editForm.control}
+                name="allowedModules"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Módulos Permitidos</FormLabel>
+                    <div className="flex flex-wrap gap-2">
+                      {customerModules.map((mod: string) => (
+                        <label 
+                          key={mod} 
+                          className="flex items-center gap-2 p-2 border rounded-md cursor-pointer hover-elevate"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={field.value?.includes(mod)}
+                            onChange={(e) => {
+                              const newValue = e.target.checked
+                                ? [...(field.value || []), mod]
+                                : (field.value || []).filter((m: string) => m !== mod);
+                              field.onChange(newValue);
+                            }}
+                            className="w-4 h-4"
+                            data-testid={`checkbox-edit-module-${mod}`}
+                          />
+                          <span className="capitalize">
+                            {mod === 'clean' ? 'Limpeza' : mod === 'maintenance' ? 'Manutenção' : mod}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Módulos que esta empresa terceirizada pode acessar
                     </p>
                     <FormMessage />
                   </FormItem>
