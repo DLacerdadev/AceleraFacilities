@@ -6,6 +6,7 @@ import {
   Users, 
   UsersRound,
   FileText,
+  Calendar,
   Menu,
   LogOut,
   Building2
@@ -19,10 +20,12 @@ import ThirdPartyUsers from "./users";
 import ThirdPartyTeams from "./teams";
 import ThirdPartyWorkOrders from "./work-orders";
 import ThirdPartyReports from "./reports";
+import ThirdPartyPlans from "./plans";
 
 const menuItems = [
   { path: "/third-party", label: "Dashboard", icon: LayoutDashboard },
   { path: "/third-party/work-orders", label: "Ordens de Serviço", icon: ClipboardList },
+  { path: "/third-party/plans", label: "Planos", icon: Calendar },
   { path: "/third-party/users", label: "Usuários", icon: Users },
   { path: "/third-party/teams", label: "Equipes", icon: UsersRound },
   { path: "/third-party/reports", label: "Relatórios", icon: FileText },
@@ -113,6 +116,7 @@ export default function ThirdPartyPortal() {
           <Switch>
             <Route path="/third-party" component={ThirdPartyDashboard} />
             <Route path="/third-party/work-orders" component={ThirdPartyWorkOrders} />
+            <Route path="/third-party/plans" component={ThirdPartyPlans} />
             <Route path="/third-party/users" component={ThirdPartyUsers} />
             <Route path="/third-party/teams" component={ThirdPartyTeams} />
             <Route path="/third-party/reports" component={ThirdPartyReports} />

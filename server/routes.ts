@@ -33,7 +33,8 @@ import { db } from "./db";
 import { eq, and, ne, gte, desc, asc, inArray, sql, type SQL } from "drizzle-orm";
 import { 
   workOrders, zones, equipment, services, checklistTemplates, 
-  workOrderExecutionLogs, workOrderAttachments 
+  workOrderExecutionLogs, workOrderAttachments,
+  thirdPartyCompanies, thirdPartyTeams, thirdPartyWorkOrderProposals, thirdPartyPlanProposals
 } from "@shared/schema";
 import multer from "multer";
 import {
@@ -10660,6 +10661,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching allowed modules:', error);
       res.status(500).json({ message: 'Erro ao buscar módulos permitidos' });
+    }
+  });
+
+  // Get plan proposals for third-party portal
+  app.get('/api/third-party-portal/plan-proposals', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const proposals = await db.select()
+        .from(thirdPartyPlanProposals)
+        .where(eq(thirdPartyPlanProposals.thirdPartyCompanyId, user.thirdPartyCompanyId))
+        .orderBy(desc(thirdPartyPlanProposals.createdAt));
+
+      res.json(proposals);
+    } catch (error) {
+      console.error('Error fetching plan proposals:', error);
+      res.status(500).json({ message: 'Erro ao buscar propostas de planos' });
+    }
+  });
+
+  // Create plan proposal
+  app.post('/api/third-party-portal/plan-proposals', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const { 
+        title, description, planType, frequency, weekDays, 
+        estimatedDuration, zoneId, equipmentId, checklistItems, module 
+      } = req.body;
+      const { nanoid } = await import('nanoid');
+
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+
+      // Check if module is in allowed modules
+      const allowedModules = company[0].allowedModules || [];
+      if (!allowedModules.includes(module)) {
+        return res.status(403).json({ message: 'Módulo não permitido para esta empresa' });
+      }
+
+      const approvalSetting = company[0].workOrderApprovalMode || 'require_approval';
+      let status = 'em_espera';
+
+      if (approvalSetting === 'always_accept') {
+        status = 'aprovado';
+      } else if (approvalSetting === 'always_reject') {
+        status = 'recusado';
+      }
+
+      const newProposal = await db.insert(thirdPartyPlanProposals).values({
+        id: nanoid(),
+        title,
+        description: description || null,
+        planType,
+        frequency,
+        weekDays: weekDays || [],
+        estimatedDuration,
+        zoneId,
+        equipmentId: equipmentId || null,
+        checklistItems: checklistItems || [],
+        module,
+        thirdPartyCompanyId: user.thirdPartyCompanyId,
+        customerId: company[0].customerId,
+        createdBy: user.id,
+        status,
+      }).returning();
+
+      res.json(newProposal[0]);
+    } catch (error) {
+      console.error('Error creating plan proposal:', error);
+      res.status(500).json({ message: 'Erro ao criar proposta de plano' });
     }
   });
 
