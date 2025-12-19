@@ -190,6 +190,7 @@ export const thirdPartyCompanies = pgTable("third_party_companies", {
   allowedZones: text("allowed_zones").array().default(sql`ARRAY[]::text[]`),
   assetVisibilityMode: assetVisibilityModeEnum("asset_visibility_mode").notNull().default('CONTRACT_ONLY'),
   workOrderApprovalMode: thirdPartyWorkOrderApprovalEnum("work_order_approval_mode").default('require_approval'),
+  allowedModules: text("allowed_modules").array().default(sql`ARRAY[]::text[]`),
   userLimit: integer("user_limit").default(5),
   billingEmail: varchar("billing_email"),
   billingDocument: varchar("billing_document"),
@@ -240,6 +241,40 @@ export const thirdPartyWorkOrderProposals = pgTable("third_party_work_order_prop
   companyIdx: index("third_party_proposals_company_idx").on(table.thirdPartyCompanyId),
   customerIdx: index("third_party_proposals_customer_idx").on(table.customerId),
   statusIdx: index("third_party_proposals_status_idx").on(table.status),
+}));
+
+// 2.4 TABELA: third_party_plan_proposals (Propostas de Planos de Terceiros)
+export const thirdPartyPlanProposals = pgTable("third_party_plan_proposals", {
+  id: varchar("id").primaryKey(),
+  thirdPartyCompanyId: varchar("third_party_company_id").notNull().references(() => thirdPartyCompanies.id),
+  customerId: varchar("customer_id").notNull().references(() => customers.id),
+  module: varchar("module").notNull(), // 'maintenance' ou 'clean'
+  planType: varchar("plan_type").notNull(), // 'preventive', 'corrective', 'cleaning_routine', etc.
+  title: varchar("title").notNull(),
+  description: text("description"),
+  siteId: varchar("site_id"),
+  zoneId: varchar("zone_id"),
+  equipmentId: varchar("equipment_id"),
+  frequency: varchar("frequency"), // diario, semanal, mensal, etc.
+  weekDays: text("week_days").array().default(sql`ARRAY[]::text[]`),
+  estimatedDuration: integer("estimated_duration"), // em minutos
+  priority: varchar("priority").default('media'),
+  checklistItems: jsonb("checklist_items"), // items do checklist propostos
+  assignedTeamId: varchar("assigned_team_id"),
+  notes: text("notes"),
+  status: varchar("status").notNull().default('em_espera'), // em_espera, aprovado, rejeitado
+  planId: varchar("plan_id"), // ID do plano criado após aprovação
+  createdBy: varchar("created_by"),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  companyIdx: index("third_party_plan_proposals_company_idx").on(table.thirdPartyCompanyId),
+  customerIdx: index("third_party_plan_proposals_customer_idx").on(table.customerId),
+  statusIdx: index("third_party_plan_proposals_status_idx").on(table.status),
+  moduleIdx: index("third_party_plan_proposals_module_idx").on(table.module),
 }));
 
 // 3. TABELA: sites (Locais)
@@ -1813,6 +1848,8 @@ export const partMovementsRelations = relations(partMovements, ({ one }) => ({
 export const insertCompanySchema = createInsertSchema(companies).omit({ id: true });
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true });
 export const insertThirdPartyCompanySchema = createInsertSchema(thirdPartyCompanies).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertThirdPartyWorkOrderProposalSchema = createInsertSchema(thirdPartyWorkOrderProposals).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertThirdPartyPlanProposalSchema = createInsertSchema(thirdPartyPlanProposals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSiteSchema = createInsertSchema(sites).omit({ id: true });
 export const insertZoneSchema = createInsertSchema(zones).omit({ id: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true }).extend({
@@ -1952,6 +1989,12 @@ export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 
 export type ThirdPartyCompany = typeof thirdPartyCompanies.$inferSelect;
 export type InsertThirdPartyCompany = z.infer<typeof insertThirdPartyCompanySchema>;
+
+export type ThirdPartyWorkOrderProposal = typeof thirdPartyWorkOrderProposals.$inferSelect;
+export type InsertThirdPartyWorkOrderProposal = z.infer<typeof insertThirdPartyWorkOrderProposalSchema>;
+
+export type ThirdPartyPlanProposal = typeof thirdPartyPlanProposals.$inferSelect;
+export type InsertThirdPartyPlanProposal = z.infer<typeof insertThirdPartyPlanProposalSchema>;
 
 export type Site = typeof sites.$inferSelect;
 export type InsertSite = z.infer<typeof insertSiteSchema>;
