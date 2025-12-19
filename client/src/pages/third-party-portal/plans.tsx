@@ -455,14 +455,17 @@ export default function ThirdPartyPlans() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Equipamento (opcional)</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                          <Select 
+                            onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                            value={field.value || "none"}
+                          >
                             <FormControl>
                               <SelectTrigger data-testid="select-equipment">
                                 <SelectValue placeholder="Selecione o equipamento" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">Nenhum</SelectItem>
+                              <SelectItem value="none">Nenhum</SelectItem>
                               {equipment.map((eq: any) => (
                                 <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>
                               ))}
