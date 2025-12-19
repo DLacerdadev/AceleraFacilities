@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown } from "lucide-react";
+import { ThirdPartyProposalsCard, ThirdPartyProposalsModal } from "@/components/third-party-proposals";
 
 export default function CleaningSchedule() {
   const { activeClientId } = useClient();
@@ -58,6 +59,7 @@ export default function CleaningSchedule() {
   const [selectedForDeletion, setSelectedForDeletion] = useState<string[]>([]);
   const [showMetricsModal, setShowMetricsModal] = useState(false);
   const [metricsModalType, setMetricsModalType] = useState<'active' | 'daily' | 'weekly' | 'locations' | null>(null);
+  const [showProposalsModal, setShowProposalsModal] = useState(false);
 
   // Removido: geração automática que estava criando OSs excessivamente
 
@@ -627,6 +629,11 @@ export default function CleaningSchedule() {
               </div>
             </CardContent>
           </Card>
+
+          <ThirdPartyProposalsCard 
+            module="clean" 
+            onClick={() => setShowProposalsModal(true)} 
+          />
         </div>
 
         {/* Calendar Views or Activities List */}
@@ -1509,6 +1516,13 @@ export default function CleaningSchedule() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Modal de Propostas de Terceiros */}
+        <ThirdPartyProposalsModal
+          module="clean"
+          isOpen={showProposalsModal}
+          onClose={() => setShowProposalsModal(false)}
+        />
       </main>
     </>
   );
