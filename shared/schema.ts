@@ -253,13 +253,16 @@ export const thirdPartyPlanProposals = pgTable("third_party_plan_proposals", {
   title: varchar("title").notNull(),
   description: text("description"),
   siteId: varchar("site_id"),
+  siteIds: text("site_ids").array().default(sql`ARRAY[]::text[]`), // multi-select sites
   zoneId: varchar("zone_id"),
+  zoneIds: text("zone_ids").array().default(sql`ARRAY[]::text[]`), // multi-select zones
   equipmentId: varchar("equipment_id"),
   frequency: varchar("frequency"), // diario, semanal, mensal, etc.
   weekDays: text("week_days").array().default(sql`ARRAY[]::text[]`),
   estimatedDuration: integer("estimated_duration"), // em minutos
   priority: varchar("priority").default('media'),
   checklistItems: jsonb("checklist_items"), // items do checklist propostos
+  thirdPartyChecklistId: varchar("third_party_checklist_id"), // referência ao checklist pré-definido
   assignedTeamId: varchar("assigned_team_id"),
   notes: text("notes"),
   status: varchar("status").notNull().default('em_espera'), // em_espera, aprovado, rejeitado
@@ -275,6 +278,25 @@ export const thirdPartyPlanProposals = pgTable("third_party_plan_proposals", {
   customerIdx: index("third_party_plan_proposals_customer_idx").on(table.customerId),
   statusIdx: index("third_party_plan_proposals_status_idx").on(table.status),
   moduleIdx: index("third_party_plan_proposals_module_idx").on(table.module),
+}));
+
+// 2.5 TABELA: third_party_checklists (Checklists de Terceiros)
+export const thirdPartyChecklists = pgTable("third_party_checklists", {
+  id: varchar("id").primaryKey(),
+  thirdPartyCompanyId: varchar("third_party_company_id").notNull().references(() => thirdPartyCompanies.id),
+  customerId: varchar("customer_id").notNull().references(() => customers.id),
+  module: varchar("module").notNull(), // 'maintenance' ou 'clean'
+  name: varchar("name").notNull(),
+  description: text("description"),
+  items: jsonb("items").notNull(), // array de items do checklist
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  companyIdx: index("third_party_checklists_company_idx").on(table.thirdPartyCompanyId),
+  customerIdx: index("third_party_checklists_customer_idx").on(table.customerId),
+  moduleIdx: index("third_party_checklists_module_idx").on(table.module),
 }));
 
 // 3. TABELA: sites (Locais)
@@ -1850,6 +1872,7 @@ export const insertCustomerSchema = createInsertSchema(customers).omit({ id: tru
 export const insertThirdPartyCompanySchema = createInsertSchema(thirdPartyCompanies).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertThirdPartyWorkOrderProposalSchema = createInsertSchema(thirdPartyWorkOrderProposals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertThirdPartyPlanProposalSchema = createInsertSchema(thirdPartyPlanProposals).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertThirdPartyChecklistSchema = createInsertSchema(thirdPartyChecklists).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSiteSchema = createInsertSchema(sites).omit({ id: true });
 export const insertZoneSchema = createInsertSchema(zones).omit({ id: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true }).extend({
@@ -1995,6 +2018,8 @@ export type InsertThirdPartyWorkOrderProposal = z.infer<typeof insertThirdPartyW
 
 export type ThirdPartyPlanProposal = typeof thirdPartyPlanProposals.$inferSelect;
 export type InsertThirdPartyPlanProposal = z.infer<typeof insertThirdPartyPlanProposalSchema>;
+export type InsertThirdPartyChecklist = z.infer<typeof insertThirdPartyChecklistSchema>;
+export type ThirdPartyChecklist = typeof thirdPartyChecklists.$inferSelect;
 
 export type Site = typeof sites.$inferSelect;
 export type InsertSite = z.infer<typeof insertSiteSchema>;
