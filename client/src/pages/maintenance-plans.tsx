@@ -10,6 +10,7 @@ import { useState, useMemo } from "react";
 import { useClient } from "@/contexts/ClientContext";
 import { useModule } from "@/contexts/ModuleContext";
 import { useLocation } from "wouter";
+import { ThirdPartyProposalsCard, ThirdPartyProposalsModal } from "@/components/third-party-proposals";
 import { cn } from "@/lib/utils";
 import { 
   Plus, 
@@ -70,6 +71,7 @@ export default function MaintenancePlans() {
   const [showPreventiveActivitiesModal, setShowPreventiveActivitiesModal] = useState(false);
   const [showPredictiveActivitiesModal, setShowPredictiveActivitiesModal] = useState(false);
   const [showEquipmentModal, setShowEquipmentModal] = useState(false);
+  const [showProposalsModal, setShowProposalsModal] = useState(false);
 
   const { data: activities, isLoading } = useQuery({
     queryKey: ["/api/customers", activeClientId, "maintenance-activities"],
@@ -483,7 +485,7 @@ export default function MaintenancePlans() {
         <ModernCard variant="glass">
           <ModernCardContent>
             {/* Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
               <div 
                 className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors group"
                 onClick={() => setShowActiveActivitiesModal(true)}
@@ -547,6 +549,11 @@ export default function MaintenancePlans() {
                   </p>
                 </div>
               </div>
+
+              <ThirdPartyProposalsCard 
+                module="maintenance" 
+                onClick={() => setShowProposalsModal(true)} 
+              />
             </div>
 
             {/* Filters Row */}
@@ -1538,6 +1545,13 @@ export default function MaintenancePlans() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Modal de Propostas de Terceiros */}
+        <ThirdPartyProposalsModal
+          module="maintenance"
+          isOpen={showProposalsModal}
+          onClose={() => setShowProposalsModal(false)}
+        />
       </div>
     </>
   );
