@@ -223,7 +223,16 @@ export default function ThirdPartyPlans() {
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
           setIsCreateDialogOpen(open);
-          if (!open) {
+          if (open) {
+            // Auto-select module if only one is available
+            if (hasMaintenanceAccess && !hasCleanAccess) {
+              setSelectedModule('maintenance');
+              form.setValue('planType', 'preventive');
+            } else if (hasCleanAccess && !hasMaintenanceAccess) {
+              setSelectedModule('clean');
+              form.setValue('planType', 'cleaning');
+            }
+          } else {
             setSelectedModule(null);
             setChecklistItems([]);
             form.reset();
