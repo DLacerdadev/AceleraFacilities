@@ -37,12 +37,10 @@ const planProposalSchema = z.object({
   frequency: z.enum(["daily", "weekly", "biweekly", "monthly", "quarterly", "semiannual", "annual"]),
   weekDays: z.array(z.number()).optional(),
   estimatedDuration: z.number().min(1, "Duração estimada obrigatória"),
-  zoneId: z.string().min(1, "Zona obrigatória"),
+  siteIds: z.array(z.string()).min(1, "Selecione pelo menos um local"),
+  zoneIds: z.array(z.string()).min(1, "Selecione pelo menos uma zona"),
   equipmentId: z.string().optional(),
-  checklistItems: z.array(z.object({
-    description: z.string(),
-    required: z.boolean().default(true),
-  })).optional(),
+  thirdPartyChecklistId: z.string().optional(),
 });
 
 type PlanProposalFormData = z.infer<typeof planProposalSchema>;
@@ -51,8 +49,8 @@ export default function ThirdPartyPlans() {
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
-  const [checklistItems, setChecklistItems] = useState<{ description: string; required: boolean }[]>([]);
-  const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
+  const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([]);
 
   const { data: modulesData, isLoading: loadingModules } = useQuery<{
     allowedModules: string[];
@@ -60,6 +58,10 @@ export default function ThirdPartyPlans() {
     customerId: string;
   }>({
     queryKey: ['/api/third-party-portal/my-modules'],
+  });
+
+  const { data: sites = [] } = useQuery<any[]>({
+    queryKey: ['/api/third-party-portal/sites'],
   });
 
   const { data: zones = [] } = useQuery<any[]>({
@@ -70,9 +72,23 @@ export default function ThirdPartyPlans() {
     queryKey: ['/api/third-party-portal/equipment'],
   });
 
+  const { data: checklists = [] } = useQuery<any[]>({
+    queryKey: ['/api/third-party-portal/checklists'],
+  });
+
   const { data: proposals = [], isLoading: loadingProposals } = useQuery<any[]>({
     queryKey: ['/api/third-party-portal/plan-proposals'],
   });
+
+  // Filter zones by selected sites
+  const filteredZones = zones.filter((z: any) => 
+    selectedSiteIds.length === 0 || selectedSiteIds.includes(z.siteId)
+  );
+
+  // Filter checklists by selected module
+  const filteredChecklists = checklists.filter((c: any) => 
+    !selectedModule || c.module === selectedModule
+  );
 
   const form = useForm<PlanProposalFormData>({
     resolver: zodResolver(planProposalSchema),
@@ -83,25 +99,24 @@ export default function ThirdPartyPlans() {
       frequency: "monthly",
       weekDays: [],
       estimatedDuration: 30,
-      zoneId: "",
+      siteIds: [],
+      zoneIds: [],
       equipmentId: "",
-      checklistItems: [],
+      thirdPartyChecklistId: "",
     },
   });
 
   const createProposalMutation = useMutation({
     mutationFn: async (data: PlanProposalFormData & { module: string }) => {
-      return await apiRequest("POST", "/api/third-party-portal/plan-proposals", {
-        ...data,
-        checklistItems,
-      });
+      return await apiRequest("POST", "/api/third-party-portal/plan-proposals", data);
     },
     onSuccess: () => {
       toast({ title: "Proposta de plano enviada com sucesso" });
       queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/plan-proposals'] });
       setIsCreateDialogOpen(false);
       setSelectedModule(null);
-      setChecklistItems([]);
+      setSelectedSiteIds([]);
+      setSelectedZoneIds([]);
       form.reset();
     },
     onError: (error: any) => {
@@ -118,19 +133,7 @@ export default function ThirdPartyPlans() {
     createProposalMutation.mutate({
       ...data,
       module: selectedModule,
-      checklistItems,
     });
-  };
-
-  const addChecklistItem = () => {
-    if (newChecklistItem.trim()) {
-      setChecklistItems([...checklistItems, { description: newChecklistItem.trim(), required: true }]);
-      setNewChecklistItem("");
-    }
-  };
-
-  const removeChecklistItem = (index: number) => {
-    setChecklistItems(checklistItems.filter((_, i) => i !== index));
   };
 
   const getStatusBadge = (status: string) => {
@@ -234,7 +237,8 @@ export default function ThirdPartyPlans() {
             }
           } else {
             setSelectedModule(null);
-            setChecklistItems([]);
+            setSelectedSiteIds([]);
+            setSelectedZoneIds([]);
             form.reset();
           }
         }}>
@@ -403,50 +407,104 @@ export default function ThirdPartyPlans() {
                     />
                   )}
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="zoneId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Zona</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-zone">
-                                <SelectValue placeholder="Selecione a zona" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {zones.map((zone: any) => (
-                                <SelectItem key={zone.id} value={zone.id}>{zone.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  {/* Multi-select Sites */}
+                  <FormField
+                    control={form.control}
+                    name="siteIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Locais</FormLabel>
+                        <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                          {sites.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">Nenhum local disponível</p>
+                          ) : (
+                            sites.map((site: any) => (
+                              <label 
+                                key={site.id} 
+                                className="flex items-center gap-2 cursor-pointer hover-elevate p-1 rounded"
+                              >
+                                <Checkbox
+                                  checked={field.value?.includes(site.id)}
+                                  onCheckedChange={(checked) => {
+                                    const newValue = checked
+                                      ? [...(field.value || []), site.id]
+                                      : (field.value || []).filter((s) => s !== site.id);
+                                    field.onChange(newValue);
+                                    setSelectedSiteIds(newValue);
+                                    // Clear zone selection when sites change
+                                    form.setValue('zoneIds', []);
+                                    setSelectedZoneIds([]);
+                                  }}
+                                  data-testid={`checkbox-site-${site.id}`}
+                                />
+                                <span className="text-sm">{site.name}</span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                    <FormField
-                      control={form.control}
-                      name="estimatedDuration"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Duração Estimada (min)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              min={1} 
-                              {...field} 
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              data-testid="input-duration" 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  {/* Multi-select Zones */}
+                  <FormField
+                    control={form.control}
+                    name="zoneIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Zonas</FormLabel>
+                        <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                          {filteredZones.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              {selectedSiteIds.length === 0 ? 'Selecione um local primeiro' : 'Nenhuma zona disponível'}
+                            </p>
+                          ) : (
+                            filteredZones.map((zone: any) => (
+                              <label 
+                                key={zone.id} 
+                                className="flex items-center gap-2 cursor-pointer hover-elevate p-1 rounded"
+                              >
+                                <Checkbox
+                                  checked={field.value?.includes(zone.id)}
+                                  onCheckedChange={(checked) => {
+                                    const newValue = checked
+                                      ? [...(field.value || []), zone.id]
+                                      : (field.value || []).filter((z) => z !== zone.id);
+                                    field.onChange(newValue);
+                                    setSelectedZoneIds(newValue);
+                                  }}
+                                  data-testid={`checkbox-zone-${zone.id}`}
+                                />
+                                <span className="text-sm">{zone.name}</span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="estimatedDuration"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Duração Estimada (min)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            min={1} 
+                            {...field} 
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            data-testid="input-duration" 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   {selectedModule === 'maintenance' && (
                     <FormField
@@ -477,39 +535,40 @@ export default function ThirdPartyPlans() {
                     />
                   )}
 
-                  <div className="space-y-2">
-                    <FormLabel>Itens do Checklist</FormLabel>
-                    <div className="flex gap-2">
-                      <Input 
-                        placeholder="Adicionar item ao checklist" 
-                        value={newChecklistItem}
-                        onChange={(e) => setNewChecklistItem(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addChecklistItem())}
-                        data-testid="input-checklist-item"
-                      />
-                      <Button type="button" variant="outline" onClick={addChecklistItem} data-testid="button-add-checklist">
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    {checklistItems.length > 0 && (
-                      <div className="space-y-2 mt-2">
-                        {checklistItems.map((item, index) => (
-                          <div key={index} className="flex items-center justify-between gap-2 p-2 border rounded-md">
-                            <span className="text-sm">{item.description}</span>
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => removeChecklistItem(index)}
-                              data-testid={`button-remove-checklist-${index}`}
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+                  {/* Checklist Selection */}
+                  <FormField
+                    control={form.control}
+                    name="thirdPartyChecklistId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Checklist</FormLabel>
+                        <Select 
+                          onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
+                          value={field.value || "none"}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-checklist">
+                              <SelectValue placeholder="Selecione um checklist" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum</SelectItem>
+                            {filteredChecklists.map((cl: any) => (
+                              <SelectItem key={cl.id} value={cl.id}>
+                                {cl.name} ({(cl.items || []).length} itens)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {filteredChecklists.length === 0 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Nenhum checklist disponível. Crie um na seção de Checklists.
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
 
                   <div className="flex justify-end gap-2 pt-4">
                     <Button 

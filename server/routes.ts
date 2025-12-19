@@ -10890,7 +10890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { 
         title, description, planType, frequency, weekDays, 
-        estimatedDuration, zoneId, equipmentId, checklistItems, module 
+        estimatedDuration, siteIds, zoneIds, equipmentId, thirdPartyChecklistId, module 
       } = req.body;
       const { nanoid } = await import('nanoid');
 
@@ -10918,6 +10918,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status = 'recusado';
       }
 
+      // If a checklist is selected, get its items
+      let checklistItems = null;
+      if (thirdPartyChecklistId) {
+        const checklist = await db.select()
+          .from(thirdPartyChecklists)
+          .where(eq(thirdPartyChecklists.id, thirdPartyChecklistId))
+          .limit(1);
+        if (checklist.length) {
+          checklistItems = checklist[0].items;
+        }
+      }
+
       const newProposal = await db.insert(thirdPartyPlanProposals).values({
         id: nanoid(),
         title,
@@ -10926,9 +10938,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         frequency,
         weekDays: weekDays || [],
         estimatedDuration,
-        zoneId,
+        siteIds: siteIds || [],
+        zoneIds: zoneIds || [],
         equipmentId: equipmentId || null,
-        checklistItems: checklistItems || [],
+        thirdPartyChecklistId: thirdPartyChecklistId || null,
+        checklistItems,
         module,
         thirdPartyCompanyId: user.thirdPartyCompanyId,
         customerId: company[0].customerId,
