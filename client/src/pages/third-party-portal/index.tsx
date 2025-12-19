@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useModuleTheme } from "@/hooks/use-module-theme";
 import { cn } from "@/lib/utils";
+import { logout } from "@/lib/auth";
 import ThirdPartyDashboard from "./dashboard";
 import ThirdPartyUsers from "./users";
 import ThirdPartyTeams from "./teams";
@@ -33,7 +34,7 @@ const menuItems = [
 
 export default function ThirdPartyPortal() {
   const [location] = useLocation();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const theme = useModuleTheme();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 

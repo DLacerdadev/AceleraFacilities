@@ -11094,6 +11094,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // THIRD PARTY PLAN PROPOSALS - Customer Approval Routes
+  // ============================================================================
+
+  // Get plan proposals for a customer (for approval by client)
+  app.get('/api/customers/:customerId/third-party-plan-proposals', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { status, module } = req.query;
+
+      let query = db.select({
+        proposal: thirdPartyPlanProposals,
+        companyName: thirdPartyCompanies.name,
+      })
+        .from(thirdPartyPlanProposals)
+        .leftJoin(thirdPartyCompanies, eq(thirdPartyPlanProposals.thirdPartyCompanyId, thirdPartyCompanies.id))
+        .where(eq(thirdPartyPlanProposals.customerId, customerId))
+        .orderBy(desc(thirdPartyPlanProposals.createdAt));
+
+      const results = await query;
+
+      let filteredResults = results;
+      if (status) {
+        filteredResults = filteredResults.filter(r => r.proposal.status === status);
+      }
+      if (module) {
+        filteredResults = filteredResults.filter(r => r.proposal.module === module);
+      }
+
+      const proposals = filteredResults.map(r => ({
+        ...r.proposal,
+        thirdPartyCompanyName: r.companyName,
+      }));
+
+      res.json(proposals);
+    } catch (error) {
+      console.error('Error fetching third-party plan proposals:', error);
+      res.status(500).json({ message: 'Erro ao buscar propostas de planos de terceiros' });
+    }
+  });
+
+  // Approve a third-party plan proposal (creates maintenance plan or cleaning schedule)
+  app.post('/api/customers/:customerId/third-party-plan-proposals/:proposalId/approve', requireAuth, async (req, res) => {
+    try {
+      const { customerId, proposalId } = req.params;
+      const user = req.user as any;
+      const { nanoid } = await import('nanoid');
+
+      const proposal = await db.select()
+        .from(thirdPartyPlanProposals)
+        .where(and(
+          eq(thirdPartyPlanProposals.id, proposalId),
+          eq(thirdPartyPlanProposals.customerId, customerId)
+        ))
+        .limit(1);
+
+      if (!proposal.length) {
+        return res.status(404).json({ message: 'Proposta de plano não encontrada' });
+      }
+
+      if (proposal[0].status !== 'em_espera') {
+        return res.status(400).json({ message: 'Proposta já foi processada' });
+      }
+
+      // Update the proposal status
+      await db.update(thirdPartyPlanProposals)
+        .set({
+          status: 'aprovado',
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(thirdPartyPlanProposals.id, proposalId));
+
+      // Here you would create the actual maintenance plan or cleaning schedule
+      // based on the proposal data. For now, we just approve the proposal.
+
+      broadcast({
+        type: 'update',
+        resource: 'third_party_plan_proposals',
+        data: { id: proposalId, status: 'aprovado' },
+        customerId: customerId
+      });
+
+      res.json({ success: true, message: 'Proposta de plano aprovada' });
+    } catch (error) {
+      console.error('Error approving plan proposal:', error);
+      res.status(500).json({ message: 'Erro ao aprovar proposta de plano' });
+    }
+  });
+
+  // Reject a third-party plan proposal
+  app.post('/api/customers/:customerId/third-party-plan-proposals/:proposalId/reject', requireAuth, async (req, res) => {
+    try {
+      const { customerId, proposalId } = req.params;
+      const user = req.user as any;
+      const { rejectionReason } = req.body;
+
+      const proposal = await db.select()
+        .from(thirdPartyPlanProposals)
+        .where(and(
+          eq(thirdPartyPlanProposals.id, proposalId),
+          eq(thirdPartyPlanProposals.customerId, customerId)
+        ))
+        .limit(1);
+
+      if (!proposal.length) {
+        return res.status(404).json({ message: 'Proposta de plano não encontrada' });
+      }
+
+      if (proposal[0].status !== 'em_espera') {
+        return res.status(400).json({ message: 'Proposta já foi processada' });
+      }
+
+      await db.update(thirdPartyPlanProposals)
+        .set({
+          status: 'recusado',
+          rejectionReason: rejectionReason || null,
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(thirdPartyPlanProposals.id, proposalId));
+
+      broadcast({
+        type: 'update',
+        resource: 'third_party_plan_proposals',
+        data: { id: proposalId, status: 'recusado' },
+        customerId: customerId
+      });
+
+      res.json({ success: true, message: 'Proposta de plano rejeitada' });
+    } catch (error) {
+      console.error('Error rejecting plan proposal:', error);
+      res.status(500).json({ message: 'Erro ao rejeitar proposta de plano' });
+    }
+  });
+
+  // Get count of pending plan proposals for a customer (for badge/notification)
+  app.get('/api/customers/:customerId/third-party-plan-proposals/pending-count', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { module } = req.query;
+
+      let conditions: any[] = [
+        eq(thirdPartyPlanProposals.customerId, customerId),
+        eq(thirdPartyPlanProposals.status, 'em_espera')
+      ];
+
+      if (module) {
+        conditions.push(eq(thirdPartyPlanProposals.module, module as string));
+      }
+
+      const count = await db.select({ count: sql<number>`count(*)::int` })
+        .from(thirdPartyPlanProposals)
+        .where(and(...conditions));
+
+      res.json({ count: count[0]?.count || 0 });
+    } catch (error) {
+      console.error('Error fetching pending plan proposals count:', error);
+      res.status(500).json({ message: 'Erro ao contar propostas de planos pendentes' });
+    }
+  });
+
+  // ============================================================================
   // END OF THIRD PARTY PROPOSALS APPROVAL ROUTES
   // ============================================================================
 
