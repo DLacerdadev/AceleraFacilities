@@ -10635,6 +10635,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get allowed modules for logged-in third-party user
+  app.get('/api/third-party-portal/my-modules', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+
+      res.json({
+        allowedModules: company[0].allowedModules || [],
+        companyName: company[0].name,
+        customerId: company[0].customerId,
+      });
+    } catch (error) {
+      console.error('Error fetching allowed modules:', error);
+      res.status(500).json({ message: 'Erro ao buscar módulos permitidos' });
+    }
+  });
+
   // Get work order proposals
   app.get('/api/third-party-portal/proposals', requireAuth, async (req, res) => {
     try {
