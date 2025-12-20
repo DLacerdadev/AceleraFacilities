@@ -673,12 +673,7 @@ export default function MaintenanceChecklistTemplates({ customerId }: Maintenanc
                           <Label>Tipo</Label>
                           <Select 
                             value={newItem.type || 'text'} 
-                            onValueChange={(value) => {
-                              setNewItem(prev => ({ 
-                                ...prev, 
-                                type: value as ChecklistItem['type']
-                              }));
-                            }}
+                            onValueChange={(value) => setNewItem(prev => ({ ...prev, type: value as ChecklistItem['type'] }))}
                           >
                             <SelectTrigger data-testid="select-item-type">
                               <SelectValue />
@@ -691,20 +686,20 @@ export default function MaintenanceChecklistTemplates({ customerId }: Maintenanc
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2" key="label-field">
+                        <div className="space-y-2">
                           <Label>Rótulo *</Label>
                           <Input
                             data-testid="input-item-label"
-                            value={newItem.label || ""}
+                            value={newItem.label}
                             onChange={(e) => setNewItem(prev => ({ ...prev, label: e.target.value }))}
                             placeholder="Ex: Verificar pressão"
                           />
                         </div>
-                        <div className="space-y-2" key="description-field">
+                        <div className="space-y-2">
                           <Label>Observações</Label>
                           <Input
                             data-testid="input-item-description"
-                            value={newItem.description || ""}
+                            value={newItem.description}
                             onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
                             placeholder="Instruções opcionais..."
                           />
