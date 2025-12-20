@@ -402,8 +402,14 @@ function Router() {
   }
 
   // Se é usuário terceirizado com role de operador, mostrar interface móvel para execução de O.S.
-  const thirdPartyRole = (user as any).thirdPartyRole?.toUpperCase();
-  if ((user.userType === 'third_party_user' || user.thirdPartyCompanyId) && thirdPartyRole === 'THIRD_PARTY_OPERATOR') {
+  const thirdPartyRole = (user as any).thirdPartyRole?.toLowerCase();
+  const isThirdPartyOperator = thirdPartyRole === 'third_party_operator' || 
+                               thirdPartyRole === 'third-party-operator' ||
+                               user.role === 'operador';
+  
+  console.log('[ROUTER] User thirdPartyRole:', thirdPartyRole, 'role:', user.role, 'isThirdPartyOperator:', isThirdPartyOperator);
+  
+  if ((user.userType === 'third_party_user' || user.thirdPartyCompanyId) && isThirdPartyOperator) {
     return <MobileRouter />;
   }
 
