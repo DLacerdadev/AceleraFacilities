@@ -96,6 +96,35 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
 
   const { toast } = useToast();
 
+  // Terminologia dinâmica baseada no módulo - Clean usa "Ativos", Maintenance usa "Peças"
+  const terminology = currentModule === 'clean' 
+    ? { 
+        singular: 'Ativo', 
+        plural: 'Ativos', 
+        inventory: 'Inventário de Ativos',
+        registered: 'Ativos Cadastrados',
+        newItem: 'Novo Ativo',
+        searchPlaceholder: 'Buscar ativo...',
+        noItemsFound: 'Nenhum ativo encontrado para a busca',
+        noItemsRegistered: 'Nenhum ativo cadastrado',
+        lowStockSingular: 'ativo está',
+        lowStockPlural: 'ativos estão',
+        registerNew: 'Cadastre um novo ativo no estoque'
+      }
+    : { 
+        singular: 'Peça', 
+        plural: 'Peças', 
+        inventory: 'Inventário de Peças',
+        registered: 'Peças Cadastradas',
+        newItem: 'Nova Peça',
+        searchPlaceholder: 'Buscar peça...',
+        noItemsFound: 'Nenhuma peça encontrada para a busca',
+        noItemsRegistered: 'Nenhuma peça cadastrada',
+        lowStockSingular: 'peça está',
+        lowStockPlural: 'peças estão',
+        registerNew: 'Cadastre uma nova peça no estoque'
+      };
+
   // Extended Part type with projections
   type PartWithProjection = Part & {
     reservedQuantity?: string;
@@ -546,7 +575,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
             <div>
               <p className="font-medium text-amber-800">Alerta de Estoque Baixo</p>
               <p className="text-sm text-amber-700">
-                {lowStockCount} {lowStockCount === 1 ? 'peça está' : 'peças estão'} abaixo do estoque mínimo
+                {lowStockCount} {lowStockCount === 1 ? terminology.lowStockSingular : terminology.lowStockPlural} abaixo do estoque mínimo
               </p>
             </div>
             <Button
@@ -565,7 +594,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
           <TabsList className="mb-4">
             <TabsTrigger value="inventory" data-testid="tab-inventory">
               <Package className="w-4 h-4 mr-2" />
-              Inventário de Peças
+              {terminology.inventory}
             </TabsTrigger>
             <TabsTrigger value="replenishment" data-testid="tab-replenishment">
               <Truck className="w-4 h-4 mr-2" />
@@ -584,7 +613,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-2">
                 <Package className="w-5 h-5" style={{ color: theme.styles.color.color }} />
-                <h2 className="text-lg font-semibold">Peças Cadastradas</h2>
+                <h2 className="text-lg font-semibold">{terminology.registered}</h2>
                 <Badge variant="secondary">{parts?.length || 0}</Badge>
               </div>
               
@@ -592,7 +621,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar peça..."
+                    placeholder={terminology.searchPlaceholder}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-9 w-64"
@@ -635,14 +664,14 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                       data-testid="button-create-part"
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Nova Peça
+                      {terminology.newItem}
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Nova Peça</DialogTitle>
+                      <DialogTitle>{terminology.newItem}</DialogTitle>
                       <DialogDescription>
-                        Cadastre uma nova peça no estoque
+                        {terminology.registerNew}
                       </DialogDescription>
                     </DialogHeader>
                     
@@ -836,7 +865,7 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                 {filteredParts?.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                      {searchTerm ? "Nenhuma peça encontrada para a busca" : "Nenhuma peça cadastrada"}
+                      {searchTerm ? terminology.noItemsFound : terminology.noItemsRegistered}
                     </TableCell>
                   </TableRow>
                 ) : (
