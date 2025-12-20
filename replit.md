@@ -41,8 +41,16 @@ A dedicated **Third-Party Portal** is available at `/third-party` for third-part
 - **Dashboard**: Overview of work order statistics, completion rates, and team metrics
 - **Work Orders**: View assigned work orders, track progress, and create work order proposals
 - **Users**: Manage team members (create/edit/activate/deactivate users with team leader or operator roles)
-- **Teams**: Create and manage work teams, assign leaders and members
+- **Teams**: Create and manage work teams, assign leaders, members, and operational scopes
+- **Operational Scopes**: Create and manage operational scopes to define work boundaries
 - **Reports**: View performance reports by user and team with export capabilities
+
+The **Operational Scopes** system provides granular work order access control:
+- Scopes are defined per module (clean or maintenance) and linked to teams
+- Access hierarchy: User → Team → OperationalScope → Module
+- Work orders are filtered by `operational_scope_id` for scoped users
+- Managers without specific scopes see all company work orders (backward compatibility)
+- Legacy work orders without scope remain accessible to all users
 
 The portal implements automatic routing based on user type - when a user with `thirdPartyCompanyId` logs in, they are automatically redirected to the third-party portal. The `third_party_work_order_approval` field on customers controls how work order proposals from third parties are handled: `always_accept` (auto-approve), `require_approval` (manual review), or `always_reject` (auto-reject).
 
