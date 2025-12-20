@@ -401,7 +401,13 @@ function Router() {
     return <SupplierRouter />;
   }
 
-  // Se é usuário terceirizado, mostrar portal de terceiros
+  // Se é usuário terceirizado com role de operador, mostrar interface móvel para execução de O.S.
+  const thirdPartyRole = (user as any).thirdPartyRole?.toUpperCase();
+  if ((user.userType === 'third_party_user' || user.thirdPartyCompanyId) && thirdPartyRole === 'THIRD_PARTY_OPERATOR') {
+    return <MobileRouter />;
+  }
+
+  // Se é usuário terceirizado (gerente ou líder), mostrar portal de terceiros
   if (user.userType === 'third_party_user' || user.thirdPartyCompanyId) {
     return <ThirdPartyRouter />;
   }
