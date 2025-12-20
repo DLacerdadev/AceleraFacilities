@@ -10220,9 +10220,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Acesso não autorizado' });
       }
 
-      const companyWorkOrders = await db.select()
+      // Get company info to determine allowed zones/sites
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.json({
+          total: 0, pending: 0, inProgress: 0, completed: 0, overdue: 0, usersCount: 0, teamsCount: 0
+        });
+      }
+
+      const allowedZoneIds = (company[0].allowedZones || []).filter((id): id is string => id != null && id !== '');
+      const allowedSiteIds = (company[0].allowedSites || []).filter((id): id is string => id != null && id !== '');
+      const customerId = company[0].customerId;
+
+      // Get all work orders for the customer
+      const allCustomerWorkOrders = await db.select()
         .from(workOrders)
-        .where(eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId));
+        .where(eq(workOrders.customerId, customerId));
+
+      // Filter work orders based on third-party access rules (same as work-orders endpoint)
+      const companyWorkOrders = allCustomerWorkOrders.filter(wo => {
+        // Rule 1: Work orders assigned to this third-party
+        if (wo.thirdPartyCompanyId === user.thirdPartyCompanyId) {
+          return true;
+        }
+        
+        // Rule 2 & 3: Open work orders in allowed zones/sites, not assigned to another third-party
+        const isOpen = wo.status === 'aberta';
+        const notAssigned = wo.thirdPartyCompanyId === null;
+        const inAllowedZone = wo.zoneId && allowedZoneIds.includes(wo.zoneId);
+        const inAllowedSite = wo.siteId && allowedSiteIds.includes(wo.siteId);
+        
+        return isOpen && notAssigned && (inAllowedZone || inAllowedSite);
+      });
 
       const total = companyWorkOrders.length;
       const pending = companyWorkOrders.filter(wo => wo.status === 'aberta').length;
