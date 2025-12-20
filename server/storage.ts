@@ -893,9 +893,19 @@ export class DatabaseStorage implements IStorage {
 
   async getDashboardStatsByCustomer(customerId: string, period: string, site: string, module?: 'clean' | 'maintenance'): Promise<any> {
     // Get customer sites for filtering (filter by module if provided)
-    const sitesWhereCondition = module
-      ? and(eq(sites.customerId, customerId), eq(sites.module, module))
-      : eq(sites.customerId, customerId);
+    // If specific site is selected, filter by that site only
+    let sitesWhereCondition;
+    if (site && site !== 'todos' && site !== '') {
+      // Specific site selected
+      sitesWhereCondition = module
+        ? and(eq(sites.id, site), eq(sites.customerId, customerId), eq(sites.module, module))
+        : and(eq(sites.id, site), eq(sites.customerId, customerId));
+    } else {
+      // All sites
+      sitesWhereCondition = module
+        ? and(eq(sites.customerId, customerId), eq(sites.module, module))
+        : eq(sites.customerId, customerId);
+    }
     
     const customerSites = await db.select().from(sites).where(sitesWhereCondition);
     if (customerSites.length === 0) {
@@ -913,7 +923,7 @@ export class DatabaseStorage implements IStorage {
       };
     }
 
-    const siteIds = customerSites.map(site => site.id);
+    const siteIds = customerSites.map(s => s.id);
     
     // Get zones for customer sites only (filter by module if provided)
     const zonesWhereCondition = module
@@ -975,13 +985,14 @@ export class DatabaseStorage implements IStorage {
       ));
 
     // Calculate overdue work orders: work orders with status = 'vencida'
-    // Note: Não aplicamos dateFilter para vencidas - queremos ver TODAS as vencidas sempre
+    // Apply same dateFilter as other metrics for consistency with period filter
     const [overdueWO] = await db.select({ count: count() })
       .from(workOrders)
       .where(and(
         inArray(workOrders.zoneId, zoneIds),
         moduleFilter,
-        eq(workOrders.status, 'vencida')
+        eq(workOrders.status, 'vencida'),
+        dateFilter
       ));
 
     // Get users for customer sites
