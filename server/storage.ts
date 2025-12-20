@@ -4,7 +4,7 @@ import {
   serviceTypes, serviceCategories, serviceZones, dashboardGoals, auditLogs, customers,
   userSiteAssignments, userAllowedCustomers, publicRequestLogs, siteShifts, bathroomCounterLogs, companyCounters, customerCounters,
   workOrderComments, workOrderAttachments, workOrderEvaluations, workOrderAuditLogs,
-  thirdPartyCompanies, operationalScopes, thirdPartyTeams,
+  thirdPartyCompanies, operationalScopes, thirdPartyTeams, teamMembers,
   equipment, equipmentTypes, maintenanceChecklistTemplates,
   maintenanceChecklistExecutions, maintenancePlans, maintenancePlanEquipments, maintenanceActivities,
   parts, workOrderParts, maintenancePlanParts, maintenanceActivityParts, partMovements,
@@ -4624,7 +4624,7 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
 
-    // Buscar todas as equipes da empresa onde o usuário é membro ou líder
+    // Buscar todas as equipes da empresa
     const teams = await db.select()
       .from(thirdPartyTeams)
       .where(
@@ -4634,10 +4634,27 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    // Filtrar equipes onde o usuário é membro ou líder
+    // Buscar memberships na nova tabela team_members (N:N)
+    const teamIds = teams.map(t => t.id);
+    let userTeamMemberships: { teamId: string }[] = [];
+    if (teamIds.length > 0) {
+      userTeamMemberships = await db.select({ teamId: teamMembers.teamId })
+        .from(teamMembers)
+        .where(
+          and(
+            eq(teamMembers.userId, userId),
+            eq(teamMembers.isActive, true),
+            inArray(teamMembers.teamId, teamIds)
+          )
+        );
+    }
+    const membershipTeamIds = new Set(userTeamMemberships.map(m => m.teamId));
+
+    // Filtrar equipes onde o usuário é membro (via team_members) ou líder (legacy) ou memberIds (legacy)
     const userTeams = teams.filter(team => 
       team.leaderId === userId || 
-      (team.memberIds && team.memberIds.includes(userId))
+      (team.memberIds && team.memberIds.includes(userId)) ||
+      membershipTeamIds.has(team.id)
     );
 
     if (userTeams.length === 0) {
@@ -4653,7 +4670,7 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
 
-    // Buscar os escopos operacionais
+    // Buscar os escopos operacionais ativos
     return await db.select()
       .from(operationalScopes)
       .where(

@@ -25,6 +25,7 @@ import AuditLogs from "@/pages/audit-logs";
 import AdminMobile from "@/pages/admin-mobile";
 import Customers from "@/pages/customers";
 import Roles from "@/pages/roles";
+import OperationalScopes from "@/pages/operational-scopes";
 import Equipment from "@/pages/equipment";
 import MaintenancePlans from "@/pages/maintenance-plans";
 import MaintenanceChecklistTemplates from "@/pages/maintenance-checklist-templates";
@@ -271,6 +272,7 @@ function AuthenticatedAdminRouter() {
           <Route path="/users" component={() => <SystemUsers />} />
           <Route path="/customers" component={() => <Customers companyId={companyId} />} />
           <Route path="/roles" component={() => <Roles />} />
+          <Route path="/operational-scopes" component={() => <OperationalScopes />} />
           <Route path="/reports" component={() => <Reports />} />
           <Route path="/audit-logs" component={() => <AuditLogs companyId={companyId} />} />
           <Route path="/ai-integrations" component={() => <AiIntegrations />} />
