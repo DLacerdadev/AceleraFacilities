@@ -31,6 +31,7 @@ export const supplierWorkOrderStatusEnum = pgEnum('supplier_work_order_status', 
 export const thirdPartyStatusEnum = pgEnum('third_party_status', ['active', 'inactive']);
 export const assetVisibilityModeEnum = pgEnum('asset_visibility_mode', ['ALL', 'CONTRACT_ONLY']);
 export const thirdPartyWorkOrderApprovalEnum = pgEnum('third_party_work_order_approval', ['always_accept', 'require_approval', 'always_reject']);
+export const operationalScopeStatusEnum = pgEnum('operational_scope_status', ['active', 'inactive', 'archived']);
 
 // Enum para tipo de avaliador de OS
 export const evaluatorTypeEnum = pgEnum('evaluator_type', ['CLIENT', 'SYSTEM']);
@@ -203,10 +204,32 @@ export const thirdPartyCompanies = pgTable("third_party_companies", {
   statusIdx: index("third_party_companies_status_idx").on(table.status),
 }));
 
+// 2.1.1 TABELA: operational_scopes (Escopos Operacionais)
+// Representa um conjunto operacional de trabalho dentro de um módulo para um cliente
+// Hierarquia: User -> Team -> OperationalScope -> Module
+export const operationalScopes = pgTable("operational_scopes", {
+  id: varchar("id").primaryKey(),
+  customerId: varchar("customer_id").notNull().references(() => customers.id),
+  thirdPartyCompanyId: varchar("third_party_company_id").notNull().references(() => thirdPartyCompanies.id),
+  moduleId: moduleEnum("module_id").notNull(),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  status: operationalScopeStatusEnum("status").notNull().default('active'),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  customerIdx: index("operational_scopes_customer_idx").on(table.customerId),
+  companyIdx: index("operational_scopes_company_idx").on(table.thirdPartyCompanyId),
+  moduleIdx: index("operational_scopes_module_idx").on(table.moduleId),
+  statusIdx: index("operational_scopes_status_idx").on(table.status),
+}));
+
 // 2.2 TABELA: third_party_teams (Equipes de Terceiros)
+// Equipes pertencem a um OperationalScope (não diretamente a um módulo)
 export const thirdPartyTeams = pgTable("third_party_teams", {
   id: varchar("id").primaryKey(),
   thirdPartyCompanyId: varchar("third_party_company_id").notNull().references(() => thirdPartyCompanies.id),
+  operationalScopeId: varchar("operational_scope_id").references(() => operationalScopes.id), // Escopo operacional (obrigatório para novos)
   name: varchar("name").notNull(),
   leaderId: varchar("leader_id"),
   memberIds: text("member_ids").array().default(sql`ARRAY[]::text[]`),
@@ -215,6 +238,7 @@ export const thirdPartyTeams = pgTable("third_party_teams", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
   companyIdx: index("third_party_teams_company_idx").on(table.thirdPartyCompanyId),
+  scopeIdx: index("third_party_teams_scope_idx").on(table.operationalScopeId),
 }));
 
 // 2.3 TABELA: third_party_work_order_proposals (Propostas de O.S. de Terceiros)
@@ -533,6 +557,8 @@ export const workOrders = pgTable("work_orders", {
   thirdPartyCompanyId: varchar("third_party_company_id").references(() => thirdPartyCompanies.id),
   thirdPartyTeamId: varchar("third_party_team_id"),
   thirdPartyOperatorId: varchar("third_party_operator_id").references(() => users.id),
+  // Escopo operacional para filtragem de acesso (User -> Team -> OperationalScope)
+  operationalScopeId: varchar("operational_scope_id").references(() => operationalScopes.id),
 }, (table) => ({
   uniqueWorkOrderNumber: uniqueIndex("work_orders_customer_number_unique").on(table.customerId, table.number),
   uniqueCustomerLocalId: uniqueIndex("work_orders_customer_local_id_unique").on(table.customerId, table.localId).where(sql`local_id IS NOT NULL`),
@@ -544,6 +570,7 @@ export const workOrders = pgTable("work_orders", {
   assignedUserIdx: index("work_orders_assigned_user_idx").on(table.assignedUserId),
   completedAtIdx: index("work_orders_completed_at_idx").on(table.completedAt),
   dueDateIdx: index("work_orders_due_date_idx").on(table.dueDate),
+  operationalScopeIdx: index("work_orders_operational_scope_idx").on(table.operationalScopeId),
 }));
 
 // 11a. TABELA: work_order_attachments (Anexos de Ordens de Trabalho)
@@ -1871,6 +1898,8 @@ export const partMovementsRelations = relations(partMovements, ({ one }) => ({
 export const insertCompanySchema = createInsertSchema(companies).omit({ id: true });
 export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true });
 export const insertThirdPartyCompanySchema = createInsertSchema(thirdPartyCompanies).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertOperationalScopeSchema = createInsertSchema(operationalScopes).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertThirdPartyTeamSchema = createInsertSchema(thirdPartyTeams).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertThirdPartyWorkOrderProposalSchema = createInsertSchema(thirdPartyWorkOrderProposals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertThirdPartyPlanProposalSchema = createInsertSchema(thirdPartyPlanProposals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertThirdPartyChecklistSchema = createInsertSchema(thirdPartyChecklists).omit({ id: true, createdAt: true, updatedAt: true });
@@ -2013,6 +2042,12 @@ export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
 
 export type ThirdPartyCompany = typeof thirdPartyCompanies.$inferSelect;
 export type InsertThirdPartyCompany = z.infer<typeof insertThirdPartyCompanySchema>;
+
+export type OperationalScope = typeof operationalScopes.$inferSelect;
+export type InsertOperationalScope = z.infer<typeof insertOperationalScopeSchema>;
+
+export type ThirdPartyTeam = typeof thirdPartyTeams.$inferSelect;
+export type InsertThirdPartyTeam = z.infer<typeof insertThirdPartyTeamSchema>;
 
 export type ThirdPartyWorkOrderProposal = typeof thirdPartyWorkOrderProposals.$inferSelect;
 export type InsertThirdPartyWorkOrderProposal = z.infer<typeof insertThirdPartyWorkOrderProposalSchema>;

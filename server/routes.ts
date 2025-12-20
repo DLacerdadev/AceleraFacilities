@@ -10287,6 +10287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get work orders for third-party portal
+  // Filtro baseado em: User -> Team -> OperationalScope -> Work Orders
   app.get('/api/third-party-portal/work-orders', requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
@@ -10308,7 +10309,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedSiteIds = (company[0].allowedSites || []).filter((id): id is string => id != null && id !== '');
       const customerId = company[0].customerId;
       
+      // Obter os escopos operacionais do usuário (baseado nas equipes)
+      const userScopes = await storage.getOperationalScopesForUser(user.id);
+      const userScopeIds = userScopes.map(s => s.id);
+      
       console.log('[THIRD-PARTY WO] Company:', company[0].name, 'Zones:', allowedZoneIds, 'Sites:', allowedSiteIds);
+      console.log('[THIRD-PARTY WO] User scopes:', userScopeIds);
       
       // Get all work orders for the customer that this third-party has access to
       const allCustomerWorkOrders = await db.select()
@@ -10319,22 +10325,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[THIRD-PARTY WO] Total customer work orders:', allCustomerWorkOrders.length);
       
       // Filter work orders based on third-party access rules:
-      // 1. Work orders assigned to this third-party company (any status)
-      // 2. Open work orders in allowed zones (not assigned to another third-party)
-      // 3. Open work orders in allowed sites (not assigned to another third-party)
+      // 1. Work orders assigned to this third-party company with matching operationalScopeId (any status)
+      // 2. Work orders assigned to this third-party company without scope (legacy - any status)
+      // 3. Open work orders in allowed zones/sites with matching scope (not assigned to another third-party)
+      // 4. Open work orders in allowed zones/sites without scope - legacy (not assigned to another third-party)
       const filteredWorkOrders = allCustomerWorkOrders.filter(wo => {
-        // Rule 1: Work orders assigned to this third-party
+        // Rule 1 & 2: Work orders assigned to this third-party
         if (wo.thirdPartyCompanyId === user.thirdPartyCompanyId) {
+          // Se o usuário tem escopos, só mostra OS dos seus escopos
+          if (userScopeIds.length > 0) {
+            // Permite OS sem scope (legacy) ou OS com scope que pertence ao usuário
+            if (!wo.operationalScopeId || userScopeIds.includes(wo.operationalScopeId)) {
+              return true;
+            }
+            return false;
+          }
+          // Usuário sem escopo definido (manager vê tudo da empresa)
           return true;
         }
         
-        // Rule 2 & 3: Open work orders in allowed zones/sites, not assigned to another third-party
+        // Rule 3 & 4: Open work orders in allowed zones/sites, not assigned to another third-party
         const isOpen = wo.status === 'aberta';
         const notAssigned = wo.thirdPartyCompanyId === null;
         const inAllowedZone = wo.zoneId && allowedZoneIds.includes(wo.zoneId);
         const inAllowedSite = wo.siteId && allowedSiteIds.includes(wo.siteId);
         
-        return isOpen && notAssigned && (inAllowedZone || inAllowedSite);
+        // Verificar se a OS aberta está na zona/site permitidos
+        if (isOpen && notAssigned && (inAllowedZone || inAllowedSite)) {
+          // Se o usuário tem escopos, verificar se a OS tem scope compatível
+          if (userScopeIds.length > 0) {
+            // Apenas OS sem scope (legacy) ou OS com scope do usuário
+            return !wo.operationalScopeId || userScopeIds.includes(wo.operationalScopeId);
+          }
+          // Usuário sem escopo (manager) vê todas as OS abertas nas zonas/sites permitidos
+          return true;
+        }
+        
+        return false;
       });
       
       console.log('[THIRD-PARTY WO] Filtered work orders:', filteredWorkOrders.length);
@@ -10603,6 +10630,204 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==========================================================================
+  // Operational Scopes - Escopos Operacionais (Portal Terceiros)
+  // Hierarquia: User -> Team -> OperationalScope -> Module
+  // ==========================================================================
+
+  // List operational scopes for third-party company
+  app.get('/api/third-party-portal/operational-scopes', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const scopes = await storage.getOperationalScopesByCompany(user.thirdPartyCompanyId);
+      res.json(scopes);
+    } catch (error) {
+      console.error('Error fetching operational scopes:', error);
+      res.status(500).json({ message: 'Erro ao buscar escopos operacionais' });
+    }
+  });
+
+  // Get single operational scope
+  app.get('/api/third-party-portal/operational-scopes/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const scope = await storage.getOperationalScope(req.params.id);
+      if (!scope) {
+        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
+      }
+
+      // Verificar se o escopo pertence à empresa do usuário
+      if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso negado a este escopo' });
+      }
+
+      res.json(scope);
+    } catch (error) {
+      console.error('Error fetching operational scope:', error);
+      res.status(500).json({ message: 'Erro ao buscar escopo operacional' });
+    }
+  });
+
+  // Create operational scope (managers only)
+  app.post('/api/third-party-portal/operational-scopes', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem criar escopos operacionais' });
+      }
+
+      const { name, moduleId, description } = req.body;
+
+      if (!name || !moduleId) {
+        return res.status(400).json({ message: 'Nome e módulo são obrigatórios' });
+      }
+
+      // Buscar a empresa terceira para pegar o customerId
+      const company = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+
+      // Verificar se o módulo está nos módulos permitidos da empresa
+      const allowedModules = company.allowedModules || [];
+      if (allowedModules.length > 0 && !allowedModules.includes(moduleId)) {
+        return res.status(400).json({ message: `Módulo ${moduleId} não permitido para esta empresa` });
+      }
+
+      const newScope = await storage.createOperationalScope({
+        id: nanoid(),
+        name,
+        moduleId,
+        description: description || null,
+        customerId: company.customerId,
+        thirdPartyCompanyId: user.thirdPartyCompanyId,
+        status: 'active',
+      });
+
+      broadcast({
+        type: 'create',
+        resource: 'operational_scopes',
+        data: newScope,
+        customerId: company.customerId,
+      });
+
+      res.status(201).json(newScope);
+    } catch (error) {
+      console.error('Error creating operational scope:', error);
+      res.status(500).json({ message: 'Erro ao criar escopo operacional' });
+    }
+  });
+
+  // Update operational scope (managers only)
+  app.put('/api/third-party-portal/operational-scopes/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem editar escopos operacionais' });
+      }
+
+      const scope = await storage.getOperationalScope(req.params.id);
+      if (!scope) {
+        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
+      }
+
+      if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso negado a este escopo' });
+      }
+
+      const { name, description, status } = req.body;
+      const updates: any = {};
+
+      if (name !== undefined) updates.name = name;
+      if (description !== undefined) updates.description = description;
+      if (status !== undefined) updates.status = status;
+
+      const updatedScope = await storage.updateOperationalScope(req.params.id, updates);
+
+      broadcast({
+        type: 'update',
+        resource: 'operational_scopes',
+        data: updatedScope,
+        customerId: scope.customerId,
+      });
+
+      res.json(updatedScope);
+    } catch (error) {
+      console.error('Error updating operational scope:', error);
+      res.status(500).json({ message: 'Erro ao atualizar escopo operacional' });
+    }
+  });
+
+  // Delete/Archive operational scope (managers only)
+  app.delete('/api/third-party-portal/operational-scopes/:id', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      if (user.thirdPartyRole !== 'third_party_manager') {
+        return res.status(403).json({ message: 'Apenas gerentes podem arquivar escopos operacionais' });
+      }
+
+      const scope = await storage.getOperationalScope(req.params.id);
+      if (!scope) {
+        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
+      }
+
+      if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso negado a este escopo' });
+      }
+
+      // Arquivar ao invés de deletar
+      const archivedScope = await storage.updateOperationalScope(req.params.id, { status: 'archived' });
+
+      broadcast({
+        type: 'delete',
+        resource: 'operational_scopes',
+        data: archivedScope,
+        customerId: scope.customerId,
+      });
+
+      res.json({ message: 'Escopo operacional arquivado com sucesso' });
+    } catch (error) {
+      console.error('Error archiving operational scope:', error);
+      res.status(500).json({ message: 'Erro ao arquivar escopo operacional' });
+    }
+  });
+
+  // Get operational scopes accessible to current user (based on their teams)
+  app.get('/api/third-party-portal/my-operational-scopes', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.thirdPartyCompanyId) {
+        return res.status(403).json({ message: 'Acesso não autorizado' });
+      }
+
+      const scopes = await storage.getOperationalScopesForUser(user.id);
+      res.json(scopes);
+    } catch (error) {
+      console.error('Error fetching user operational scopes:', error);
+      res.status(500).json({ message: 'Erro ao buscar escopos do usuário' });
+    }
+  });
+
   // Get teams for third-party portal
   app.get('/api/third-party-portal/teams', requireAuth, async (req, res) => {
     try {
@@ -10615,7 +10840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(thirdPartyTeams)
         .where(eq(thirdPartyTeams.thirdPartyCompanyId, user.thirdPartyCompanyId));
 
-      const teamsWithLeaders = await Promise.all(teams.map(async (team) => {
+      const teamsWithDetails = await Promise.all(teams.map(async (team) => {
         let leader = null;
         if (team.leaderId) {
           const leaderData = await db.select({ id: users.id, name: users.name })
@@ -10624,13 +10849,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .limit(1);
           leader = leaderData[0] || null;
         }
+        
+        // Buscar informações do escopo operacional
+        let operationalScope = null;
+        if (team.operationalScopeId) {
+          operationalScope = await storage.getOperationalScope(team.operationalScopeId);
+        }
+        
         return {
           ...team,
           leader,
+          operationalScope,
         };
       }));
 
-      res.json(teamsWithLeaders);
+      res.json(teamsWithDetails);
     } catch (error) {
       console.error('Error fetching teams:', error);
       res.status(500).json({ message: 'Erro ao buscar equipes' });
@@ -10649,13 +10882,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Apenas gerentes podem criar equipes' });
       }
 
-      const { name, leaderId } = req.body;
+      const { name, leaderId, operationalScopeId } = req.body;
       const { nanoid } = await import('nanoid');
+
+      // Validar operationalScopeId se fornecido
+      if (operationalScopeId) {
+        const scope = await storage.getOperationalScope(operationalScopeId);
+        if (!scope) {
+          return res.status(400).json({ message: 'Escopo operacional não encontrado' });
+        }
+        if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+          return res.status(403).json({ message: 'Escopo operacional não pertence a esta empresa' });
+        }
+      }
 
       const newTeam = await db.insert(thirdPartyTeams).values({
         id: nanoid(),
         name,
         leaderId: leaderId || null,
+        operationalScopeId: operationalScopeId || null,
         thirdPartyCompanyId: user.thirdPartyCompanyId,
         memberIds: [],
         isActive: true,
@@ -10694,11 +10939,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Equipe não encontrada' });
       }
 
-      const { name, leaderId } = req.body;
+      const { name, leaderId, operationalScopeId } = req.body;
       const updates: any = {};
 
       if (name !== undefined) updates.name = name;
       if (leaderId !== undefined) updates.leaderId = leaderId;
+      
+      // Validar operationalScopeId se fornecido
+      if (operationalScopeId !== undefined) {
+        if (operationalScopeId === null) {
+          updates.operationalScopeId = null;
+        } else {
+          const scope = await storage.getOperationalScope(operationalScopeId);
+          if (!scope) {
+            return res.status(400).json({ message: 'Escopo operacional não encontrado' });
+          }
+          if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+            return res.status(403).json({ message: 'Escopo operacional não pertence a esta empresa' });
+          }
+          updates.operationalScopeId = operationalScopeId;
+        }
+      }
 
       const updatedTeam = await db.update(thirdPartyTeams)
         .set(updates)

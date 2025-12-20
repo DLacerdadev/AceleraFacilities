@@ -4,7 +4,7 @@ import {
   serviceTypes, serviceCategories, serviceZones, dashboardGoals, auditLogs, customers,
   userSiteAssignments, userAllowedCustomers, publicRequestLogs, siteShifts, bathroomCounterLogs, companyCounters, customerCounters,
   workOrderComments, workOrderAttachments, workOrderEvaluations, workOrderAuditLogs,
-  thirdPartyCompanies,
+  thirdPartyCompanies, operationalScopes, thirdPartyTeams,
   equipment, equipmentTypes, maintenanceChecklistTemplates,
   maintenanceChecklistExecutions, maintenancePlans, maintenancePlanEquipments, maintenanceActivities,
   parts, workOrderParts, maintenancePlanParts, maintenanceActivityParts, partMovements,
@@ -56,7 +56,9 @@ import {
   type Notification, type InsertNotification,
   type SupplierWorkOrder, type InsertSupplierWorkOrder,
   type SupplierWorkOrderItem, type InsertSupplierWorkOrderItem,
-  type ThirdPartyCompany, type InsertThirdPartyCompany
+  type ThirdPartyCompany, type InsertThirdPartyCompany,
+  type OperationalScope, type InsertOperationalScope,
+  type ThirdPartyTeam, type InsertThirdPartyTeam
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, asc, sql, count, inArray, isNull, isNotNull, ne, gte, lte, lt, not } from "drizzle-orm";
@@ -313,6 +315,15 @@ export interface IStorage {
   updateThirdPartyCompany(id: string, company: Partial<InsertThirdPartyCompany>): Promise<ThirdPartyCompany>;
   getOpenWorkOrdersByThirdParty(thirdPartyCompanyId: string): Promise<WorkOrder[]>;
   cancelWorkOrdersByThirdParty(thirdPartyCompanyId: string, reason: string): Promise<number>;
+
+  // Operational Scopes (Escopos Operacionais)
+  getOperationalScope(id: string): Promise<OperationalScope | undefined>;
+  getOperationalScopesByCompany(thirdPartyCompanyId: string): Promise<OperationalScope[]>;
+  getOperationalScopesByCustomer(customerId: string): Promise<OperationalScope[]>;
+  createOperationalScope(scope: InsertOperationalScope & { id: string }): Promise<OperationalScope>;
+  updateOperationalScope(id: string, scope: Partial<InsertOperationalScope>): Promise<OperationalScope>;
+  deleteOperationalScope(id: string): Promise<void>;
+  getOperationalScopesForUser(userId: string): Promise<OperationalScope[]>;
 
   // Bathroom Counters
   getBathroomCounterByZone(zoneId: string): Promise<BathroomCounter | undefined>;
@@ -4557,6 +4568,101 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`[THIRD_PARTY_CLEANUP] Cancelled ${result.length} open work orders for company ${thirdPartyCompanyId}. Reason: ${reason}`);
     return result.length;
+  }
+
+  // ============================================================================
+  // Operational Scopes (Escopos Operacionais)
+  // Hierarquia: User -> Team -> OperationalScope -> Module
+  // ============================================================================
+
+  async getOperationalScope(id: string): Promise<OperationalScope | undefined> {
+    const [scope] = await db.select()
+      .from(operationalScopes)
+      .where(eq(operationalScopes.id, id))
+      .limit(1);
+    return scope;
+  }
+
+  async getOperationalScopesByCompany(thirdPartyCompanyId: string): Promise<OperationalScope[]> {
+    return await db.select()
+      .from(operationalScopes)
+      .where(eq(operationalScopes.thirdPartyCompanyId, thirdPartyCompanyId))
+      .orderBy(asc(operationalScopes.name));
+  }
+
+  async getOperationalScopesByCustomer(customerId: string): Promise<OperationalScope[]> {
+    return await db.select()
+      .from(operationalScopes)
+      .where(eq(operationalScopes.customerId, customerId))
+      .orderBy(asc(operationalScopes.name));
+  }
+
+  async createOperationalScope(scope: InsertOperationalScope & { id: string }): Promise<OperationalScope> {
+    const [newScope] = await db.insert(operationalScopes)
+      .values(scope)
+      .returning();
+    return newScope;
+  }
+
+  async updateOperationalScope(id: string, scope: Partial<InsertOperationalScope>): Promise<OperationalScope> {
+    const [updated] = await db.update(operationalScopes)
+      .set({ ...scope, updatedAt: new Date() })
+      .where(eq(operationalScopes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteOperationalScope(id: string): Promise<void> {
+    await db.delete(operationalScopes)
+      .where(eq(operationalScopes.id, id));
+  }
+
+  async getOperationalScopesForUser(userId: string): Promise<OperationalScope[]> {
+    // Buscar o usuário para pegar a empresa terceira
+    const user = await this.getUser(userId);
+    if (!user || !user.thirdPartyCompanyId) {
+      return [];
+    }
+
+    // Buscar todas as equipes da empresa onde o usuário é membro ou líder
+    const teams = await db.select()
+      .from(thirdPartyTeams)
+      .where(
+        and(
+          eq(thirdPartyTeams.thirdPartyCompanyId, user.thirdPartyCompanyId),
+          eq(thirdPartyTeams.isActive, true)
+        )
+      );
+
+    // Filtrar equipes onde o usuário é membro ou líder
+    const userTeams = teams.filter(team => 
+      team.leaderId === userId || 
+      (team.memberIds && team.memberIds.includes(userId))
+    );
+
+    if (userTeams.length === 0) {
+      return [];
+    }
+
+    // Buscar os operationalScopeIds das equipes do usuário
+    const scopeIds = userTeams
+      .map(team => team.operationalScopeId)
+      .filter((id): id is string => id !== null && id !== undefined);
+
+    if (scopeIds.length === 0) {
+      return [];
+    }
+
+    // Buscar os escopos operacionais
+    return await db.select()
+      .from(operationalScopes)
+      .where(
+        and(
+          inArray(operationalScopes.id, scopeIds),
+          eq(operationalScopes.status, 'active')
+        )
+      )
+      .orderBy(asc(operationalScopes.name));
   }
 
   // Work Order Attachments - File Upload Helpers
