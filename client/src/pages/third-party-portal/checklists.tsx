@@ -237,7 +237,13 @@ export default function ThirdPartyChecklists() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Tipo</Label>
-                      <Select value={newItem.type} onValueChange={(value) => setNewItem({ ...newItem, type: value as any })}>
+                      <Select value={newItem.type} onValueChange={(value) => {
+                        const updates: any = { type: value as any };
+                        if (value === 'checkbox' && !newItem.options?.length) {
+                          updates.options = [];
+                        }
+                        setNewItem({ ...newItem, ...updates });
+                      }}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -387,6 +393,21 @@ export default function ThirdPartyChecklists() {
                           <div className="space-y-3">
                             <div className="space-y-2">
                               <Label className="text-xs">Opções do Checkbox</Label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setNewItem(prev => ({
+                                    ...prev,
+                                    options: [...(prev.options || []), '']
+                                  }));
+                                }}
+                                className="w-full h-9 text-xs mb-2"
+                              >
+                                <Plus className="w-3 h-3 mr-2" />
+                                Adicionar Opção
+                              </Button>
                               <div className="space-y-2">
                                 {(newItem.options || []).map((option, index) => (
                                   <div key={index} className="flex gap-2">
@@ -414,35 +435,35 @@ export default function ThirdPartyChecklists() {
                                     </Button>
                                   </div>
                                 ))}
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setNewItem(prev => ({
-                                      ...prev,
-                                      options: [...(prev.options || []), '']
-                                    }));
-                                  }}
-                                  className="h-8 text-xs"
-                                >
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Adicionar Opção
-                                </Button>
                               </div>
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Mínimo de checks obrigatórios</Label>
-                              <Input
-                                type="number"
-                                placeholder="Ex: 1"
-                                value={newItem.validation?.minChecked || ""}
-                                onChange={(e) => setNewItem(prev => ({
-                                  ...prev,
-                                  validation: { ...prev.validation, minChecked: e.target.value ? parseInt(e.target.value) : undefined }
-                                }))}
-                                className="h-8 text-xs"
-                              />
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Mínimo de checks</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Ex: 1"
+                                  value={newItem.validation?.minChecked || ""}
+                                  onChange={(e) => setNewItem(prev => ({
+                                    ...prev,
+                                    validation: { ...prev.validation, minChecked: e.target.value ? parseInt(e.target.value) : undefined }
+                                  }))}
+                                  className="h-8 text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Máximo de checks</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Ex: 3"
+                                  value={newItem.validation?.maxChecked || ""}
+                                  onChange={(e) => setNewItem(prev => ({
+                                    ...prev,
+                                    validation: { ...prev.validation, maxChecked: e.target.value ? parseInt(e.target.value) : undefined }
+                                  }))}
+                                  className="h-8 text-xs"
+                                />
+                              </div>
                             </div>
                           </div>
                         )}
