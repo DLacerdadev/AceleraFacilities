@@ -10280,46 +10280,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 3. OSs in allowed sites that are open and not assigned to another third-party
       
       // First get OSs assigned to this third-party
-      const assignedWorkOrders = await db.select({
-        id: workOrders.id,
-        title: workOrders.title,
-        description: workOrders.description,
-        status: workOrders.status,
-        priority: workOrders.priority,
-        dueDate: workOrders.dueDate,
-        completedAt: workOrders.completedAt,
-        zoneId: workOrders.zoneId,
-        zoneName: zones.name,
-        siteId: workOrders.siteId,
-        module: workOrders.module,
-        equipmentId: workOrders.equipmentId,
-        thirdPartyCompanyId: workOrders.thirdPartyCompanyId,
-      })
+      const assignedWorkOrders = await db.select()
         .from(workOrders)
-        .leftJoin(zones, eq(workOrders.zoneId, zones.id))
         .where(eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId))
         .orderBy(desc(workOrders.createdAt));
 
       // Get available OSs in allowed zones (open, not assigned to another third-party)
       let availableInZones: typeof assignedWorkOrders = [];
       if (allowedZoneIds.length > 0) {
-        availableInZones = await db.select({
-          id: workOrders.id,
-          title: workOrders.title,
-          description: workOrders.description,
-          status: workOrders.status,
-          priority: workOrders.priority,
-          dueDate: workOrders.dueDate,
-          completedAt: workOrders.completedAt,
-          zoneId: workOrders.zoneId,
-          zoneName: zones.name,
-          siteId: workOrders.siteId,
-          module: workOrders.module,
-          equipmentId: workOrders.equipmentId,
-          thirdPartyCompanyId: workOrders.thirdPartyCompanyId,
-        })
+        availableInZones = await db.select()
           .from(workOrders)
-          .leftJoin(zones, eq(workOrders.zoneId, zones.id))
           .where(and(
             inArray(workOrders.zoneId, allowedZoneIds),
             eq(workOrders.status, 'aberta'),
@@ -10331,23 +10301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get available OSs in allowed sites (open, not assigned to another third-party)
       let availableInSites: typeof assignedWorkOrders = [];
       if (allowedSiteIds.length > 0) {
-        availableInSites = await db.select({
-          id: workOrders.id,
-          title: workOrders.title,
-          description: workOrders.description,
-          status: workOrders.status,
-          priority: workOrders.priority,
-          dueDate: workOrders.dueDate,
-          completedAt: workOrders.completedAt,
-          zoneId: workOrders.zoneId,
-          zoneName: zones.name,
-          siteId: workOrders.siteId,
-          module: workOrders.module,
-          equipmentId: workOrders.equipmentId,
-          thirdPartyCompanyId: workOrders.thirdPartyCompanyId,
-        })
+        availableInSites = await db.select()
           .from(workOrders)
-          .leftJoin(zones, eq(workOrders.zoneId, zones.id))
           .where(and(
             inArray(workOrders.siteId, allowedSiteIds),
             eq(workOrders.status, 'aberta'),
