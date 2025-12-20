@@ -3924,11 +3924,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // QR Code scanning endpoints
-  app.get("/api/qr-execution/:code", async (req, res) => {
+  app.get("/api/qr-execution/:code", requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
       const point = await storage.getQrCodePointByCode(req.params.code);
       if (!point || point.type !== 'execucao') {
         return res.status(404).json({ message: "QR code not found or invalid type" });
+      }
+      
+      // Verificar se usuário de terceiro tem acesso à zona do QR code
+      if (user.thirdPartyCompanyId && point.zoneId) {
+        const thirdPartyCompany = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
+        const allowedZones = thirdPartyCompany?.allowedZones || [];
+        
+        if (allowedZones.length > 0 && !allowedZones.includes(point.zoneId)) {
+          console.warn(`[QR EXECUTION ACCESS DENIED] Third-party user ${user.id} from company ${user.thirdPartyCompanyId} tried to access zone ${point.zoneId} but only has access to: ${allowedZones.join(', ')}`);
+          return res.status(403).json({ 
+            error: 'Acesso negado',
+            message: 'Sua empresa não tem permissão para acessar esta zona.'
+          });
+        }
       }
       
       // 🔥 FIX: Buscar work orders agendadas para esta zona
