@@ -3972,14 +3972,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log('[QR EXECUTION] All work orders for customer:', allWorkOrders.length);
               
               // Filtrar work orders desta zona específica que não estão concluídas/canceladas
-              const serviceTypeId = req.query.serviceTypeId as string | undefined;
+              const serviceId = req.query.serviceId as string | undefined;
               scheduledWorkOrders = allWorkOrders.filter((wo: any) => {
                 const matchesZone = wo.zoneId === point.zoneId;
                 const matchesStatus = wo.status !== 'concluida' && wo.status !== 'cancelada';
-                const matchesService = !serviceTypeId || wo.serviceTypeId === serviceTypeId;
+                const matchesService = !serviceId || wo.serviceId === serviceId;
                 return matchesZone && matchesStatus && matchesService;
               });
-              console.log('[QR EXECUTION] Filtered work orders for zone:', scheduledWorkOrders.length, 'serviceTypeId:', serviceTypeId || 'all');
+              console.log('[QR EXECUTION] Filtered work orders for zone:', scheduledWorkOrders.length, 'serviceId:', serviceId || 'all');
             } else {
               console.log('[QR EXECUTION] Site has no customerId!');
             }

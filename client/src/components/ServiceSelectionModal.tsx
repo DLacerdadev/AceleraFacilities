@@ -142,7 +142,7 @@ export default function ServiceSelectionModal({
 
   const filteredWorkOrders = availableWorkOrders.filter((wo) => {
     // Filtrar por serviço selecionado
-    if (selectedService && wo.serviceTypeId !== selectedService) {
+    if (selectedService && wo.serviceId !== selectedService) {
       return false;
     }
     
@@ -166,7 +166,7 @@ export default function ServiceSelectionModal({
           scheduledDateOnly,
           todayString,
           match,
-          serviceTypeId: wo.serviceTypeId,
+          serviceId: wo.serviceId,
           selectedService
         });
       }
