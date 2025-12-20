@@ -10261,7 +10261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Acesso não autorizado' });
       }
 
-      // Get the third-party company to find allowed zones
+      // Get the third-party company to find allowed zones and sites
       const company = await db.select()
         .from(thirdPartyCompanies)
         .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
@@ -10271,61 +10271,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      const allowedZoneIds = company[0].allowedZones || [];
-      const allowedSiteIds = company[0].allowedSites || [];
+      const allowedZoneIds = (company[0].allowedZones || []).filter((id): id is string => id != null && id !== '');
+      const allowedSiteIds = (company[0].allowedSites || []).filter((id): id is string => id != null && id !== '');
+      const customerId = company[0].customerId;
       
-      // Build query to get:
-      // 1. OSs assigned to this third-party company (any status)
-      // 2. OSs in allowed zones that are open and not assigned to another third-party
-      // 3. OSs in allowed sites that are open and not assigned to another third-party
+      console.log('[THIRD-PARTY WO] Company:', company[0].name, 'Zones:', allowedZoneIds, 'Sites:', allowedSiteIds);
       
-      // First get OSs assigned to this third-party
-      const assignedWorkOrders = await db.select()
+      // Get all work orders for the customer that this third-party has access to
+      const allCustomerWorkOrders = await db.select()
         .from(workOrders)
-        .where(eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId))
+        .where(eq(workOrders.customerId, customerId))
         .orderBy(desc(workOrders.createdAt));
-
-      // Get available OSs in allowed zones (open, not assigned to another third-party)
-      let availableInZones: typeof assignedWorkOrders = [];
-      if (allowedZoneIds.length > 0) {
-        // Filter out null/undefined zone IDs and ensure non-empty array
-        const validZoneIds = allowedZoneIds.filter((id): id is string => id != null && id !== '');
-        if (validZoneIds.length > 0) {
-          availableInZones = await db.select()
-            .from(workOrders)
-            .where(and(
-              sql`${workOrders.zoneId} = ANY(${validZoneIds})`,
-              eq(workOrders.status, 'aberta'),
-              isNull(workOrders.thirdPartyCompanyId)
-            ))
-            .orderBy(desc(workOrders.createdAt));
+      
+      console.log('[THIRD-PARTY WO] Total customer work orders:', allCustomerWorkOrders.length);
+      
+      // Filter work orders based on third-party access rules:
+      // 1. Work orders assigned to this third-party company (any status)
+      // 2. Open work orders in allowed zones (not assigned to another third-party)
+      // 3. Open work orders in allowed sites (not assigned to another third-party)
+      const filteredWorkOrders = allCustomerWorkOrders.filter(wo => {
+        // Rule 1: Work orders assigned to this third-party
+        if (wo.thirdPartyCompanyId === user.thirdPartyCompanyId) {
+          return true;
         }
-      }
+        
+        // Rule 2 & 3: Open work orders in allowed zones/sites, not assigned to another third-party
+        const isOpen = wo.status === 'aberta';
+        const notAssigned = wo.thirdPartyCompanyId === null;
+        const inAllowedZone = wo.zoneId && allowedZoneIds.includes(wo.zoneId);
+        const inAllowedSite = wo.siteId && allowedSiteIds.includes(wo.siteId);
+        
+        return isOpen && notAssigned && (inAllowedZone || inAllowedSite);
+      });
+      
+      console.log('[THIRD-PARTY WO] Filtered work orders:', filteredWorkOrders.length);
 
-      // Get available OSs in allowed sites (open, not assigned to another third-party)
-      let availableInSites: typeof assignedWorkOrders = [];
-      if (allowedSiteIds.length > 0) {
-        // Filter out null/undefined site IDs and ensure non-empty array
-        const validSiteIds = allowedSiteIds.filter((id): id is string => id != null && id !== '');
-        if (validSiteIds.length > 0) {
-          availableInSites = await db.select()
-            .from(workOrders)
-            .where(and(
-              sql`${workOrders.siteId} = ANY(${validSiteIds})`,
-              eq(workOrders.status, 'aberta'),
-              isNull(workOrders.thirdPartyCompanyId)
-            ))
-            .orderBy(desc(workOrders.createdAt));
-        }
-      }
-
-      // Combine and deduplicate results
-      const allWorkOrders = [...assignedWorkOrders, ...availableInZones, ...availableInSites];
-      const uniqueWorkOrders = allWorkOrders.filter((wo, index, self) => 
-        index === self.findIndex(w => w.id === wo.id)
-      );
-
-      res.json(uniqueWorkOrders);
+      res.json(filteredWorkOrders);
     } catch (error) {
       console.error('Error fetching work orders:', error);
       res.status(500).json({ message: 'Erro ao buscar ordens de serviço' });
