@@ -950,6 +950,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Calculate date range based on period (using createdAt for regular work orders)
+    // Periods are from start of period TO current date (not rolling windows)
     let dateFilter = sql`true`; // Default: no date filter
     // For overdue work orders, filter by dueDate (when they became overdue)
     let overdueDateFilter = sql`true`; // Default: no date filter
@@ -961,11 +962,13 @@ export class DatabaseStorage implements IStorage {
       dateFilter = sql`DATE(${workOrders.createdAt}) = CURRENT_DATE - INTERVAL '1 day'`;
       overdueDateFilter = sql`DATE(${workOrders.dueDate}) = CURRENT_DATE - INTERVAL '1 day'`;
     } else if (period === 'semana') {
-      dateFilter = sql`${workOrders.createdAt} >= CURRENT_DATE - INTERVAL '7 days'`;
-      overdueDateFilter = sql`${workOrders.dueDate} >= CURRENT_DATE - INTERVAL '7 days'`;
+      // From Monday of current week to today
+      dateFilter = sql`${workOrders.createdAt} >= DATE_TRUNC('week', CURRENT_DATE) AND ${workOrders.createdAt} <= CURRENT_DATE + INTERVAL '1 day'`;
+      overdueDateFilter = sql`${workOrders.dueDate} >= DATE_TRUNC('week', CURRENT_DATE) AND ${workOrders.dueDate} <= CURRENT_DATE + INTERVAL '1 day'`;
     } else if (period === 'mes') {
-      dateFilter = sql`${workOrders.createdAt} >= CURRENT_DATE - INTERVAL '30 days'`;
-      overdueDateFilter = sql`${workOrders.dueDate} >= CURRENT_DATE - INTERVAL '30 days'`;
+      // From first day of current month to today
+      dateFilter = sql`${workOrders.createdAt} >= DATE_TRUNC('month', CURRENT_DATE) AND ${workOrders.createdAt} <= CURRENT_DATE + INTERVAL '1 day'`;
+      overdueDateFilter = sql`${workOrders.dueDate} >= DATE_TRUNC('month', CURRENT_DATE) AND ${workOrders.dueDate} <= CURRENT_DATE + INTERVAL '1 day'`;
     }
     // If period is 'total' or 'todos', no date filter
 
