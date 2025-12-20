@@ -10511,6 +10511,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Empresa não encontrada' });
       }
 
+      // Verificar limite de usuários da empresa terceirizada
+      const userLimit = company[0].userLimit || 5; // Padrão é 5 se não definido
+      const currentUserCount = await db.select({ count: sql<number>`count(*)::int` })
+        .from(users)
+        .where(eq(users.thirdPartyCompanyId, user.thirdPartyCompanyId));
+      
+      const currentCount = currentUserCount[0]?.count || 0;
+      
+      if (currentCount >= userLimit) {
+        return res.status(400).json({ 
+          message: `Limite de usuários atingido. Sua empresa pode ter no máximo ${userLimit} usuários. Atualmente há ${currentCount} usuários cadastrados.` 
+        });
+      }
+
       const { nanoid } = await import('nanoid');
       const bcrypt = await import('bcryptjs');
       const hashedPassword = await bcrypt.hash(password, 10);
