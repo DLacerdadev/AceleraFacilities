@@ -4997,11 +4997,11 @@ export class DatabaseStorage implements IStorage {
       return total + (parseFloat(area.areaM2 || '0'));
     }, 0);
 
-    // Calculate overdue work orders: open work orders with dueDate < NOW()
-    let overdueWhere = [
+    // Calculate overdue work orders: orders with status = 'vencida'
+    // Note: O.S vencidas são contadas independente do período selecionado
+    let overdueWhere: any[] = [
       eq(workOrders.companyId, companyId),
-      eq(workOrders.status, 'aberta'),
-      sql`${workOrders.dueDate} < NOW()`
+      eq(workOrders.status, 'vencida')
     ];
     
     if (siteId && siteId !== 'todos') {
@@ -5010,9 +5010,7 @@ export class DatabaseStorage implements IStorage {
       )`);
     }
     
-    if (dateFilter) {
-      overdueWhere.push(dateFilter);
-    }
+    // Não aplicamos dateFilter para vencidas - queremos ver TODAS as vencidas sempre
     
     const [overdueCount] = await db.select({ count: count() })
       .from(workOrders)
