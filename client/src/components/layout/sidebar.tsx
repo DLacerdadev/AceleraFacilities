@@ -29,7 +29,8 @@ import {
   Brain,
   Package,
   AlertTriangle,
-  Monitor
+  Monitor,
+  Target
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -145,6 +146,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps)
     
     // Modo TV - para exibição em monitores
     ...(can.viewDashboard(activeClientId) ? [{ path: "/tv-mode", label: "Modo TV", icon: Monitor }] : []),
+    
+    // Escopos Operacionais - disponível quando o cliente tem terceiros habilitados e usuário tem permissão de gerenciar sites
+    ...((activeClient as any)?.thirdPartyEnabled && can.editSites(activeClientId) ? [{ path: "/operational-scopes", label: "Escopos Operacionais", icon: Target }] : []),
     
     // Usuários do Sistema (apenas para quem tem permissão)
     ...(can.viewOpusUsers() ? [{ path: "/users", label: "Usuários do Sistema", icon: Users }] : []),
