@@ -340,12 +340,7 @@ export default function ThirdPartyChecklists() {
                 <Label>Tipo</Label>
                 <Select 
                   value={newItem.type} 
-                  onValueChange={(value) => setNewItem(prev => ({ 
-                    ...prev, 
-                    type: value as ChecklistItem['type'],
-                    options: [],
-                    validation: {}
-                  }))}
+                  onValueChange={(value) => setNewItem(prev => ({ ...prev, type: value as ChecklistItem['type'] }))}
                 >
                   <SelectTrigger data-testid="select-item-type">
                     <SelectValue />
@@ -371,7 +366,7 @@ export default function ThirdPartyChecklists() {
                 <Label>Observações</Label>
                 <Input
                   data-testid="input-item-description"
-                  value={newItem.description || ''}
+                  value={newItem.description}
                   onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Instruções opcionais..."
                 />
@@ -673,7 +668,7 @@ export default function ThirdPartyChecklists() {
               Novo Checklist
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Novo Checklist</DialogTitle>
               <DialogDescription>

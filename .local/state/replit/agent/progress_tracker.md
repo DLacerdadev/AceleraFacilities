@@ -174,16 +174,19 @@
 [x] 471. Server restarted with new logic
 [x] 472. ✅ THIRD-PARTY MODULE AUTO-SELECTION FIXED - Single module users will now skip selection page
 
-## CHECKLIST INPUT BUG FIX (19/12/2025 12:22 AM)
+## CHECKLIST INPUT BUG + THIRD-PARTY FORM REFACTOR (19/12/2025 12:36 AM)
 [x] 473. Identified bug: Users could only type 1 character per keystroke in checklist item form
 [x] 474. Root cause: Select "Tipo" was resetting options/validation on every change, causing re-renders
-[x] 475. Attempted fixes:
-    - Removing `options: []` and `validation: {}` reset from Select onChange
-    - Only updating `type` field when Select changes
-    - Adding fallback values and stable keys (caused more issues)
-[x] 476. Final solution: Copied exact pattern from working checklists.tsx (Clean module)
-    - Removed all extra logic and fallback values
-    - Using simple: `value={newItem.label}` (no || "")
-    - Using simple: `onChange={(e) => setNewItem(prev => ({ ...prev, label: e.target.value }))}`
-[x] 477. Server restarted with final fix
-[x] 478. ✅ CHECKLIST INPUT BUG FIXED - Fields now accept normal text input using proven pattern
+[x] 475. Fixed maintenance-checklist-templates.tsx:
+    - Removed `options: []` and `validation: {}` reset from Select onChange (line 676)
+    - Now only updates `type` field: `onValueChange={(value) => setNewItem(prev => ({ ...prev, type: value }))}`
+[x] 476. Refactored third-party checklist form (client/src/pages/third-party-portal/checklists.tsx):
+    - Removed options/validation reset from Select onChange (line 346)
+    - Simplified input handling to match working pattern
+    - Increased dialog width from max-w-2xl to max-w-4xl for better form display
+[x] 477. Both forms now use proven input pattern from clean module:
+    - No fallback values (no || "")
+    - Simple direct value updates: `onChange={(e) => setNewItem(prev => ({ ...prev, field: e.target.value }))}`
+[x] 478. Server restarted successfully - all schedulers active
+[x] 479. ✅ CHECKLIST INPUT BUG FIXED - Both modules accept normal text input
+[x] 480. ✅ THIRD-PARTY FORM REFACTORED - Wider dialog, cleaner input handling
