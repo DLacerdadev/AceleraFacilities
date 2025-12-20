@@ -10274,42 +10274,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedZoneIds = company[0].allowedZones || [];
       const allowedSiteIds = company[0].allowedSites || [];
       
-      // Build conditions: OSs in allowed zones OR assigned to this third-party company
-      const conditions = [];
+      // Build query to get:
+      // 1. OSs assigned to this third-party company (any status)
+      // 2. OSs in allowed zones that are open and not assigned to another third-party
+      // 3. OSs in allowed sites that are open and not assigned to another third-party
       
-      // OSs assigned to this third-party company
-      conditions.push(eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId));
-      
-      // OSs in allowed zones that are open (available for the third-party to take)
-      if (allowedZoneIds.length > 0) {
-        conditions.push(
-          and(
-            inArray(workOrders.zoneId, allowedZoneIds),
-            eq(workOrders.status, 'aberta'),
-            // Only show OSs not assigned to another third-party
-            or(
-              isNull(workOrders.thirdPartyCompanyId),
-              eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId)
-            )
-          )
-        );
-      }
-
-      // OSs in allowed sites (for maintenance OSs that may have siteId but no zoneId)
-      if (allowedSiteIds.length > 0) {
-        conditions.push(
-          and(
-            inArray(workOrders.siteId, allowedSiteIds),
-            eq(workOrders.status, 'aberta'),
-            or(
-              isNull(workOrders.thirdPartyCompanyId),
-              eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId)
-            )
-          )
-        );
-      }
-
-      const companyWorkOrders = await db.select({
+      // First get OSs assigned to this third-party
+      const assignedWorkOrders = await db.select({
         id: workOrders.id,
         title: workOrders.title,
         description: workOrders.description,
@@ -10326,10 +10297,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       })
         .from(workOrders)
         .leftJoin(zones, eq(workOrders.zoneId, zones.id))
-        .where(or(...conditions))
+        .where(eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId))
         .orderBy(desc(workOrders.createdAt));
 
-      res.json(companyWorkOrders);
+      // Get available OSs in allowed zones (open, not assigned to another third-party)
+      let availableInZones: typeof assignedWorkOrders = [];
+      if (allowedZoneIds.length > 0) {
+        availableInZones = await db.select({
+          id: workOrders.id,
+          title: workOrders.title,
+          description: workOrders.description,
+          status: workOrders.status,
+          priority: workOrders.priority,
+          dueDate: workOrders.dueDate,
+          completedAt: workOrders.completedAt,
+          zoneId: workOrders.zoneId,
+          zoneName: zones.name,
+          siteId: workOrders.siteId,
+          module: workOrders.module,
+          equipmentId: workOrders.equipmentId,
+          thirdPartyCompanyId: workOrders.thirdPartyCompanyId,
+        })
+          .from(workOrders)
+          .leftJoin(zones, eq(workOrders.zoneId, zones.id))
+          .where(and(
+            inArray(workOrders.zoneId, allowedZoneIds),
+            eq(workOrders.status, 'aberta'),
+            isNull(workOrders.thirdPartyCompanyId)
+          ))
+          .orderBy(desc(workOrders.createdAt));
+      }
+
+      // Get available OSs in allowed sites (open, not assigned to another third-party)
+      let availableInSites: typeof assignedWorkOrders = [];
+      if (allowedSiteIds.length > 0) {
+        availableInSites = await db.select({
+          id: workOrders.id,
+          title: workOrders.title,
+          description: workOrders.description,
+          status: workOrders.status,
+          priority: workOrders.priority,
+          dueDate: workOrders.dueDate,
+          completedAt: workOrders.completedAt,
+          zoneId: workOrders.zoneId,
+          zoneName: zones.name,
+          siteId: workOrders.siteId,
+          module: workOrders.module,
+          equipmentId: workOrders.equipmentId,
+          thirdPartyCompanyId: workOrders.thirdPartyCompanyId,
+        })
+          .from(workOrders)
+          .leftJoin(zones, eq(workOrders.zoneId, zones.id))
+          .where(and(
+            inArray(workOrders.siteId, allowedSiteIds),
+            eq(workOrders.status, 'aberta'),
+            isNull(workOrders.thirdPartyCompanyId)
+          ))
+          .orderBy(desc(workOrders.createdAt));
+      }
+
+      // Combine and deduplicate results
+      const allWorkOrders = [...assignedWorkOrders, ...availableInZones, ...availableInSites];
+      const uniqueWorkOrders = allWorkOrders.filter((wo, index, self) => 
+        index === self.findIndex(w => w.id === wo.id)
+      );
+
+      res.json(uniqueWorkOrders);
     } catch (error) {
       console.error('Error fetching work orders:', error);
       res.status(500).json({ message: 'Erro ao buscar ordens de serviço' });
