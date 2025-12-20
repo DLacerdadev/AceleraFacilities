@@ -751,7 +751,20 @@ export default function Users({ customerId }: UsersProps) {
                 <TableBody>
                   {filteredUsers.map((user: any) => (
                     <TableRow key={user.id} className="hover:bg-muted/50">
-                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {user.name}
+                          {user.thirdPartyCompanyId && (
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+                              data-testid={`badge-third-party-${user.id}`}
+                            >
+                              Terceiro
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell className="font-mono">{user.username}</TableCell>
                       <TableCell>{getRoleBadge(user)}</TableCell>
