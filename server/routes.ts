@@ -10261,6 +10261,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Acesso não autorizado' });
       }
 
+      // Get the third-party company to find allowed zones
+      const company = await db.select()
+        .from(thirdPartyCompanies)
+        .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+        .limit(1);
+
+      if (!company.length) {
+        return res.json([]);
+      }
+
+      const allowedZoneIds = company[0].allowedZones || [];
+      const allowedSiteIds = company[0].allowedSites || [];
+      
+      // Build conditions: OSs in allowed zones OR assigned to this third-party company
+      const conditions = [];
+      
+      // OSs assigned to this third-party company
+      conditions.push(eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId));
+      
+      // OSs in allowed zones that are open (available for the third-party to take)
+      if (allowedZoneIds.length > 0) {
+        conditions.push(
+          and(
+            inArray(workOrders.zoneId, allowedZoneIds),
+            eq(workOrders.status, 'aberta'),
+            // Only show OSs not assigned to another third-party
+            or(
+              isNull(workOrders.thirdPartyCompanyId),
+              eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId)
+            )
+          )
+        );
+      }
+
+      // OSs in allowed sites (for maintenance OSs that may have siteId but no zoneId)
+      if (allowedSiteIds.length > 0) {
+        conditions.push(
+          and(
+            inArray(workOrders.siteId, allowedSiteIds),
+            eq(workOrders.status, 'aberta'),
+            or(
+              isNull(workOrders.thirdPartyCompanyId),
+              eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId)
+            )
+          )
+        );
+      }
+
       const companyWorkOrders = await db.select({
         id: workOrders.id,
         title: workOrders.title,
@@ -10271,10 +10319,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         completedAt: workOrders.completedAt,
         zoneId: workOrders.zoneId,
         zoneName: zones.name,
+        siteId: workOrders.siteId,
+        module: workOrders.module,
+        equipmentId: workOrders.equipmentId,
+        thirdPartyCompanyId: workOrders.thirdPartyCompanyId,
       })
         .from(workOrders)
         .leftJoin(zones, eq(workOrders.zoneId, zones.id))
-        .where(eq(workOrders.thirdPartyCompanyId, user.thirdPartyCompanyId))
+        .where(or(...conditions))
         .orderBy(desc(workOrders.createdAt));
 
       res.json(companyWorkOrders);
