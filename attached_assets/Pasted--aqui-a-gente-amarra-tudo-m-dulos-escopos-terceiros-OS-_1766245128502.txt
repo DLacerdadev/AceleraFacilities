@@ -1,0 +1,250 @@
+ aqui a gente **amarra tudo** (módulos, escopos, terceiros, OS, SLA, mobile) em **um fluxo único, lógico e escalável**.
+
+Vou te mostrar o **fluxo do projeto em 4 níveis**, do mais alto (produto) até o operacional (usuário/OS), exatamente como um **arquiteto explicaria para time, IA ou investidor técnico**.
+
+---
+
+# 🔁 FLUXO GERAL DO PROJETO (VISÃO COMPLETA)
+
+## 🔹 NÍVEL 1 — GOVERNANÇA DO SISTEMA (PLATAFORMA)
+
+Esse nível **não muda todo dia**, é estrutural.
+
+```
+Administrador do Sistema
+        ↓
+Configura módulos disponíveis no sistema
+        ↓
+Define regras globais (SLA base, auditoria, permissões-mãe)
+```
+
+👉 Aqui nascem os **módulos**, mas ninguém opera ainda.
+
+---
+
+## 🔹 NÍVEL 2 — CONFIGURAÇÃO DO CLIENTE (ONBOARDING)
+
+Esse é o fluxo quando um **cliente entra ou ajusta operação**.
+
+```
+Cliente (Administrador)
+    ↓
+Ativa módulos (Manutenção, Limpeza, etc.)
+    ↓
+Configura SLA por módulo
+    ↓
+Cria Escopos Operacionais (OperationalScope)
+```
+
+### Exemplo real:
+
+* Módulo: Manutenção
+* Escopo:
+
+  * “Manutenção Predial – Turno A”
+  * “Manutenção Elétrica – Noturno”
+
+📌 **Aqui nasce o isolamento operacional.**
+
+---
+
+## 🔹 NÍVEL 3 — TERCEIROS E ESTRUTURA OPERACIONAL
+
+Agora entra o que você construiu de diferencial.
+
+### 3.1 Ativação de Terceiros
+
+```
+Cliente
+  ↓
+Ativa submódulo de Terceiros
+  ↓
+Cadastra Empresa Terceirizada
+  ↓
+Define:
+    - Locais
+    - Zonas
+    - Visibilidade de ativos
+    - Escopos Operacionais permitidos
+```
+
+👉 O terceiro **não escolhe nada**, só opera o que foi liberado.
+
+---
+
+### 3.2 Estrutura do Terceiro
+
+```
+Empresa Terceirizada
+    ↓
+Gerente do Terceiro
+    ↓
+Cria Escopos Operacionais (ou usa os existentes do cliente)
+    ↓
+Cria Equipes vinculadas a Escopos
+    ↓
+Atribui Usuários às Equipes
+```
+
+📌 Importante:
+
+* **Equipe SEMPRE pertence a um Escopo**
+* Usuário herda acesso **via equipe**
+
+---
+
+## 🔹 NÍVEL 4 — OPERAÇÃO (ORDENS DE SERVIÇO)
+
+Aqui é o “chão de fábrica”.
+
+### 4.1 Criação da OS
+
+```
+OS é criada por:
+- Cliente
+- Sistema (plano de manutenção)
+- Terceiro (se permitido)
+
+OS contém:
+- client_id
+- module_id
+- operational_scope_id
+- executor (interno ou terceiro)
+```
+
+📌 A OS **já nasce isolada**.
+
+---
+
+### 4.2 Distribuição da OS
+
+```
+OS
+ ↓
+Atribuída a:
+   - Escopo Operacional
+   - Equipe
+   - Operador (opcional)
+```
+
+O sistema **nunca pergunta “qual módulo você acessa?”**
+Ele só pergunta:
+
+> “Esse usuário pertence a uma equipe deste escopo?”
+
+---
+
+### 4.3 Execução (Mobile)
+
+```
+Operador
+ ↓
+Sincroniza OS do seu Escopo
+ ↓
+Executa (online ou offline)
+ ↓
+Registra evidências
+ ↓
+Conclui OS
+```
+
+📌 Offline não quebra nada porque:
+
+* Escopo limita dados
+* Logs são locais e depois sincronizados
+
+---
+
+### 4.4 Pós-execução
+
+```
+OS Concluída
+   ↓
+Avaliação (Cliente / Sistema)
+   ↓
+Comentários
+   ↓
+Logs Imutáveis
+```
+
+Nada reabre fluxo.
+Tudo vira **histórico + indicador**.
+
+---
+
+## 🔹 NÍVEL 5 — INDICADORES E SLA
+
+Aqui entra inteligência de negócio.
+
+### Dashboards do Cliente
+
+Filtros:
+
+* SLA Geral
+* SLA por Módulo
+* SLA por Escopo
+* SLA por Terceiro
+
+---
+
+### Dashboards do Terceiro
+
+Filtros:
+
+* SLA Geral do Terceiro
+* SLA por Equipe
+* SLA por Escopo
+
+📌 A mesma OS alimenta **dois mundos**, sem duplicação.
+
+---
+
+## 🧠 RESUMO EM UMA LINHA (ESSENCIAL)
+
+> **Usuário não acessa módulo.
+> Usuário acessa Equipe.
+> Equipe pertence a um Escopo.
+> Escopo pertence a um Módulo.
+> OS pertence a um Escopo.**
+
+Isso é o **coração do fluxo**.
+
+---
+
+## 🧱 FLUXO EM DIAGRAMA TEXTUAL (PARA DOCUMENTAÇÃO)
+
+```
+Sistema
+ └─ Módulos
+     └─ Escopos Operacionais
+         └─ Equipes
+             └─ Usuários
+                 └─ Ordens de Serviço
+```
+
+Com Terceiros:
+
+```
+Cliente
+ └─ Terceiros
+     └─ Escopos permitidos
+         └─ Equipes
+             └─ Usuários
+                 └─ OS
+```
+
+---
+
+## 🚦 POR QUE ESSE FLUXO É ESCALÁVEL
+
+✔️ Evita permissões caóticas
+✔️ Facilita billing futuro
+✔️ Resolve mobile offline
+✔️ Simplifica SLA
+✔️ Funciona com N módulos
+✔️ Funciona com N terceiros
+✔️ Funciona com usuários em múltos escopos
+
+👉 **Esse fluxo aguenta crescimento real.**
+
+---
