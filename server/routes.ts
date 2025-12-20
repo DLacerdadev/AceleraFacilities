@@ -10288,27 +10288,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get available OSs in allowed zones (open, not assigned to another third-party)
       let availableInZones: typeof assignedWorkOrders = [];
       if (allowedZoneIds.length > 0) {
-        availableInZones = await db.select()
-          .from(workOrders)
-          .where(and(
-            inArray(workOrders.zoneId, allowedZoneIds),
-            eq(workOrders.status, 'aberta'),
-            isNull(workOrders.thirdPartyCompanyId)
-          ))
-          .orderBy(desc(workOrders.createdAt));
+        // Filter out null/undefined zone IDs and ensure non-empty array
+        const validZoneIds = allowedZoneIds.filter((id): id is string => id != null && id !== '');
+        if (validZoneIds.length > 0) {
+          availableInZones = await db.select()
+            .from(workOrders)
+            .where(and(
+              sql`${workOrders.zoneId} = ANY(${validZoneIds})`,
+              eq(workOrders.status, 'aberta'),
+              isNull(workOrders.thirdPartyCompanyId)
+            ))
+            .orderBy(desc(workOrders.createdAt));
+        }
       }
 
       // Get available OSs in allowed sites (open, not assigned to another third-party)
       let availableInSites: typeof assignedWorkOrders = [];
       if (allowedSiteIds.length > 0) {
-        availableInSites = await db.select()
-          .from(workOrders)
-          .where(and(
-            inArray(workOrders.siteId, allowedSiteIds),
-            eq(workOrders.status, 'aberta'),
-            isNull(workOrders.thirdPartyCompanyId)
-          ))
-          .orderBy(desc(workOrders.createdAt));
+        // Filter out null/undefined site IDs and ensure non-empty array
+        const validSiteIds = allowedSiteIds.filter((id): id is string => id != null && id !== '');
+        if (validSiteIds.length > 0) {
+          availableInSites = await db.select()
+            .from(workOrders)
+            .where(and(
+              sql`${workOrders.siteId} = ANY(${validSiteIds})`,
+              eq(workOrders.status, 'aberta'),
+              isNull(workOrders.thirdPartyCompanyId)
+            ))
+            .orderBy(desc(workOrders.createdAt));
+        }
       }
 
       // Combine and deduplicate results
