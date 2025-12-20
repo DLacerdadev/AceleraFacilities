@@ -10469,16 +10469,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Acesso não autorizado' });
       }
 
-      if (user.thirdPartyRole !== 'third_party_manager') {
-        return res.status(403).json({ message: 'Apenas gerentes podem criar usuários' });
-      }
-
       const { name, username, email, password, thirdPartyRole } = req.body;
 
       const roleMapping: Record<string, string> = {
         'THIRD_PARTY_TEAM_LEADER': 'third_party_team_leader',
         'THIRD_PARTY_OPERATOR': 'third_party_operator',
       };
+
+      const mappedRoleToCreate = roleMapping[thirdPartyRole] || thirdPartyRole;
+
+      // Permission check: managers can create any role, team leaders can only create operators
+      if (user.thirdPartyRole === 'third_party_manager') {
+        // Managers can create any role
+      } else if (user.thirdPartyRole === 'third_party_team_leader') {
+        // Team leaders can only create operators
+        if (mappedRoleToCreate !== 'third_party_operator') {
+          return res.status(403).json({ message: 'Líderes de equipe só podem criar operadores' });
+        }
+      } else {
+        return res.status(403).json({ message: 'Apenas gerentes e líderes de equipe podem criar usuários' });
+      }
 
       const mappedRole = roleMapping[thirdPartyRole] || thirdPartyRole;
 
