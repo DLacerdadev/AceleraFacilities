@@ -949,16 +949,23 @@ export class DatabaseStorage implements IStorage {
       };
     }
 
-    // Calculate date range based on period
+    // Calculate date range based on period (using createdAt for regular work orders)
     let dateFilter = sql`true`; // Default: no date filter
+    // For overdue work orders, filter by dueDate (when they became overdue)
+    let overdueDateFilter = sql`true`; // Default: no date filter
+    
     if (period === 'hoje') {
       dateFilter = sql`DATE(${workOrders.createdAt}) = CURRENT_DATE`;
+      overdueDateFilter = sql`DATE(${workOrders.dueDate}) = CURRENT_DATE`;
     } else if (period === 'ontem') {
       dateFilter = sql`DATE(${workOrders.createdAt}) = CURRENT_DATE - INTERVAL '1 day'`;
+      overdueDateFilter = sql`DATE(${workOrders.dueDate}) = CURRENT_DATE - INTERVAL '1 day'`;
     } else if (period === 'semana') {
       dateFilter = sql`${workOrders.createdAt} >= CURRENT_DATE - INTERVAL '7 days'`;
+      overdueDateFilter = sql`${workOrders.dueDate} >= CURRENT_DATE - INTERVAL '7 days'`;
     } else if (period === 'mes') {
       dateFilter = sql`${workOrders.createdAt} >= CURRENT_DATE - INTERVAL '30 days'`;
+      overdueDateFilter = sql`${workOrders.dueDate} >= CURRENT_DATE - INTERVAL '30 days'`;
     }
     // If period is 'total' or 'todos', no date filter
 
@@ -985,14 +992,14 @@ export class DatabaseStorage implements IStorage {
       ));
 
     // Calculate overdue work orders: work orders with status = 'vencida'
-    // Apply same dateFilter as other metrics for consistency with period filter
+    // Use overdueDateFilter (based on dueDate) instead of dateFilter (based on createdAt)
     const [overdueWO] = await db.select({ count: count() })
       .from(workOrders)
       .where(and(
         inArray(workOrders.zoneId, zoneIds),
         moduleFilter,
         eq(workOrders.status, 'vencida'),
-        dateFilter
+        overdueDateFilter
       ));
 
     // Get users for customer sites
