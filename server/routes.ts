@@ -30,7 +30,7 @@ import { nanoid } from "nanoid";
 import { z } from "zod";
 import crypto from "crypto";
 import { db } from "./db";
-import { eq, and, ne, gte, desc, asc, inArray, sql, type SQL } from "drizzle-orm";
+import { eq, and, ne, gte, desc, asc, inArray, sql, type SQL, or, isNull } from "drizzle-orm";
 import { 
   workOrders, zones, equipment, services, checklistTemplates, sites,
   workOrderExecutionLogs, workOrderAttachments,
