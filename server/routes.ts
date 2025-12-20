@@ -11062,7 +11062,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!scope) {
           return res.status(400).json({ message: 'Escopo operacional não encontrado' });
         }
-        if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+        // Verificar se o escopo está atribuído à empresa terceirizada
+        const thirdPartyCompany = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
+        const allowedScopes = thirdPartyCompany?.allowedOperationalScopes || [];
+        if (!allowedScopes.includes(operationalScopeId)) {
           return res.status(403).json({ message: 'Escopo operacional não pertence a esta empresa' });
         }
       }
@@ -11125,7 +11128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!scope) {
             return res.status(400).json({ message: 'Escopo operacional não encontrado' });
           }
-          if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
+          // Verificar se o escopo está atribuído à empresa terceirizada
+          const thirdPartyCompany = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
+          const allowedScopes = thirdPartyCompany?.allowedOperationalScopes || [];
+          if (!allowedScopes.includes(operationalScopeId)) {
             return res.status(403).json({ message: 'Escopo operacional não pertence a esta empresa' });
           }
           updates.operationalScopeId = operationalScopeId;
