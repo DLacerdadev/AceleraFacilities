@@ -401,20 +401,22 @@ function Router() {
     return <SupplierRouter />;
   }
 
-  // Se é usuário terceirizado com role de operador, mostrar interface móvel para execução de O.S.
-  const thirdPartyRole = (user as any).thirdPartyRole?.toLowerCase();
-  const isThirdPartyOperator = thirdPartyRole === 'third_party_operator' || 
-                               thirdPartyRole === 'third-party-operator' ||
-                               user.role === 'operador';
+  // Se é usuário terceirizado, determinar rota baseado no thirdPartyRole
+  const thirdPartyRole = (user as any).thirdPartyRole?.toUpperCase();
+  const isThirdPartyUser = user.userType === 'third_party_user' || user.thirdPartyCompanyId;
   
-  console.log('[ROUTER] User thirdPartyRole:', thirdPartyRole, 'role:', user.role, 'isThirdPartyOperator:', isThirdPartyOperator);
+  console.log('[ROUTER] User thirdPartyRole:', thirdPartyRole, 'role:', user.role, 'isThirdPartyUser:', isThirdPartyUser);
   
-  if ((user.userType === 'third_party_user' || user.thirdPartyCompanyId) && isThirdPartyOperator) {
-    return <MobileRouter />;
-  }
-
-  // Se é usuário terceirizado (gerente ou líder), mostrar portal de terceiros
-  if (user.userType === 'third_party_user' || user.thirdPartyCompanyId) {
+  if (isThirdPartyUser) {
+    // Para usuários de terceiros, verificar APENAS o thirdPartyRole (não o role genérico)
+    const isThirdPartyOperator = thirdPartyRole === 'THIRD_PARTY_OPERATOR';
+    
+    if (isThirdPartyOperator) {
+      // Operador de terceiros vai para interface móvel
+      return <MobileRouter />;
+    }
+    
+    // Gerente ou líder de equipe de terceiros vai para portal de terceiros
     return <ThirdPartyRouter />;
   }
 
