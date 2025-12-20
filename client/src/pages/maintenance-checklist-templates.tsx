@@ -706,44 +706,6 @@ export default function MaintenanceChecklistTemplates({ customerId }: Maintenanc
                         </div>
                       </div>
 
-                      {/* Campo de Peça Associada */}
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-2">
-                          <Package className="w-4 h-4" style={{ color: 'var(--module-primary)' }} />
-                          Peça Associada (consumo na execução)
-                        </Label>
-                        <Select 
-                          value={newItem.partId || "none"} 
-                          onValueChange={(value) => setNewItem(prev => ({ 
-                            ...prev, 
-                            partId: value === "none" ? undefined : value
-                          }))}
-                        >
-                          <SelectTrigger data-testid="select-item-part">
-                            <SelectValue placeholder="Selecione uma peça (opcional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Nenhuma peça</SelectItem>
-                            {(parts as Part[]).map((part) => (
-                              <SelectItem key={part.id} value={part.id}>
-                                <span className="flex items-center gap-2">
-                                  <span>{part.name}</span>
-                                  {part.partNumber && (
-                                    <span className="text-xs text-muted-foreground">({part.partNumber})</span>
-                                  )}
-                                  <span className="text-xs" style={{ color: parseFloat(part.currentQuantity) <= parseFloat(part.minimumQuantity) ? 'red' : 'green' }}>
-                                    Estoque: {part.currentQuantity} {part.unit}
-                                  </span>
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                          Se selecionada, esta peça será sugerida para consumo quando este item for executado na O.S.
-                        </p>
-                      </div>
-
                       {/* Configurações avançadas */}
                       {newItem.type && (
                         <Card className="bg-slate-50">
