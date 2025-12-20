@@ -1660,6 +1660,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Verificar se usuário de terceiro tem acesso à zona do QR code
+      if (user.thirdPartyCompanyId && resolved.qrPoint.zoneId) {
+        const thirdPartyCompany = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
+        const allowedZones = thirdPartyCompany?.allowedZones || [];
+        
+        if (allowedZones.length > 0 && !allowedZones.includes(resolved.qrPoint.zoneId)) {
+          console.warn(`[QR ACCESS DENIED] Third-party user ${user.id} from company ${user.thirdPartyCompanyId} tried to access zone ${resolved.qrPoint.zoneId} but only has access to: ${allowedZones.join(', ')}`);
+          return res.status(403).json({ 
+            error: 'Acesso negado',
+            message: 'Sua empresa não tem permissão para acessar esta zona.'
+          });
+        }
+      }
+
       // Disable caching for dynamic QR resolution
       res.set({
         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
@@ -1710,6 +1724,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: 'Acesso negado',
           message: 'Você não tem permissão para acessar QR codes deste cliente.'
         });
+      }
+
+      // Verificar se usuário de terceiro tem acesso à zona do QR code
+      if (user.thirdPartyCompanyId && resolved.qrPoint.zoneId) {
+        const thirdPartyCompany = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
+        const allowedZones = thirdPartyCompany?.allowedZones || [];
+        
+        if (allowedZones.length > 0 && !allowedZones.includes(resolved.qrPoint.zoneId)) {
+          console.warn(`[QR ACCESS DENIED] Third-party user ${user.id} from company ${user.thirdPartyCompanyId} tried to access zone ${resolved.qrPoint.zoneId} but only has access to: ${allowedZones.join(', ')}`);
+          return res.status(403).json({ 
+            error: 'Acesso negado',
+            message: 'Sua empresa não tem permissão para acessar esta zona.'
+          });
+        }
       }
 
       res.json(resolved);
