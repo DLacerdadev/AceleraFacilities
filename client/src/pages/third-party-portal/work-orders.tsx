@@ -148,8 +148,47 @@ export default function ThirdPartyWorkOrders() {
     }
   };
 
-  const activeWorkOrders = workOrders.filter(wo => wo.status !== 'concluida' && wo.status !== 'cancelada');
-  const completedWorkOrders = workOrders.filter(wo => wo.status === 'concluida');
+  // Função para ordenar por prioridade de status e depois por data (mais antiga primeiro)
+  const getStatusPriority = (status: string): number => {
+    switch (status) {
+      case 'vencida':
+      case 'atrasada':
+        return 1; // Atrasadas primeiro
+      case 'aberta':
+        return 2; // Abertas
+      case 'pausada':
+        return 3; // Pausadas
+      case 'concluida':
+        return 4; // Concluídas por último
+      case 'cancelada':
+        return 5; // Canceladas no final
+      default:
+        return 3;
+    }
+  };
+
+  const sortWorkOrders = (orders: typeof workOrders) => {
+    return [...orders].sort((a, b) => {
+      const statusPriorityA = getStatusPriority(a.status);
+      const statusPriorityB = getStatusPriority(b.status);
+      
+      if (statusPriorityA !== statusPriorityB) {
+        return statusPriorityA - statusPriorityB;
+      }
+      
+      const dateA = a.scheduledDate ? new Date(a.scheduledDate) : a.createdAt ? new Date(a.createdAt) : null;
+      const dateB = b.scheduledDate ? new Date(b.scheduledDate) : b.createdAt ? new Date(b.createdAt) : null;
+      
+      if (dateA && dateB) {
+        return dateA.getTime() - dateB.getTime();
+      }
+      
+      return 0;
+    });
+  };
+
+  const activeWorkOrders = sortWorkOrders(workOrders.filter(wo => wo.status !== 'concluida' && wo.status !== 'cancelada'));
+  const completedWorkOrders = sortWorkOrders(workOrders.filter(wo => wo.status === 'concluida'));
 
   if (loadingWorkOrders) {
     return (

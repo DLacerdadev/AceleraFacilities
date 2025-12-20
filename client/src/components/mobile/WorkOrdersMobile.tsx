@@ -153,13 +153,52 @@ export default function WorkOrdersMobile({ customerId }: WorkOrdersMobileProps) 
     toast({ title: "Atualizado!" });
   };
 
-  const filteredWorkOrders = workOrders.filter((wo: any) => {
-    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(wo.status);
-    const matchesZone = zoneFilter.length === 0 || zoneFilter.includes(wo.zoneId);
-    const matchesSearch = wo.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         wo.number?.toString().includes(searchTerm);
-    return matchesStatus && matchesZone && matchesSearch;
-  });
+  // Função para ordenar por prioridade de status e depois por data (mais antiga primeiro)
+  const getStatusPriority = (status: string): number => {
+    switch (status) {
+      case 'vencida':
+      case 'atrasada':
+        return 1; // Atrasadas primeiro
+      case 'aberta':
+        return 2; // Abertas
+      case 'pausada':
+        return 3; // Pausadas
+      case 'concluida':
+        return 4; // Concluídas por último
+      case 'cancelada':
+        return 5; // Canceladas no final
+      default:
+        return 3;
+    }
+  };
+
+  const filteredWorkOrders = workOrders
+    .filter((wo: any) => {
+      const matchesStatus = statusFilter.length === 0 || statusFilter.includes(wo.status);
+      const matchesZone = zoneFilter.length === 0 || zoneFilter.includes(wo.zoneId);
+      const matchesSearch = wo.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           wo.number?.toString().includes(searchTerm);
+      return matchesStatus && matchesZone && matchesSearch;
+    })
+    .sort((a: any, b: any) => {
+      // Primeiro ordena por prioridade de status
+      const statusPriorityA = getStatusPriority(a.status);
+      const statusPriorityB = getStatusPriority(b.status);
+      
+      if (statusPriorityA !== statusPriorityB) {
+        return statusPriorityA - statusPriorityB;
+      }
+      
+      // Se mesmo status, ordena por data (mais antiga primeiro - crescente)
+      const dateA = parseLocalDate(a.scheduledDate || a.createdAt);
+      const dateB = parseLocalDate(b.scheduledDate || b.createdAt);
+      
+      if (dateA && dateB) {
+        return dateA.getTime() - dateB.getTime();
+      }
+      
+      return 0;
+    });
 
   // Usar statusCounts da API para contagens precisas (totais reais, não limitados pela paginação)
   const totalAbertas = statusCounts?.abertas || workOrders.filter((wo: any) => 

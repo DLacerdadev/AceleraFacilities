@@ -312,25 +312,64 @@ export default function WorkOrders() {
     }
   };
 
+  // Função para ordenar por prioridade de status e depois por data (mais antiga primeiro)
+  const getStatusPriority = (status: string): number => {
+    switch (status) {
+      case 'vencida':
+      case 'atrasada':
+        return 1; // Atrasadas primeiro
+      case 'aberta':
+        return 2; // Abertas
+      case 'pausada':
+        return 3; // Pausadas
+      case 'concluida':
+        return 4; // Concluídas por último
+      case 'cancelada':
+        return 5; // Canceladas no final
+      default:
+        return 3;
+    }
+  };
+
   // Os filtros (status, zona, tipo, busca) agora são aplicados no BACKEND
   // Apenas o filtro por período ainda é aplicado no frontend
-  const filteredWorkOrders = (workOrders || []).filter((wo: any) => {
-    // Filtro por período (data agendada) - ainda no frontend
-    if (startDate && wo.scheduledDate) {
-      const woDate = new Date(wo.scheduledDate);
-      const filterStart = new Date(startDate);
-      if (woDate < filterStart) return false;
-    }
-    
-    if (endDate && wo.scheduledDate) {
-      const woDate = new Date(wo.scheduledDate);
-      const filterEnd = new Date(endDate);
-      filterEnd.setHours(23, 59, 59, 999);
-      if (woDate > filterEnd) return false;
-    }
-    
-    return true;
-  });
+  const filteredWorkOrders = (workOrders || [])
+    .filter((wo: any) => {
+      // Filtro por período (data agendada) - ainda no frontend
+      if (startDate && wo.scheduledDate) {
+        const woDate = new Date(wo.scheduledDate);
+        const filterStart = new Date(startDate);
+        if (woDate < filterStart) return false;
+      }
+      
+      if (endDate && wo.scheduledDate) {
+        const woDate = new Date(wo.scheduledDate);
+        const filterEnd = new Date(endDate);
+        filterEnd.setHours(23, 59, 59, 999);
+        if (woDate > filterEnd) return false;
+      }
+      
+      return true;
+    })
+    .sort((a: any, b: any) => {
+      // Primeiro ordena por prioridade de status
+      const statusPriorityA = getStatusPriority(a.status);
+      const statusPriorityB = getStatusPriority(b.status);
+      
+      if (statusPriorityA !== statusPriorityB) {
+        return statusPriorityA - statusPriorityB;
+      }
+      
+      // Se mesmo status, ordena por data (mais antiga primeiro - crescente)
+      const dateA = a.scheduledDate ? new Date(a.scheduledDate) : a.createdAt ? new Date(a.createdAt) : null;
+      const dateB = b.scheduledDate ? new Date(b.scheduledDate) : b.createdAt ? new Date(b.createdAt) : null;
+      
+      if (dateA && dateB) {
+        return dateA.getTime() - dateB.getTime();
+      }
+      
+      return 0;
+    });
 
   // Usar contadores do backend (já considera TODOS os registros, não apenas a página atual)
   const totalAbertas = statusCounts.abertas;
