@@ -156,3 +156,10 @@
 [x] 459. Verified: Third-party users with only 1 module now auto-select without showing selection page
 [x] 460. Added console logging for debugging module auto-selection flow
 [x] 461. ✅ THIRD-PARTY MODULE AUTO-SELECTION WORKING - Single module users bypass selection page
+
+## THIRD-PARTY PORTAL STATS ERROR FIX (19/12/2025 12:11 AM)
+[x] 462. Identified ReferenceError: users table not imported in server/routes.ts
+[x] 463. Added missing `users` import to schema imports (line 41)
+[x] 464. Fixed /api/third-party-portal/stats endpoint
+[x] 465. Server restarted - All errors resolved
+[x] 466. ✅ THIRD-PARTY PORTAL STATS ENDPOINT NOW WORKING - No more ReferenceError

@@ -34,7 +34,8 @@ import { eq, and, ne, gte, desc, asc, inArray, sql, type SQL } from "drizzle-orm
 import { 
   workOrders, zones, equipment, services, checklistTemplates, sites,
   workOrderExecutionLogs, workOrderAttachments,
-  thirdPartyCompanies, thirdPartyTeams, thirdPartyWorkOrderProposals, thirdPartyPlanProposals, thirdPartyChecklists
+  thirdPartyCompanies, thirdPartyTeams, thirdPartyWorkOrderProposals, thirdPartyPlanProposals, thirdPartyChecklists,
+  users
 } from "@shared/schema";
 import multer from "multer";
 import {
