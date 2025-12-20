@@ -62,10 +62,11 @@ export default function ThirdPartyOperationalScopes() {
     enabled: !!user?.thirdPartyCompanyId,
   });
 
-  const { data: modules = [] } = useQuery<any[]>({
+  const { data: modulesData } = useQuery<{ allowedModules: string[] }>({
     queryKey: ['/api/third-party-portal/my-modules'],
     enabled: !!user?.thirdPartyCompanyId,
   });
+  const modules = modulesData?.allowedModules || [];
 
   const form = useForm<ScopeFormData>({
     resolver: zodResolver(scopeSchema),
