@@ -257,6 +257,7 @@ export const thirdPartyPlanProposals = pgTable("third_party_plan_proposals", {
   zoneId: varchar("zone_id"),
   zoneIds: text("zone_ids").array().default(sql`ARRAY[]::text[]`), // multi-select zones
   equipmentId: varchar("equipment_id"),
+  equipmentIds: text("equipment_ids").array().default(sql`ARRAY[]::text[]`), // multi-select equipment
   frequency: varchar("frequency"), // diario, semanal, mensal, etc.
   weekDays: text("week_days").array().default(sql`ARRAY[]::text[]`),
   estimatedDuration: integer("estimated_duration"), // em minutos

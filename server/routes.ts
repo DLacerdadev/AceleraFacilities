@@ -11382,27 +11382,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Proposta já foi processada' });
       }
 
-      // Update the proposal status
+      // Get customer to find companyId
+      const customer = await storage.getCustomer(customerId);
+      if (!customer) {
+        return res.status(404).json({ message: 'Cliente não encontrado' });
+      }
+
+      const proposalData = proposal[0];
+      const activityId = `act-${nanoid()}`;
+
+      // Map proposal frequency to activity frequency
+      const frequencyMap: { [key: string]: string } = {
+        'daily': 'diaria',
+        'weekly': 'semanal',
+        'biweekly': 'quinzenal',
+        'monthly': 'mensal',
+        'quarterly': 'trimestral',
+        'semiannual': 'semestral',
+        'annual': 'anual'
+      };
+      const activityFrequency = frequencyMap[proposalData.frequency || 'monthly'] || 'mensal';
+
+      // Map proposal planType to activity type
+      const planTypeMap: { [key: string]: string } = {
+        'preventive': 'preventiva',
+        'corrective': 'corretiva',
+        'predictive': 'preditiva',
+        'cleaning': 'limpeza',
+        'deep_cleaning': 'limpeza_profunda',
+        'sanitization': 'sanitizacao'
+      };
+      const activityType = planTypeMap[proposalData.planType] || 'preventiva';
+
+      // Get siteIds and zoneIds from proposal
+      const siteIds = proposalData.siteIds && proposalData.siteIds.length > 0 
+        ? proposalData.siteIds 
+        : (proposalData.siteId ? [proposalData.siteId] : []);
+      const zoneIds = proposalData.zoneIds && proposalData.zoneIds.length > 0 
+        ? proposalData.zoneIds 
+        : (proposalData.zoneId ? [proposalData.zoneId] : []);
+      const equipmentIds = (proposalData as any).equipmentIds && (proposalData as any).equipmentIds.length > 0
+        ? (proposalData as any).equipmentIds
+        : (proposalData.equipmentId ? [proposalData.equipmentId] : []);
+
+      // Create frequency config from weekDays
+      let frequencyConfig = null;
+      if (proposalData.weekDays && proposalData.weekDays.length > 0) {
+        frequencyConfig = { diasSemana: proposalData.weekDays.map((d: string) => parseInt(d)) };
+      }
+
+      // Calculate estimated hours from minutes
+      const estimatedHours = proposalData.estimatedDuration 
+        ? (proposalData.estimatedDuration / 60).toFixed(2) 
+        : null;
+
+      const today = new Date();
+      const startDate = today.toISOString().split('T')[0];
+
+      let createdActivityId = null;
+
+      if (proposalData.module === 'maintenance') {
+        // Create maintenance activity
+        const activityData = {
+          id: activityId,
+          companyId: customer.companyId,
+          customerId: customerId,
+          siteIds: siteIds,
+          zoneIds: zoneIds,
+          equipmentIds: equipmentIds.length > 0 ? equipmentIds : null,
+          name: proposalData.title,
+          description: proposalData.description || `Plano criado a partir de proposta de terceiro`,
+          type: activityType,
+          frequency: activityFrequency as any,
+          frequencyConfig: frequencyConfig,
+          module: 'maintenance' as any,
+          checklistTemplateId: null,
+          slaConfigId: null,
+          assignedUserId: null,
+          estimatedHours: estimatedHours,
+          slaMinutes: null,
+          startDate: startDate,
+          isActive: true,
+        };
+
+        await storage.createMaintenanceActivity(activityData as any);
+        createdActivityId = activityId;
+
+        // Generate work orders for the current month
+        if (equipmentIds.length > 0) {
+          const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+          const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+          
+          try {
+            await storage.generateMaintenanceWorkOrders(
+              customer.companyId,
+              startOfMonth,
+              endOfMonth,
+              activityId
+            );
+            console.log(`[THIRD-PARTY APPROVED] Generated maintenance work orders for activity ${activityId}`);
+          } catch (genError) {
+            console.error(`[THIRD-PARTY APPROVED] Error generating maintenance work orders:`, genError);
+          }
+        }
+      } else {
+        // Create cleaning activity
+        const cleaningActivityData = {
+          id: activityId,
+          companyId: customer.companyId,
+          customerId: customerId,
+          serviceId: null,
+          siteId: siteIds[0] || null,
+          zoneId: zoneIds[0] || null,
+          siteIds: siteIds,
+          zoneIds: zoneIds,
+          name: proposalData.title,
+          description: proposalData.description || `Plano criado a partir de proposta de terceiro`,
+          frequency: activityFrequency as any,
+          frequencyConfig: frequencyConfig,
+          module: 'clean' as any,
+          checklistTemplateId: null,
+          slaConfigId: null,
+          isActive: true,
+          startDate: startDate,
+        };
+
+        await storage.createCleaningActivity(cleaningActivityData as any);
+        createdActivityId = activityId;
+
+        // Generate work orders for the current month
+        if (zoneIds.length > 0) {
+          const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+          const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+          
+          try {
+            await storage.generateScheduledWorkOrders(
+              customer.companyId,
+              startOfMonth,
+              endOfMonth
+            );
+            console.log(`[THIRD-PARTY APPROVED] Generated cleaning work orders for activity ${activityId}`);
+          } catch (genError) {
+            console.error(`[THIRD-PARTY APPROVED] Error generating cleaning work orders:`, genError);
+          }
+        }
+      }
+
+      // Update the proposal status with the created plan ID
       await db.update(thirdPartyPlanProposals)
         .set({
           status: 'aprovado',
+          planId: createdActivityId,
           reviewedBy: user.id,
           reviewedAt: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(thirdPartyPlanProposals.id, proposalId));
 
-      // Here you would create the actual maintenance plan or cleaning schedule
-      // based on the proposal data. For now, we just approve the proposal.
-
       broadcast({
         type: 'update',
         resource: 'third_party_plan_proposals',
-        data: { id: proposalId, status: 'aprovado' },
+        data: { id: proposalId, status: 'aprovado', planId: createdActivityId },
         customerId: customerId
       });
 
-      res.json({ success: true, message: 'Proposta de plano aprovada' });
+      // Also broadcast the new activity creation
+      broadcast({
+        type: 'create',
+        resource: proposalData.module === 'maintenance' ? 'maintenance_activities' : 'cleaning_activities',
+        data: { id: createdActivityId },
+        customerId: customerId
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Proposta de plano aprovada e atividade criada', 
+        activityId: createdActivityId 
+      });
     } catch (error) {
       console.error('Error approving plan proposal:', error);
       res.status(500).json({ message: 'Erro ao aprovar proposta de plano' });
