@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Edit2, Trash2, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, AlertCircle, Type, Hash, Camera, CheckSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -18,6 +19,17 @@ interface ChecklistItem {
   label: string;
   required?: boolean;
   description?: string;
+  options?: string[];
+  validation?: {
+    minLength?: number;
+    maxLength?: number;
+    minValue?: number;
+    maxValue?: number;
+    photoMinCount?: number;
+    photoMaxCount?: number;
+    photoRequired?: boolean;
+    minChecked?: number;
+  };
 }
 
 interface Checklist {
@@ -27,8 +39,24 @@ interface Checklist {
   module: 'maintenance' | 'clean';
   items: ChecklistItem[];
   isActive: boolean;
-  createdAt?: string;
 }
+
+const getTypeLabel = (type: string) => ({
+  'text': 'Texto',
+  'number': 'Número',
+  'photo': 'Foto',
+  'checkbox': 'Checkbox'
+}[type] || type);
+
+const getTypeIcon = (type: string) => {
+  switch (type) {
+    case 'text': return <Type className="w-4 h-4" />;
+    case 'number': return <Hash className="w-4 h-4" />;
+    case 'photo': return <Camera className="w-4 h-4" />;
+    case 'checkbox': return <CheckSquare className="w-4 h-4" />;
+    default: return null;
+  }
+};
 
 export default function ThirdPartyChecklists() {
   const { toast } = useToast();
@@ -39,7 +67,14 @@ export default function ThirdPartyChecklists() {
   // Form states
   const [formData, setFormData] = useState({ name: '', description: '', module: 'maintenance' as const });
   const [items, setItems] = useState<ChecklistItem[]>([]);
-  const [newItem, setNewItem] = useState({ type: 'text' as const, label: '', description: '' });
+  const [newItem, setNewItem] = useState<Partial<ChecklistItem>>({
+    type: 'text',
+    label: '',
+    description: '',
+    required: false,
+    options: [],
+    validation: {}
+  });
 
   // Queries
   const { data: modules } = useQuery<{ allowedModules: string[] }>({
@@ -83,16 +118,25 @@ export default function ThirdPartyChecklists() {
   const resetForm = () => {
     setFormData({ name: '', description: '', module: 'maintenance' });
     setItems([]);
-    setNewItem({ type: 'text', label: '', description: '' });
+    setNewItem({ type: 'text', label: '', description: '', required: false, options: [], validation: {} });
     setCreateOpen(false);
     setEditOpen(false);
     setEditingId(null);
   };
 
   const addItem = () => {
-    if (!newItem.label.trim()) return;
-    setItems([...items, { ...newItem, id: `item-${Date.now()}`, label: newItem.label.trim() }]);
-    setNewItem({ type: 'text', label: '', description: '' });
+    if (!newItem.label?.trim()) return;
+    const item: ChecklistItem = {
+      id: `item-${Date.now()}`,
+      type: (newItem.type || 'text') as any,
+      label: newItem.label.trim(),
+      description: newItem.description,
+      required: newItem.required,
+      options: newItem.options,
+      validation: newItem.validation,
+    };
+    setItems([...items, item]);
+    setNewItem({ type: 'text', label: '', description: '', required: false, options: [], validation: {} });
   };
 
   const removeItem = (id: string) => {
@@ -131,9 +175,6 @@ export default function ThirdPartyChecklists() {
         <CardContent className="flex flex-col items-center py-8">
           <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium">Sem Acesso</h3>
-          <p className="text-muted-foreground text-center text-sm mt-2">
-            Sua empresa não possui permissão para criar checklists.
-          </p>
         </CardContent>
       </Card>
     );
@@ -153,7 +194,7 @@ export default function ThirdPartyChecklists() {
               Novo Checklist
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Novo Checklist</DialogTitle>
             </DialogHeader>
@@ -187,15 +228,17 @@ export default function ThirdPartyChecklists() {
                 </Select>
               </div>
 
-              {/* Item Form */}
-              <Card className="p-4">
-                <h3 className="font-semibold mb-4">Adicionar Item</h3>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label className="text-sm">Tipo</Label>
+              {/* Adicionar Item */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Adicionar Item ao Checklist</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
                       <Select value={newItem.type} onValueChange={(value) => setNewItem({ ...newItem, type: value as any })}>
-                        <SelectTrigger className="h-9">
+                        <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -206,30 +249,226 @@ export default function ThirdPartyChecklists() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label className="text-sm">Rótulo *</Label>
+                    <div className="space-y-2">
+                      <Label>Rótulo *</Label>
                       <Input
-                        className="h-9"
-                        placeholder="Ex: Pressão"
+                        placeholder="Ex: Verificar pressão"
                         value={newItem.label}
                         onChange={(e) => setNewItem({ ...newItem, label: e.target.value })}
                       />
                     </div>
-                    <div>
-                      <Label className="text-sm">Descrição</Label>
+                    <div className="space-y-2">
+                      <Label>Observações</Label>
                       <Input
-                        className="h-9"
-                        placeholder="Opcional..."
+                        placeholder="Instruções opcionais..."
                         value={newItem.description}
                         onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
                       />
                     </div>
                   </div>
-                  <Button type="button" variant="outline" size="sm" onClick={addItem} className="w-full">
-                    <Plus className="w-3 h-3 mr-2" />
+
+                  {/* Configurações avançadas */}
+                  {newItem.type && (
+                    <Card className="bg-slate-50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm">Configurações - {getTypeLabel(newItem.type)}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {/* Texto */}
+                        {newItem.type === 'text' && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Mínimo de caracteres</Label>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 10"
+                                value={newItem.validation?.minLength || ""}
+                                onChange={(e) => setNewItem(prev => ({
+                                  ...prev,
+                                  validation: { ...prev.validation, minLength: e.target.value ? parseInt(e.target.value) : undefined }
+                                }))}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Máximo de caracteres</Label>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 500"
+                                value={newItem.validation?.maxLength || ""}
+                                onChange={(e) => setNewItem(prev => ({
+                                  ...prev,
+                                  validation: { ...prev.validation, maxLength: e.target.value ? parseInt(e.target.value) : undefined }
+                                }))}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Número */}
+                        {newItem.type === 'number' && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Valor mínimo</Label>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 0"
+                                value={newItem.validation?.minValue || ""}
+                                onChange={(e) => setNewItem(prev => ({
+                                  ...prev,
+                                  validation: { ...prev.validation, minValue: e.target.value ? parseInt(e.target.value) : undefined }
+                                }))}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Valor máximo</Label>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 100"
+                                value={newItem.validation?.maxValue || ""}
+                                onChange={(e) => setNewItem(prev => ({
+                                  ...prev,
+                                  validation: { ...prev.validation, maxValue: e.target.value ? parseInt(e.target.value) : undefined }
+                                }))}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Foto */}
+                        {newItem.type === 'photo' && (
+                          <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Mínimo de fotos</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Ex: 1"
+                                  value={newItem.validation?.photoMinCount || ""}
+                                  onChange={(e) => setNewItem(prev => ({
+                                    ...prev,
+                                    validation: { ...prev.validation, photoMinCount: e.target.value ? parseInt(e.target.value) : undefined }
+                                  }))}
+                                  className="h-8 text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Máximo de fotos</Label>
+                                <Input
+                                  type="number"
+                                  placeholder="Ex: 5"
+                                  value={newItem.validation?.photoMaxCount || ""}
+                                  onChange={(e) => setNewItem(prev => ({
+                                    ...prev,
+                                    validation: { ...prev.validation, photoMaxCount: e.target.value ? parseInt(e.target.value) : undefined }
+                                  }))}
+                                  className="h-8 text-xs"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={newItem.validation?.photoRequired || false}
+                                onCheckedChange={(checked) => setNewItem(prev => ({
+                                  ...prev,
+                                  validation: { ...prev.validation, photoRequired: checked }
+                                }))}
+                              />
+                              <Label className="text-xs">Foto obrigatória</Label>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Checkbox */}
+                        {newItem.type === 'checkbox' && (
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <Label className="text-xs">Opções do Checkbox</Label>
+                              <div className="space-y-2">
+                                {(newItem.options || []).map((option, index) => (
+                                  <div key={index} className="flex gap-2">
+                                    <Input
+                                      value={option}
+                                      onChange={(e) => {
+                                        const newOptions = [...(newItem.options || [])];
+                                        newOptions[index] = e.target.value;
+                                        setNewItem(prev => ({ ...prev, options: newOptions }));
+                                      }}
+                                      className="h-8 text-xs flex-1"
+                                      placeholder={`Opção ${index + 1}`}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        const newOptions = (newItem.options || []).filter((_, i) => i !== index);
+                                        setNewItem(prev => ({ ...prev, options: newOptions }));
+                                      }}
+                                      className="h-8"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setNewItem(prev => ({
+                                      ...prev,
+                                      options: [...(prev.options || []), '']
+                                    }));
+                                  }}
+                                  className="h-8 text-xs"
+                                >
+                                  <Plus className="w-3 h-3 mr-1" />
+                                  Adicionar Opção
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Mínimo de checks obrigatórios</Label>
+                              <Input
+                                type="number"
+                                placeholder="Ex: 1"
+                                value={newItem.validation?.minChecked || ""}
+                                onChange={(e) => setNewItem(prev => ({
+                                  ...prev,
+                                  validation: { ...prev.validation, minChecked: e.target.value ? parseInt(e.target.value) : undefined }
+                                }))}
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Campo obrigatório */}
+                        <div className="flex items-center gap-2 pt-2">
+                          <Switch
+                            checked={newItem.required || false}
+                            onCheckedChange={(checked) => setNewItem(prev => ({ ...prev, required: checked }))}
+                          />
+                          <Label className="text-xs">Campo obrigatório</Label>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <Button
+                    type="button"
+                    onClick={addItem}
+                    disabled={!newItem.label?.trim()}
+                    className="w-full"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
                     Adicionar Item
                   </Button>
-                </div>
+                </CardContent>
               </Card>
 
               {/* Items List */}
@@ -237,12 +476,18 @@ export default function ThirdPartyChecklists() {
                 <Label>Itens ({items.length})</Label>
                 <div className="space-y-2 mt-2">
                   {items.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-2 border rounded">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{item.label}</p>
-                        {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                    <div key={item.id} className="flex items-center justify-between p-3 border rounded">
+                      <div className="flex items-center gap-3 flex-1">
+                        <span className="text-muted-foreground">{getTypeIcon(item.type)}</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{item.label}</p>
+                            <Badge variant="outline" className="text-xs">{getTypeLabel(item.type)}</Badge>
+                            {item.required && <Badge variant="secondary" className="text-xs">Obrigatório</Badge>}
+                          </div>
+                          {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                        </div>
                       </div>
-                      <Badge variant="outline">{item.type}</Badge>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeItem(item.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -291,12 +536,18 @@ export default function ThirdPartyChecklists() {
               <Label>Itens ({items.length})</Label>
               <div className="space-y-2 mt-2">
                 {items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-2 border rounded">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{item.label}</p>
-                      {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                  <div key={item.id} className="flex items-center justify-between p-3 border rounded">
+                    <div className="flex items-center gap-3 flex-1">
+                      <span className="text-muted-foreground">{getTypeIcon(item.type)}</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{item.label}</p>
+                          <Badge variant="outline" className="text-xs">{getTypeLabel(item.type)}</Badge>
+                          {item.required && <Badge variant="secondary" className="text-xs">Obrigatório</Badge>}
+                        </div>
+                        {item.description && <p className="text-xs text-muted-foreground">{item.description}</p>}
+                      </div>
                     </div>
-                    <Badge variant="outline">{item.type}</Badge>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeItem(item.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -329,8 +580,8 @@ export default function ThirdPartyChecklists() {
             {checklists.map((checklist) => (
               <Card key={checklist.id}>
                 <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
                       <CardTitle className="text-base">{checklist.name}</CardTitle>
                       {checklist.description && <p className="text-xs text-muted-foreground mt-1">{checklist.description}</p>}
                     </div>
@@ -340,20 +591,11 @@ export default function ThirdPartyChecklists() {
                 <CardContent>
                   <p className="text-sm text-muted-foreground mb-4">{checklist.items?.length || 0} itens</p>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(checklist)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(checklist)}>
                       <Edit2 className="w-4 h-4 mr-1" />
                       Editar
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate(checklist.id)}
-                      disabled={deleteMutation.isPending}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => deleteMutation.mutate(checklist.id)} disabled={deleteMutation.isPending}>
                       {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4 mr-1" />}
                       Excluir
                     </Button>
