@@ -4881,7 +4881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/user-modules", requireAuth, async (req, res) => {
     try {
       // User is already validated by requireAuth middleware
-      const user = req.user;
+      const user = req.user as any;
       
       if (!user) {
         return res.status(401).json({ message: "Not authenticated" });
@@ -4889,11 +4889,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let modules: ('clean' | 'maintenance')[] = [];
 
-      // 🔥 CORRIGIDO: SEMPRE pegar módulos do USUÁRIO, não do cliente
-      // Isso garante que as permissões individuais sejam respeitadas
-      const fullUser = await storage.getUser(user.id);
-      if (fullUser) {
-        modules = (fullUser.modules || ['clean']) as ('clean' | 'maintenance')[];
+      // SPECIAL HANDLING FOR THIRD-PARTY USERS
+      // They should only see modules allowed by their company, not all user modules
+      if (user.userType === 'third_party_user' && user.thirdPartyCompanyId) {
+        const company = await db.select()
+          .from(thirdPartyCompanies)
+          .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
+          .limit(1);
+        
+        if (company.length > 0 && company[0].allowedModules) {
+          modules = company[0].allowedModules as ('clean' | 'maintenance')[];
+        }
+      } else {
+        // For OPUS and customer users: get modules from the user directly
+        const fullUser = await storage.getUser(user.id);
+        if (fullUser) {
+          modules = (fullUser.modules || ['clean']) as ('clean' | 'maintenance')[];
+        }
       }
       
       // SEGURANÇA: Garantir que sempre retorne pelo menos 1 módulo
@@ -4904,6 +4916,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Default to first available module
       const defaultModule = modules[0];
+      
+      console.log(`[AUTH MODULES] User: ${user.id} (${user.userType}), Modules: ${modules.join(', ')}`);
       
       res.json({ 
         modules,

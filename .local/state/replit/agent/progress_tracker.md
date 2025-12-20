@@ -163,3 +163,13 @@
 [x] 464. Fixed /api/third-party-portal/stats endpoint
 [x] 465. Server restarted - All errors resolved
 [x] 466. ✅ THIRD-PARTY PORTAL STATS ENDPOINT NOW WORKING - No more ReferenceError
+
+## THIRD-PARTY MODULE AUTO-SELECTION FIX (19/12/2025 12:21 AM)
+[x] 467. Analyzed database: Third-party company "Teste de terceiros" has allowedModules={maintenance}
+[x] 468. Found root cause: /api/auth/user-modules returned user.modules instead of company.allowedModules for third_party_user
+[x] 469. Updated /api/auth/user-modules endpoint to check user type and return proper modules:
+    - third_party_user: Returns allowedModules from thirdPartyCompanies table
+    - opus_user/customer_user: Returns modules from user record
+[x] 470. Added logging to debug module resolution per user type
+[x] 471. Server restarted with new logic
+[x] 472. ✅ THIRD-PARTY MODULE AUTO-SELECTION FIXED - Single module users will now skip selection page
