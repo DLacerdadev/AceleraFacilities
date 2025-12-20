@@ -699,22 +699,24 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="equipmentType">Tipo de Equipamento</Label>
-                          <Select value={selectedEquipmentTypeId} onValueChange={setSelectedEquipmentTypeId}>
-                            <SelectTrigger data-testid="select-equipment-type">
-                              <SelectValue placeholder="Selecione..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {equipmentTypes?.map((type) => (
-                                <SelectItem key={type.id} value={type.id}>
-                                  {type.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                      <div className={`grid ${currentModule === 'maintenance' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                        {currentModule === 'maintenance' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="equipmentType">Tipo de Equipamento</Label>
+                            <Select value={selectedEquipmentTypeId} onValueChange={setSelectedEquipmentTypeId}>
+                              <SelectTrigger data-testid="select-equipment-type">
+                                <SelectValue placeholder="Selecione..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {equipmentTypes?.map((type) => (
+                                  <SelectItem key={type.id} value={type.id}>
+                                    {type.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <Label htmlFor="unit">Unidade de Medida</Label>
                           <Select value={unit} onValueChange={setUnit}>
@@ -1552,22 +1554,24 @@ export default function PartsInventory({ customerId, companyId }: PartsInventory
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="editEquipmentType">Tipo de Equipamento</Label>
-                <Select value={selectedEquipmentTypeId} onValueChange={setSelectedEquipmentTypeId}>
-                  <SelectTrigger data-testid="select-edit-equipment-type">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {equipmentTypes?.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>
-                        {type.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className={`grid ${currentModule === 'maintenance' ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+              {currentModule === 'maintenance' && (
+                <div className="space-y-2">
+                  <Label htmlFor="editEquipmentType">Tipo de Equipamento</Label>
+                  <Select value={selectedEquipmentTypeId} onValueChange={setSelectedEquipmentTypeId}>
+                    <SelectTrigger data-testid="select-edit-equipment-type">
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {equipmentTypes?.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="editUnit">Unidade de Medida</Label>
                 <Select value={unit} onValueChange={setUnit}>
