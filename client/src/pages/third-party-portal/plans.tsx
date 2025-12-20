@@ -39,7 +39,7 @@ const planProposalSchema = z.object({
   estimatedDuration: z.number().min(1, "Duração estimada obrigatória"),
   siteIds: z.array(z.string()).min(1, "Selecione pelo menos um local"),
   zoneIds: z.array(z.string()).min(1, "Selecione pelo menos uma zona"),
-  equipmentId: z.string().optional(),
+  equipmentIds: z.array(z.string()).optional(),
   thirdPartyChecklistId: z.string().optional(),
 });
 
@@ -51,6 +51,7 @@ export default function ThirdPartyPlans() {
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [selectedSiteIds, setSelectedSiteIds] = useState<string[]>([]);
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>([]);
+  const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>([]);
 
   const { data: modulesData, isLoading: loadingModules } = useQuery<{
     allowedModules: string[];
@@ -101,7 +102,7 @@ export default function ThirdPartyPlans() {
       estimatedDuration: 30,
       siteIds: [],
       zoneIds: [],
-      equipmentId: "",
+      equipmentIds: [],
       thirdPartyChecklistId: "",
     },
   });
@@ -117,6 +118,7 @@ export default function ThirdPartyPlans() {
       setSelectedModule(null);
       setSelectedSiteIds([]);
       setSelectedZoneIds([]);
+      setSelectedEquipmentIds([]);
       form.reset();
     },
     onError: (error: any) => {
@@ -506,29 +508,36 @@ export default function ThirdPartyPlans() {
                     )}
                   />
 
-                  {selectedModule === 'maintenance' && (
+                  {selectedModule === 'maintenance' && equipment.length > 0 && (
                     <FormField
                       control={form.control}
-                      name="equipmentId"
+                      name="equipmentIds"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Equipamento (opcional)</FormLabel>
-                          <Select 
-                            onValueChange={(value) => field.onChange(value === "none" ? "" : value)} 
-                            value={field.value || "none"}
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-equipment">
-                                <SelectValue placeholder="Selecione o equipamento" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="none">Nenhum</SelectItem>
-                              {equipment.map((eq: any) => (
-                                <SelectItem key={eq.id} value={eq.id}>{eq.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Equipamentos (opcional)</FormLabel>
+                          <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto">
+                            {equipment.map((eq: any) => (
+                              <label key={eq.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded">
+                                <Checkbox
+                                  checked={selectedEquipmentIds.includes(eq.id)}
+                                  onCheckedChange={(checked) => {
+                                    const newValue = checked
+                                      ? [...selectedEquipmentIds, eq.id]
+                                      : selectedEquipmentIds.filter(id => id !== eq.id);
+                                    field.onChange(newValue);
+                                    setSelectedEquipmentIds(newValue);
+                                  }}
+                                  data-testid={`checkbox-equipment-${eq.id}`}
+                                />
+                                <span className="text-sm">{eq.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                          {selectedEquipmentIds.length > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {selectedEquipmentIds.length} equipamento(s) selecionado(s)
+                            </p>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}
