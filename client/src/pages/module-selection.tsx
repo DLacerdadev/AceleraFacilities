@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,20 +45,7 @@ export default function ModuleSelection() {
   const availableModules = modulesData?.modules || [];
   const activeCustomers = (allCustomers as Customer[]).filter(c => c.isActive);
 
-  useEffect(() => {
-    if (availableModules.length === 1) {
-      const module = availableModules[0] as 'clean' | 'maintenance';
-      handleModuleSelect(module);
-    }
-  }, [availableModules]);
-
-  useEffect(() => {
-    if (!user) {
-      navigateTo("/login");
-    }
-  }, [user]);
-
-  const handleModuleSelect = async (module: 'clean' | 'maintenance') => {
+  const handleModuleSelect = useCallback(async (module: 'clean' | 'maintenance') => {
     setIsLoading(true);
     setModule(module);
     
@@ -95,7 +82,21 @@ export default function ModuleSelection() {
     setTimeout(() => {
       navigateTo("/");
     }, 300);
-  };
+  }, [subdomainCustomer, isCustomerUser, userCustomerId, activeCustomers, setActiveClientId, navigateTo, setModule]);
+
+  useEffect(() => {
+    if (availableModules.length === 1 && !isLoading) {
+      const module = availableModules[0] as 'clean' | 'maintenance';
+      console.log(`[MODULE SELECTION] ⚡ Apenas 1 módulo disponível (${module}). Auto-selecionando...`);
+      handleModuleSelect(module);
+    }
+  }, [availableModules, isLoading, handleModuleSelect]);
+
+  useEffect(() => {
+    if (!user) {
+      navigateTo("/login");
+    }
+  }, [user]);
 
   if (isLoadingModules) {
     return (
