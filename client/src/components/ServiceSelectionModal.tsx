@@ -141,6 +141,11 @@ export default function ServiceSelectionModal({
   };
 
   const filteredWorkOrders = availableWorkOrders.filter((wo) => {
+    // Filtrar por serviço selecionado
+    if (selectedService && wo.serviceTypeId !== selectedService) {
+      return false;
+    }
+    
     if (dateFilter === 'paused') {
       return wo.status === 'pausada';
     } else if (dateFilter === 'today') {
@@ -160,7 +165,9 @@ export default function ServiceSelectionModal({
           wo_scheduledDate: wo.scheduledDate,
           scheduledDateOnly,
           todayString,
-          match
+          match,
+          serviceTypeId: wo.serviceTypeId,
+          selectedService
         });
       }
       
