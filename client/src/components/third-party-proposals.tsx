@@ -24,7 +24,9 @@ import {
   Calendar,
   Wrench,
   ClipboardList,
-  Repeat
+  Repeat,
+  Eye,
+  Info
 } from "lucide-react";
 
 interface ThirdPartyProposal {
@@ -133,6 +135,8 @@ export function ThirdPartyProposalsModal({
   const [selectedProposal, setSelectedProposal] = useState<ThirdPartyProposal | ThirdPartyPlanProposal | null>(null);
   const [proposalType, setProposalType] = useState<'wo' | 'plan'>('wo');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [detailsPlanProposal, setDetailsPlanProposal] = useState<ThirdPartyPlanProposal | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("em_espera");
   const [activeTab, setActiveTab] = useState<string>("work-orders");
@@ -532,31 +536,42 @@ export function ThirdPartyProposalsModal({
                             </div>
                           )}
                         </div>
-                        {proposal.status === "em_espera" && (
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => { setSelectedProposal(proposal); setProposalType('plan'); setShowRejectDialog(true); }}
-                              className="text-red-600 border-red-200 hover:bg-red-50"
-                              data-testid={`reject-plan-${proposal.id}`}
-                            >
-                              <X className="w-4 h-4 mr-1" />
-                              Rejeitar
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => approvePlanMutation.mutate(proposal.id)}
-                              disabled={approvePlanMutation.isPending}
-                              className={cn(theme.buttons.primary)}
-                              style={theme.buttons.primaryStyle}
-                              data-testid={`approve-plan-${proposal.id}`}
-                            >
-                              <Check className="w-4 h-4 mr-1" />
-                              {approvePlanMutation.isPending ? "Aprovando..." : "Aprovar"}
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => { setDetailsPlanProposal(proposal); setShowDetailsDialog(true); }}
+                            data-testid={`details-plan-${proposal.id}`}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Detalhes
+                          </Button>
+                          {proposal.status === "em_espera" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => { setSelectedProposal(proposal); setProposalType('plan'); setShowRejectDialog(true); }}
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                data-testid={`reject-plan-${proposal.id}`}
+                              >
+                                <X className="w-4 h-4 mr-1" />
+                                Rejeitar
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => approvePlanMutation.mutate(proposal.id)}
+                                disabled={approvePlanMutation.isPending}
+                                className={cn(theme.buttons.primary)}
+                                style={theme.buttons.primaryStyle}
+                                data-testid={`approve-plan-${proposal.id}`}
+                              >
+                                <Check className="w-4 h-4 mr-1" />
+                                {approvePlanMutation.isPending ? "Aprovando..." : "Aprovar"}
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -627,6 +642,165 @@ export function ThirdPartyProposalsModal({
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDetailsDialog} onOpenChange={(open) => {
+        setShowDetailsDialog(open);
+        if (!open) setDetailsPlanProposal(null);
+      }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="w-5 h-5" />
+              Detalhes da Proposta de Plano
+            </DialogTitle>
+            <DialogDescription>
+              Informações completas sobre a proposta de plano enviada pelo terceiro
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailsPlanProposal && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Título</Label>
+                  <p className="font-medium">{detailsPlanProposal.title}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Status</Label>
+                  <div>{getStatusBadge(detailsPlanProposal.status)}</div>
+                </div>
+              </div>
+
+              {detailsPlanProposal.description && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Descrição</Label>
+                  <p className="text-sm">{detailsPlanProposal.description}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Tipo de Plano</Label>
+                  <p className="font-medium">{getPlanTypeLabel(detailsPlanProposal.planType)}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Módulo</Label>
+                  <Badge className="bg-blue-100 text-blue-700">{module === 'maintenance' ? 'Manutenção' : 'Limpeza'}</Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Frequência</Label>
+                  <p className="font-medium flex items-center gap-1">
+                    <Repeat className="w-4 h-4" />
+                    {getFrequencyLabel(detailsPlanProposal.frequency, detailsPlanProposal.customFrequency, detailsPlanProposal.frequencyUnit)}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Empresa Terceirizada</Label>
+                  <p className="font-medium flex items-center gap-1">
+                    <Building2 className="w-4 h-4" />
+                    {detailsPlanProposal.thirdPartyCompanyName}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {detailsPlanProposal.siteId && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Site</Label>
+                    <p className="font-medium flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {getSiteName(detailsPlanProposal.siteId)}
+                    </p>
+                  </div>
+                )}
+                {detailsPlanProposal.zoneId && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Zona</Label>
+                    <p className="font-medium flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {getZoneName(detailsPlanProposal.zoneId)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {detailsPlanProposal.equipmentId && (
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Equipamento</Label>
+                  <p className="font-medium flex items-center gap-1">
+                    <Wrench className="w-4 h-4" />
+                    {getEquipmentName(detailsPlanProposal.equipmentId)}
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Data de Criação</Label>
+                  <p className="text-sm flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    {format(new Date(detailsPlanProposal.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+                {detailsPlanProposal.reviewedAt && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Data de Revisão</Label>
+                    <p className="text-sm flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {format(new Date(detailsPlanProposal.reviewedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {detailsPlanProposal.status === "recusado" && detailsPlanProposal.rejectionReason && (
+                <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                  <Label className="text-xs text-red-600">Motivo da Recusa</Label>
+                  <p className="text-sm text-red-700 mt-1">{detailsPlanProposal.rejectionReason}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+                  Fechar
+                </Button>
+                {detailsPlanProposal.status === "em_espera" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowDetailsDialog(false);
+                        setSelectedProposal(detailsPlanProposal);
+                        setProposalType('plan');
+                        setShowRejectDialog(true);
+                      }}
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Rejeitar
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        approvePlanMutation.mutate(detailsPlanProposal.id);
+                        setShowDetailsDialog(false);
+                      }}
+                      disabled={approvePlanMutation.isPending}
+                      className={cn(theme.buttons.primary)}
+                      style={theme.buttons.primaryStyle}
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Aprovar
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
