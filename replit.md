@@ -46,11 +46,19 @@ A dedicated **Third-Party Portal** is available at `/third-party` for third-part
 - **Reports**: View performance reports by user and team with export capabilities
 
 The **Operational Scopes** system provides granular work order access control:
-- Scopes are defined per module (clean or maintenance) and linked to teams
+- **Escopos são criados e gerenciados pelo CLIENTE**, não pelo terceiro
+- Clientes definem escopos via `/api/customers/:customerId/operational-scopes`
+- Terceiros recebem escopos via `allowedOperationalScopes[]` em `ThirdPartyCompany`
+- Scopes include SLA configuration: `slaHours`, `slaWarningPercent`, `slaCriticalPercent`
 - Access hierarchy: User → Team → OperationalScope → Module
 - Work orders are filtered by `operational_scope_id` for scoped users
 - Managers without specific scopes see all company work orders (backward compatibility)
 - Legacy work orders without scope remain accessible to all users
+
+The **Team Members** system (N:N relationship) allows operators to belong to multiple teams:
+- `team_members` table links users to teams with role ('leader' or 'member')
+- Operators can work across multiple teams/scopes simultaneously
+- Work order visibility is calculated from ALL teams the operator belongs to
 
 The portal implements automatic routing based on user type - when a user with `thirdPartyCompanyId` logs in, they are automatically redirected to the third-party portal. The `third_party_work_order_approval` field on customers controls how work order proposals from third parties are handled: `always_accept` (auto-approve), `require_approval` (manual review), or `always_reject` (auto-reject).
 

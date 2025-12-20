@@ -9662,6 +9662,255 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // OPERATIONAL SCOPES MANAGEMENT (CLIENT SIDE)
+  // Escopos são criados e gerenciados pelo CLIENTE, não pelo terceiro
+  // ============================================================================
+
+  // GET - List operational scopes for a customer
+  app.get('/api/customers/:customerId/operational-scopes', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      const { module, status } = req.query;
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      const scopes = await storage.getOperationalScopesByCustomer(customerId);
+      
+      // Filter by module if provided
+      let filtered = scopes;
+      if (module) {
+        filtered = filtered.filter(s => s.moduleId === module);
+      }
+      // Filter by status if provided
+      if (status) {
+        filtered = filtered.filter(s => s.status === status);
+      }
+      
+      res.json(filtered);
+    } catch (error) {
+      console.error('Error fetching operational scopes:', error);
+      res.status(500).json({ message: 'Erro ao buscar escopos operacionais' });
+    }
+  });
+
+  // GET - Get specific operational scope
+  app.get('/api/customers/:customerId/operational-scopes/:scopeId', requireAuth, async (req, res) => {
+    try {
+      const { customerId, scopeId } = req.params;
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      const scope = await storage.getOperationalScope(scopeId);
+      if (!scope || scope.customerId !== customerId) {
+        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
+      }
+      
+      res.json(scope);
+    } catch (error) {
+      console.error('Error fetching operational scope:', error);
+      res.status(500).json({ message: 'Erro ao buscar escopo operacional' });
+    }
+  });
+
+  // POST - Create operational scope (Client only)
+  app.post('/api/customers/:customerId/operational-scopes', requireAuth, async (req, res) => {
+    try {
+      const { customerId } = req.params;
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      const { name, moduleId, description, slaHours, slaWarningPercent, slaCriticalPercent } = req.body;
+      
+      if (!name || !moduleId) {
+        return res.status(400).json({ message: 'Nome e módulo são obrigatórios' });
+      }
+      
+      const newScope = await storage.createOperationalScope({
+        id: nanoid(),
+        customerId,
+        name,
+        moduleId,
+        description: description || null,
+        slaHours: slaHours || null,
+        slaWarningPercent: slaWarningPercent || 80,
+        slaCriticalPercent: slaCriticalPercent || 100,
+        status: 'active',
+      });
+      
+      broadcast({
+        type: 'create',
+        resource: 'operational_scopes',
+        data: newScope,
+        customerId,
+      });
+      
+      res.status(201).json(newScope);
+    } catch (error) {
+      console.error('Error creating operational scope:', error);
+      res.status(500).json({ message: 'Erro ao criar escopo operacional' });
+    }
+  });
+
+  // PUT - Update operational scope
+  app.put('/api/customers/:customerId/operational-scopes/:scopeId', requireAuth, async (req, res) => {
+    try {
+      const { customerId, scopeId } = req.params;
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      const existingScope = await storage.getOperationalScope(scopeId);
+      if (!existingScope || existingScope.customerId !== customerId) {
+        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
+      }
+      
+      const { name, description, slaHours, slaWarningPercent, slaCriticalPercent, status } = req.body;
+      
+      const updatedScope = await storage.updateOperationalScope(scopeId, {
+        name,
+        description,
+        slaHours,
+        slaWarningPercent,
+        slaCriticalPercent,
+        status,
+        updatedAt: new Date(),
+      });
+      
+      broadcast({
+        type: 'update',
+        resource: 'operational_scopes',
+        data: updatedScope,
+        id: scopeId,
+        customerId,
+      });
+      
+      res.json(updatedScope);
+    } catch (error) {
+      console.error('Error updating operational scope:', error);
+      res.status(500).json({ message: 'Erro ao atualizar escopo operacional' });
+    }
+  });
+
+  // DELETE - Archive operational scope (soft delete)
+  app.delete('/api/customers/:customerId/operational-scopes/:scopeId', requireAuth, async (req, res) => {
+    try {
+      const { customerId, scopeId } = req.params;
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      const existingScope = await storage.getOperationalScope(scopeId);
+      if (!existingScope || existingScope.customerId !== customerId) {
+        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
+      }
+      
+      // Archive instead of delete
+      const archivedScope = await storage.updateOperationalScope(scopeId, {
+        status: 'archived',
+        updatedAt: new Date(),
+      });
+      
+      broadcast({
+        type: 'update',
+        resource: 'operational_scopes',
+        data: archivedScope,
+        id: scopeId,
+        customerId,
+      });
+      
+      res.json({ message: 'Escopo operacional arquivado com sucesso' });
+    } catch (error) {
+      console.error('Error archiving operational scope:', error);
+      res.status(500).json({ message: 'Erro ao arquivar escopo operacional' });
+    }
+  });
+
+  // PUT - Assign operational scopes to a third-party company
+  app.put('/api/customers/:customerId/third-party-companies/:companyId/scopes', requireAuth, requireThirdPartyEnabled, async (req, res) => {
+    try {
+      const { customerId, companyId } = req.params;
+      const { allowedOperationalScopes } = req.body;
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      const company = await storage.getThirdPartyCompany(companyId);
+      if (!company || company.customerId !== customerId) {
+        return res.status(404).json({ message: 'Empresa terceira não encontrada' });
+      }
+      
+      // Validate that all scope IDs belong to this customer
+      if (allowedOperationalScopes && allowedOperationalScopes.length > 0) {
+        const customerScopes = await storage.getOperationalScopesByCustomer(customerId);
+        const validScopeIds = customerScopes.map(s => s.id);
+        const invalidScopes = allowedOperationalScopes.filter((id: string) => !validScopeIds.includes(id));
+        if (invalidScopes.length > 0) {
+          return res.status(400).json({ message: 'Alguns escopos não pertencem a este cliente' });
+        }
+      }
+      
+      const updatedCompany = await storage.updateThirdPartyCompany(companyId, {
+        allowedOperationalScopes: allowedOperationalScopes || [],
+        updatedAt: new Date(),
+      });
+      
+      broadcast({
+        type: 'update',
+        resource: 'third_party_companies',
+        data: updatedCompany,
+        id: companyId,
+        customerId,
+      });
+      
+      res.json(updatedCompany);
+    } catch (error) {
+      console.error('Error assigning scopes to third-party company:', error);
+      res.status(500).json({ message: 'Erro ao atribuir escopos à empresa terceira' });
+    }
+  });
+
+  // GET - Get scopes assigned to a third-party company
+  app.get('/api/customers/:customerId/third-party-companies/:companyId/scopes', requireAuth, requireThirdPartyEnabled, async (req, res) => {
+    try {
+      const { customerId, companyId } = req.params;
+      
+      const user = req.user!;
+      if (user.customerId !== customerId && user.userType !== 'opus_user') {
+        return res.status(403).json({ message: 'Acesso negado a este cliente' });
+      }
+      
+      const company = await storage.getThirdPartyCompany(companyId);
+      if (!company || company.customerId !== customerId) {
+        return res.status(404).json({ message: 'Empresa terceira não encontrada' });
+      }
+      
+      const allowedScopeIds = company.allowedOperationalScopes || [];
+      const allScopes = await storage.getOperationalScopesByCustomer(customerId);
+      const assignedScopes = allScopes.filter(s => allowedScopeIds.includes(s.id) && s.status === 'active');
+      
+      res.json(assignedScopes);
+    } catch (error) {
+      console.error('Error fetching third-party company scopes:', error);
+      res.status(500).json({ message: 'Erro ao buscar escopos da empresa terceira' });
+    }
+  });
+
+  // ============================================================================
   // THIRD PARTY SLA DASHBOARD ROUTES
   // ============================================================================
 
@@ -10632,10 +10881,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==========================================================================
   // Operational Scopes - Escopos Operacionais (Portal Terceiros)
+  // IMPORTANTE: Escopos são CRIADOS pelo CLIENTE e ATRIBUÍDOS ao terceiro
+  // O terceiro apenas VISUALIZA os escopos que lhe foram atribuídos
   // Hierarquia: User -> Team -> OperationalScope -> Module
   // ==========================================================================
 
-  // List operational scopes for third-party company
+  // List operational scopes ASSIGNED to third-party company by the client
   app.get('/api/third-party-portal/operational-scopes', requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
@@ -10643,15 +10894,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Acesso não autorizado' });
       }
 
-      const scopes = await storage.getOperationalScopesByCompany(user.thirdPartyCompanyId);
-      res.json(scopes);
+      // Buscar a empresa terceira para pegar os escopos atribuídos
+      const company = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
+      }
+
+      // Retornar apenas escopos atribuídos pelo cliente à empresa terceira
+      const allowedScopeIds = company.allowedOperationalScopes || [];
+      
+      if (allowedScopeIds.length === 0) {
+        return res.json([]);
+      }
+      
+      const customerScopes = await storage.getOperationalScopesByCustomer(company.customerId);
+      const assignedScopes = customerScopes.filter(
+        s => allowedScopeIds.includes(s.id) && s.status === 'active'
+      );
+      
+      res.json(assignedScopes);
     } catch (error) {
       console.error('Error fetching operational scopes:', error);
       res.status(500).json({ message: 'Erro ao buscar escopos operacionais' });
     }
   });
 
-  // Get single operational scope
+  // Get single operational scope (only if assigned to this company)
   app.get('/api/third-party-portal/operational-scopes/:id', requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
@@ -10659,14 +10927,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Acesso não autorizado' });
       }
 
-      const scope = await storage.getOperationalScope(req.params.id);
-      if (!scope) {
-        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
+      // Buscar a empresa terceira para verificar se o escopo está atribuído
+      const company = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
+      if (!company) {
+        return res.status(404).json({ message: 'Empresa não encontrada' });
       }
 
-      // Verificar se o escopo pertence à empresa do usuário
-      if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
-        return res.status(403).json({ message: 'Acesso negado a este escopo' });
+      const allowedScopeIds = company.allowedOperationalScopes || [];
+      if (!allowedScopeIds.includes(req.params.id)) {
+        return res.status(403).json({ message: 'Escopo não atribuído a esta empresa' });
+      }
+
+      const scope = await storage.getOperationalScope(req.params.id);
+      if (!scope || scope.status !== 'active') {
+        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
       }
 
       res.json(scope);
@@ -10676,140 +10950,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create operational scope (managers only)
+  // CREATE - Desabilitado: Terceiros não podem criar escopos
+  // Escopos são criados pelo CLIENTE via /api/customers/:customerId/operational-scopes
   app.post('/api/third-party-portal/operational-scopes', requireAuth, async (req, res) => {
-    try {
-      const user = req.user as any;
-      if (!user.thirdPartyCompanyId) {
-        return res.status(403).json({ message: 'Acesso não autorizado' });
-      }
-
-      if (user.thirdPartyRole !== 'third_party_manager') {
-        return res.status(403).json({ message: 'Apenas gerentes podem criar escopos operacionais' });
-      }
-
-      const { name, moduleId, description } = req.body;
-
-      if (!name || !moduleId) {
-        return res.status(400).json({ message: 'Nome e módulo são obrigatórios' });
-      }
-
-      // Buscar a empresa terceira para pegar o customerId
-      const company = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
-      if (!company) {
-        return res.status(404).json({ message: 'Empresa não encontrada' });
-      }
-
-      // Verificar se o módulo está nos módulos permitidos da empresa
-      const allowedModules = company.allowedModules || [];
-      if (allowedModules.length > 0 && !allowedModules.includes(moduleId)) {
-        return res.status(400).json({ message: `Módulo ${moduleId} não permitido para esta empresa` });
-      }
-
-      const newScope = await storage.createOperationalScope({
-        id: nanoid(),
-        name,
-        moduleId,
-        description: description || null,
-        customerId: company.customerId,
-        thirdPartyCompanyId: user.thirdPartyCompanyId,
-        status: 'active',
-      });
-
-      broadcast({
-        type: 'create',
-        resource: 'operational_scopes',
-        data: newScope,
-        customerId: company.customerId,
-      });
-
-      res.status(201).json(newScope);
-    } catch (error) {
-      console.error('Error creating operational scope:', error);
-      res.status(500).json({ message: 'Erro ao criar escopo operacional' });
-    }
+    return res.status(403).json({ 
+      message: 'Terceiros não podem criar escopos operacionais. Escopos são definidos pelo cliente.' 
+    });
   });
 
-  // Update operational scope (managers only)
+  // UPDATE - Desabilitado: Terceiros não podem editar escopos
+  // Escopos são editados pelo CLIENTE via /api/customers/:customerId/operational-scopes/:scopeId
   app.put('/api/third-party-portal/operational-scopes/:id', requireAuth, async (req, res) => {
-    try {
-      const user = req.user as any;
-      if (!user.thirdPartyCompanyId) {
-        return res.status(403).json({ message: 'Acesso não autorizado' });
-      }
-
-      if (user.thirdPartyRole !== 'third_party_manager') {
-        return res.status(403).json({ message: 'Apenas gerentes podem editar escopos operacionais' });
-      }
-
-      const scope = await storage.getOperationalScope(req.params.id);
-      if (!scope) {
-        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
-      }
-
-      if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
-        return res.status(403).json({ message: 'Acesso negado a este escopo' });
-      }
-
-      const { name, description, status } = req.body;
-      const updates: any = {};
-
-      if (name !== undefined) updates.name = name;
-      if (description !== undefined) updates.description = description;
-      if (status !== undefined) updates.status = status;
-
-      const updatedScope = await storage.updateOperationalScope(req.params.id, updates);
-
-      broadcast({
-        type: 'update',
-        resource: 'operational_scopes',
-        data: updatedScope,
-        customerId: scope.customerId,
-      });
-
-      res.json(updatedScope);
-    } catch (error) {
-      console.error('Error updating operational scope:', error);
-      res.status(500).json({ message: 'Erro ao atualizar escopo operacional' });
-    }
+    return res.status(403).json({ 
+      message: 'Terceiros não podem editar escopos operacionais. Escopos são gerenciados pelo cliente.' 
+    });
   });
 
-  // Delete/Archive operational scope (managers only)
+  // DELETE - Desabilitado: Terceiros não podem arquivar escopos
+  // Escopos são arquivados pelo CLIENTE via DELETE /api/customers/:customerId/operational-scopes/:scopeId
   app.delete('/api/third-party-portal/operational-scopes/:id', requireAuth, async (req, res) => {
-    try {
-      const user = req.user as any;
-      if (!user.thirdPartyCompanyId) {
-        return res.status(403).json({ message: 'Acesso não autorizado' });
-      }
-
-      if (user.thirdPartyRole !== 'third_party_manager') {
-        return res.status(403).json({ message: 'Apenas gerentes podem arquivar escopos operacionais' });
-      }
-
-      const scope = await storage.getOperationalScope(req.params.id);
-      if (!scope) {
-        return res.status(404).json({ message: 'Escopo operacional não encontrado' });
-      }
-
-      if (scope.thirdPartyCompanyId !== user.thirdPartyCompanyId) {
-        return res.status(403).json({ message: 'Acesso negado a este escopo' });
-      }
-
-      // Arquivar ao invés de deletar
-      const archivedScope = await storage.updateOperationalScope(req.params.id, { status: 'archived' });
-
-      broadcast({
-        type: 'delete',
-        resource: 'operational_scopes',
-        data: archivedScope,
-        customerId: scope.customerId,
-      });
-
-      res.json({ message: 'Escopo operacional arquivado com sucesso' });
-    } catch (error) {
-      console.error('Error archiving operational scope:', error);
-      res.status(500).json({ message: 'Erro ao arquivar escopo operacional' });
-    }
+    return res.status(403).json({ 
+      message: 'Terceiros não podem arquivar escopos operacionais. Escopos são gerenciados pelo cliente.' 
+    });
   });
 
   // Get operational scopes accessible to current user (based on their teams)

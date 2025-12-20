@@ -197,6 +197,8 @@ export const thirdPartyCompanies = pgTable("third_party_companies", {
   billingDocument: varchar("billing_document"),
   contractStartDate: date("contract_start_date"),
   contractEndDate: date("contract_end_date"),
+  // Escopos operacionais que o terceiro pode utilizar (atribuídos pelo cliente)
+  allowedOperationalScopes: text("allowed_operational_scopes").array().default(sql`ARRAY[]::text[]`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -206,20 +208,23 @@ export const thirdPartyCompanies = pgTable("third_party_companies", {
 
 // 2.1.1 TABELA: operational_scopes (Escopos Operacionais)
 // Representa um conjunto operacional de trabalho dentro de um módulo para um cliente
+// Escopos são CRIADOS E GERENCIADOS PELO CLIENTE, não pelo terceiro
 // Hierarquia: User -> Team -> OperationalScope -> Module
 export const operationalScopes = pgTable("operational_scopes", {
   id: varchar("id").primaryKey(),
   customerId: varchar("customer_id").notNull().references(() => customers.id),
-  thirdPartyCompanyId: varchar("third_party_company_id").notNull().references(() => thirdPartyCompanies.id),
   moduleId: moduleEnum("module_id").notNull(),
   name: varchar("name").notNull(),
   description: text("description"),
   status: operationalScopeStatusEnum("status").notNull().default('active'),
+  // Campos de SLA
+  slaHours: integer("sla_hours"), // SLA em horas para conclusão
+  slaWarningPercent: integer("sla_warning_percent").default(80), // % do SLA para alerta amarelo
+  slaCriticalPercent: integer("sla_critical_percent").default(100), // % do SLA para alerta vermelho
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
   customerIdx: index("operational_scopes_customer_idx").on(table.customerId),
-  companyIdx: index("operational_scopes_company_idx").on(table.thirdPartyCompanyId),
   moduleIdx: index("operational_scopes_module_idx").on(table.moduleId),
   statusIdx: index("operational_scopes_status_idx").on(table.status),
 }));
@@ -232,6 +237,7 @@ export const thirdPartyTeams = pgTable("third_party_teams", {
   operationalScopeId: varchar("operational_scope_id").references(() => operationalScopes.id), // Escopo operacional (obrigatório para novos)
   name: varchar("name").notNull(),
   leaderId: varchar("leader_id"),
+  // DEPRECATED: usar team_members para relacionamento N:N
   memberIds: text("member_ids").array().default(sql`ARRAY[]::text[]`),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
@@ -239,6 +245,22 @@ export const thirdPartyTeams = pgTable("third_party_teams", {
 }, (table) => ({
   companyIdx: index("third_party_teams_company_idx").on(table.thirdPartyCompanyId),
   scopeIdx: index("third_party_teams_scope_idx").on(table.operationalScopeId),
+}));
+
+// 2.2.1 TABELA: team_members (Membros de Equipes - Relacionamento N:N)
+// Permite que um operador pertença a múltiplas equipes
+export const teamMembers = pgTable("team_members", {
+  id: varchar("id").primaryKey(),
+  teamId: varchar("team_id").notNull().references(() => thirdPartyTeams.id),
+  userId: varchar("user_id").notNull(), // Referência ao usuário (users.id)
+  role: varchar("role").default('member'), // 'leader' ou 'member'
+  isActive: boolean("is_active").default(true),
+  joinedAt: timestamp("joined_at").default(sql`now()`),
+  leftAt: timestamp("left_at"),
+}, (table) => ({
+  teamIdx: index("team_members_team_idx").on(table.teamId),
+  userIdx: index("team_members_user_idx").on(table.userId),
+  uniqueTeamUser: uniqueIndex("team_members_unique_team_user").on(table.teamId, table.userId),
 }));
 
 // 2.3 TABELA: third_party_work_order_proposals (Propostas de O.S. de Terceiros)
@@ -1900,6 +1922,7 @@ export const insertCustomerSchema = createInsertSchema(customers).omit({ id: tru
 export const insertThirdPartyCompanySchema = createInsertSchema(thirdPartyCompanies).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertOperationalScopeSchema = createInsertSchema(operationalScopes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertThirdPartyTeamSchema = createInsertSchema(thirdPartyTeams).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({ id: true, joinedAt: true, leftAt: true });
 export const insertThirdPartyWorkOrderProposalSchema = createInsertSchema(thirdPartyWorkOrderProposals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertThirdPartyPlanProposalSchema = createInsertSchema(thirdPartyPlanProposals).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertThirdPartyChecklistSchema = createInsertSchema(thirdPartyChecklists).omit({ id: true, createdAt: true, updatedAt: true });
@@ -2048,6 +2071,9 @@ export type InsertOperationalScope = z.infer<typeof insertOperationalScopeSchema
 
 export type ThirdPartyTeam = typeof thirdPartyTeams.$inferSelect;
 export type InsertThirdPartyTeam = z.infer<typeof insertThirdPartyTeamSchema>;
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
 
 export type ThirdPartyWorkOrderProposal = typeof thirdPartyWorkOrderProposals.$inferSelect;
 export type InsertThirdPartyWorkOrderProposal = z.infer<typeof insertThirdPartyWorkOrderProposalSchema>;
