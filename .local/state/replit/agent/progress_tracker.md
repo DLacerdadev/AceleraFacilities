@@ -173,3 +173,14 @@
 [x] 470. Added logging to debug module resolution per user type
 [x] 471. Server restarted with new logic
 [x] 472. ✅ THIRD-PARTY MODULE AUTO-SELECTION FIXED - Single module users will now skip selection page
+
+## CHECKLIST INPUT BUG FIX (19/12/2025 12:22 AM)
+[x] 473. Identified bug: Users could only type 1 character per keystroke in checklist item form
+[x] 474. Root cause: Select "Tipo" was resetting options/validation on every change, causing re-renders
+[x] 475. Fixed by:
+    - Removing `options: []` and `validation: {}` reset from Select onChange
+    - Only updating `type` field when Select changes
+    - Adding fallback values: `|| ""` for inputs, `|| 'text'` for Select
+    - Adding stable keys to input wrapper divs
+[x] 476. Server restarted with fix
+[x] 477. ✅ CHECKLIST INPUT BUG FIXED - Fields now accept normal text input without character limit
