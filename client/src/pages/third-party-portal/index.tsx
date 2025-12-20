@@ -10,7 +10,8 @@ import {
   Menu,
   LogOut,
   Building2,
-  ClipboardCheck
+  ClipboardCheck,
+  Target
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,12 +25,14 @@ import ThirdPartyWorkOrders from "./work-orders";
 import ThirdPartyReports from "./reports";
 import ThirdPartyPlans from "./plans";
 import ThirdPartyChecklists from "./checklists";
+import ThirdPartyOperationalScopes from "./operational-scopes";
 
 const menuItems = [
   { path: "/third-party", label: "Dashboard", icon: LayoutDashboard },
   { path: "/third-party/work-orders", label: "Ordens de Serviço", icon: ClipboardList },
   { path: "/third-party/plans", label: "Planos", icon: Calendar },
   { path: "/third-party/checklists", label: "Checklists", icon: ClipboardCheck },
+  { path: "/third-party/scopes", label: "Escopos", icon: Target },
   { path: "/third-party/users", label: "Usuários", icon: Users },
   { path: "/third-party/teams", label: "Equipes", icon: UsersRound },
   { path: "/third-party/reports", label: "Relatórios", icon: FileText },
@@ -122,6 +125,7 @@ export default function ThirdPartyPortal() {
             <Route path="/third-party/work-orders" component={ThirdPartyWorkOrders} />
             <Route path="/third-party/plans" component={ThirdPartyPlans} />
             <Route path="/third-party/checklists" component={ThirdPartyChecklists} />
+            <Route path="/third-party/scopes" component={ThirdPartyOperationalScopes} />
             <Route path="/third-party/users" component={ThirdPartyUsers} />
             <Route path="/third-party/teams" component={ThirdPartyTeams} />
             <Route path="/third-party/reports" component={ThirdPartyReports} />

@@ -32,9 +32,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 const teamSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   leaderId: z.string().optional(),
+  operationalScopeId: z.string().optional(),
 });
 
 type TeamFormData = z.infer<typeof teamSchema>;
+
+interface OperationalScope {
+  id: string;
+  name: string;
+  moduleId: string;
+  status: string;
+}
 
 export default function ThirdPartyTeams() {
   const { user } = useAuth();
@@ -61,6 +69,12 @@ export default function ThirdPartyTeams() {
     enabled: !!user?.thirdPartyCompanyId,
   });
 
+  const { data: operationalScopes = [] } = useQuery<OperationalScope[]>({
+    queryKey: ['/api/third-party-portal/operational-scopes'],
+    enabled: !!user?.thirdPartyCompanyId,
+  });
+
+  const activeScopes = operationalScopes.filter(s => s.status === 'active');
   const leaders = users.filter(u => u.thirdPartyRole?.toUpperCase() === 'THIRD_PARTY_TEAM_LEADER' && u.isActive);
   const operators = users.filter(u => u.thirdPartyRole?.toUpperCase() === 'THIRD_PARTY_OPERATOR' && u.isActive);
 
@@ -210,6 +224,30 @@ export default function ThirdPartyTeams() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="operationalScopeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Escopo Operacional</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-team-scope">
+                            <SelectValue placeholder="Selecione o escopo (opcional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {activeScopes.map((scope) => (
+                            <SelectItem key={scope.id} value={scope.id}>
+                              {scope.name} ({scope.moduleId === 'clean' ? 'Limpeza' : 'Manutenção'})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                     Cancelar
@@ -249,6 +287,7 @@ export default function ThirdPartyTeams() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Escopo</TableHead>
                   <TableHead>Líder</TableHead>
                   <TableHead>Membros</TableHead>
                   <TableHead className="w-[50px]">Ações</TableHead>
@@ -258,6 +297,15 @@ export default function ThirdPartyTeams() {
                 {teams.map((team) => (
                   <TableRow key={team.id} data-testid={`row-team-${team.id}`}>
                     <TableCell className="font-medium">{team.name}</TableCell>
+                    <TableCell>
+                      {team.operationalScope ? (
+                        <Badge variant="outline">
+                          {team.operationalScope.name}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {team.leader?.name || <span className="text-muted-foreground">Sem líder</span>}
                     </TableCell>
@@ -347,6 +395,24 @@ export default function ThirdPartyTeams() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Escopo Operacional</label>
+                <Select 
+                  defaultValue={editingTeam.operationalScopeId || ""}
+                  onValueChange={(value) => setEditingTeam({ ...editingTeam, operationalScopeId: value || null })}
+                >
+                  <SelectTrigger data-testid="select-edit-team-scope">
+                    <SelectValue placeholder="Selecione o escopo (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeScopes.map((scope) => (
+                      <SelectItem key={scope.id} value={scope.id}>
+                        {scope.name} ({scope.moduleId === 'clean' ? 'Limpeza' : 'Manutenção'})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                   Cancelar
@@ -358,6 +424,7 @@ export default function ThirdPartyTeams() {
                       updates: {
                         name: editingTeam.name,
                         leaderId: editingTeam.leaderId,
+                        operationalScopeId: editingTeam.operationalScopeId,
                       },
                     });
                   }}
