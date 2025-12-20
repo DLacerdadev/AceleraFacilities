@@ -717,16 +717,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const users = await storage.getUsersByCustomer(req.params.customerId);
       
-      // Para cada usuário, buscar seus roles customizados, sites vinculados e remover senha
+      // Para cada usuário, buscar seus roles customizados, sites vinculados, empresa terceirizada e remover senha
       const usersWithRoles = await Promise.all(
         users.map(async (user) => {
           const roleAssignments = await storage.getUserRoleAssignments(user.id);
           const siteAssignments = await storage.getUserSiteAssignments(user.id);
+          
+          // Buscar nome da empresa terceirizada se o usuário pertencer a uma
+          let thirdPartyCompanyName: string | null = null;
+          if (user.thirdPartyCompanyId) {
+            const thirdPartyCompany = await storage.getThirdPartyCompany(user.thirdPartyCompanyId);
+            thirdPartyCompanyName = thirdPartyCompany?.name || null;
+          }
+          
           const sanitized = sanitizeUser(user);
           return {
             ...sanitized,
             customRoles: roleAssignments,
-            siteAssignments: siteAssignments
+            siteAssignments: siteAssignments,
+            thirdPartyCompanyName
           };
         })
       );

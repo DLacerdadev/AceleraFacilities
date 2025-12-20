@@ -760,7 +760,9 @@ export default function Users({ customerId }: UsersProps) {
                               className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
                               data-testid={`badge-third-party-${user.id}`}
                             >
-                              Terceiro
+                              {user.thirdPartyCompanyName 
+                                ? `Terceiro · ${user.thirdPartyCompanyName}` 
+                                : 'Terceiro'}
                             </Badge>
                           )}
                         </div>
