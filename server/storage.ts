@@ -974,15 +974,14 @@ export class DatabaseStorage implements IStorage {
         dateFilter
       ));
 
-    // Calculate overdue work orders: open work orders with dueDate < NOW()
+    // Calculate overdue work orders: work orders with status = 'vencida'
+    // Note: Não aplicamos dateFilter para vencidas - queremos ver TODAS as vencidas sempre
     const [overdueWO] = await db.select({ count: count() })
       .from(workOrders)
       .where(and(
         inArray(workOrders.zoneId, zoneIds),
         moduleFilter,
-        eq(workOrders.status, 'aberta'),
-        sql`${workOrders.dueDate} < NOW()`,
-        dateFilter
+        eq(workOrders.status, 'vencida')
       ));
 
     // Get users for customer sites
