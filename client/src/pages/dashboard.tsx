@@ -408,83 +408,55 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Índice de Qualidade */}
+          {/* O.S Vencidas */}
           <div className="group relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl opacity-0 group-hover:opacity-100 blur transition duration-300"></div>
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl opacity-0 group-hover:opacity-100 blur transition duration-300"></div>
             <Card className="relative border-0 shadow-lg hover:shadow-2xl transition-all duration-300 backdrop-blur-sm bg-white/90 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-500/10 to-transparent rounded-bl-full"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-500/10 to-transparent rounded-bl-full"></div>
               <CardContent className="p-4 relative">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/30 transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                    <Star className="w-7 h-7 text-white" />
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
+                    <AlertTriangle className="w-7 h-7 text-white" />
                   </div>
                   {(() => {
-                    const completedOrders = (stats as any)?.completedWorkOrders || 0;
-                    const qualityIndex = (stats as any)?.qualityIndex;
-                    
-                    if (completedOrders === 0 || qualityIndex === null || qualityIndex === undefined) {
-                      return null;
+                    const overdueOrders = (stats as any)?.overdueWorkOrders || 0;
+                    if (overdueOrders === 0) {
+                      return (
+                        <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20 border-0 shadow-sm backdrop-blur-sm">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          OK
+                        </Badge>
+                      );
                     }
-                    
-                    const goalValue = getGoalValue('indice_qualidade');
-                    const diff = goalValue ? qualityIndex - goalValue : 0;
-                    
-                    return goalValue && diff >= 0 ? (
-                      <Badge className="bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 border-0 shadow-sm backdrop-blur-sm">
-                        <ArrowUp className="w-3 h-3 mr-1" />
-                        +{diff.toFixed(1)}
-                      </Badge>
-                    ) : goalValue && diff < 0 ? (
+                    return (
                       <Badge className="bg-red-500/10 text-red-700 hover:bg-red-500/20 border-0 shadow-sm backdrop-blur-sm">
-                        <ArrowDown className="w-3 h-3 mr-1" />
-                        {diff.toFixed(1)}
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        Atenção
                       </Badge>
-                    ) : null;
+                    );
                   })()}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-600 mb-2">Índice de Qualidade</p>
+                  <p className="text-sm font-semibold text-slate-600 mb-2">O.S Vencidas</p>
                   {(() => {
-                    const completedOrders = (stats as any)?.completedWorkOrders || 0;
-                    const qualityIndex = (stats as any)?.qualityIndex;
-                    
-                    if (completedOrders === 0 || qualityIndex === null || qualityIndex === undefined) {
-                      return <p className="text-4xl font-bold text-slate-400 mb-3">N/A</p>;
-                    }
+                    const overdueOrders = (stats as any)?.overdueWorkOrders || 0;
                     
                     return (
-                      <p className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-amber-700 bg-clip-text text-transparent mb-3">
-                        {qualityIndex}<span className="text-xl text-slate-500">/10</span>
+                      <p className={`text-4xl font-bold mb-3 ${overdueOrders > 0 ? 'bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent' : 'text-green-600'}`}>
+                        {overdueOrders}
                       </p>
                     );
                   })()}
                   <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div 
-                      className="absolute h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full transition-all duration-500 shadow-sm"
-                      style={{ width: `${((stats as any)?.completedWorkOrders || 0) > 0 ? ((stats as any)?.qualityIndex || 0) * 10 : 0}%` }}
+                      className={`absolute h-full rounded-full transition-all duration-500 shadow-sm ${(stats as any)?.overdueWorkOrders > 0 ? 'bg-gradient-to-r from-red-500 to-red-600' : 'bg-gradient-to-r from-green-500 to-green-600'}`}
+                      style={{ width: `${Math.min(((stats as any)?.overdueWorkOrders || 0) * 10, 100)}%` }}
                     ></div>
                   </div>
-                  {(() => {
-                    const goalValue = getGoalValue('indice_qualidade');
-                    const ratedCount = (stats as any)?.ratedCount || 0;
-                    const completedOrders = (stats as any)?.completedWorkOrders || 0;
-                    
-                    if (completedOrders === 0) {
-                      return <p className="text-xs text-slate-500 mt-3">Sem avaliações</p>;
-                    }
-                    
-                    return goalValue ? (
-                      <p className="text-xs text-slate-500 mt-3 flex items-center gap-1">
-                        <Target className="w-3 h-3" />
-                        Meta: {goalValue}/10 • {ratedCount} avaliações
-                      </p>
-                    ) : (
-                      <p className="text-xs text-slate-500 mt-3 flex items-center gap-1">
-                        <Award className="w-3 h-3" />
-                        {ratedCount} avaliações
-                      </p>
-                    );
-                  })()}
+                  <p className="text-xs text-slate-500 mt-3 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {(stats as any)?.overdueWorkOrders > 0 ? 'Ordens com prazo expirado' : 'Nenhuma ordem vencida'}
+                  </p>
                 </div>
               </CardContent>
             </Card>
