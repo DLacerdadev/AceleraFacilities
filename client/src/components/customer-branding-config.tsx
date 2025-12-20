@@ -46,6 +46,7 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
   const [sidebarCollapsedLogo, setSidebarCollapsedLogo] = useState<LogoPreview>({ file: null, previewUrl: customer.sidebarLogoCollapsed || null });
   const [homeLogo, setHomeLogo] = useState<LogoPreview>({ file: null, previewUrl: customer.homeLogo || null });
   const [favicon, setFavicon] = useState<LogoPreview>({ file: null, previewUrl: (customer as any).favicon || null });
+  const [qrCodeLogo, setQrCodeLogo] = useState<LogoPreview>({ file: null, previewUrl: (customer as any).qrCodeLogo || null });
   
   const [isSavingLogos, setIsSavingLogos] = useState(false);
   
@@ -54,6 +55,7 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
   const sidebarCollapsedRef = useRef<HTMLInputElement>(null);
   const homeLogoRef = useRef<HTMLInputElement>(null);
   const faviconRef = useRef<HTMLInputElement>(null);
+  const qrCodeLogoRef = useRef<HTMLInputElement>(null);
 
   // Resetar previews quando o diálogo abrir ou o cliente mudar
   useEffect(() => {
@@ -63,6 +65,7 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
       setSidebarCollapsedLogo({ file: null, previewUrl: customer.sidebarLogoCollapsed || null });
       setHomeLogo({ file: null, previewUrl: customer.homeLogo || null });
       setFavicon({ file: null, previewUrl: (customer as any).favicon || null });
+      setQrCodeLogo({ file: null, previewUrl: (customer as any).qrCodeLogo || null });
       setModuleColors((customer.moduleColors as ModuleColors) || {});
     }
   }, [open, customer]);
@@ -75,6 +78,7 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
       if (sidebarCollapsedLogo.previewUrl && sidebarCollapsedLogo.file) URL.revokeObjectURL(sidebarCollapsedLogo.previewUrl);
       if (homeLogo.previewUrl && homeLogo.file) URL.revokeObjectURL(homeLogo.previewUrl);
       if (favicon.previewUrl && favicon.file) URL.revokeObjectURL(favicon.previewUrl);
+      if (qrCodeLogo.previewUrl && qrCodeLogo.file) URL.revokeObjectURL(qrCodeLogo.previewUrl);
     };
   }, []);
 
@@ -101,7 +105,7 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
   });
 
   const handleFileSelect = (
-    logoType: 'login' | 'sidebar' | 'sidebarCollapsed' | 'home' | 'favicon',
+    logoType: 'login' | 'sidebar' | 'sidebarCollapsed' | 'home' | 'favicon' | 'qrCodeLogo',
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
@@ -123,22 +127,25 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
                     logoType === 'sidebar' ? setSidebarLogo : 
                     logoType === 'sidebarCollapsed' ? setSidebarCollapsedLogo :
                     logoType === 'favicon' ? setFavicon :
+                    logoType === 'qrCodeLogo' ? setQrCodeLogo :
                     setHomeLogo;
 
     setLogo({ file, previewUrl });
   };
 
-  const removeLogo = (logoType: 'login' | 'sidebar' | 'sidebarCollapsed' | 'home' | 'favicon') => {
+  const removeLogo = (logoType: 'login' | 'sidebar' | 'sidebarCollapsed' | 'home' | 'favicon' | 'qrCodeLogo') => {
     const setLogo = logoType === 'login' ? setLoginLogo : 
                     logoType === 'sidebar' ? setSidebarLogo : 
                     logoType === 'sidebarCollapsed' ? setSidebarCollapsedLogo :
                     logoType === 'favicon' ? setFavicon :
+                    logoType === 'qrCodeLogo' ? setQrCodeLogo :
                     setHomeLogo;
     
     const logo = logoType === 'login' ? loginLogo :
                  logoType === 'sidebar' ? sidebarLogo :
                  logoType === 'sidebarCollapsed' ? sidebarCollapsedLogo :
                  logoType === 'favicon' ? favicon :
+                 logoType === 'qrCodeLogo' ? qrCodeLogo :
                  homeLogo;
     
     // Revogar URL de preview se for um arquivo local
@@ -162,6 +169,7 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
         ['sidebarCollapsed', sidebarCollapsedLogo, 'sidebarLogoCollapsed'] as const,
         ['home', homeLogo, 'homeLogo'] as const,
         ['favicon', favicon, 'favicon'] as const,
+        ['qrCodeLogo', qrCodeLogo, 'qrCodeLogo'] as const,
       ]) {
         if (logo.file) {
           // Upload da logo
@@ -218,12 +226,13 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
     updateBrandingMutation.mutate({ moduleColors });
   };
 
-  const hasLogoChanges = loginLogo.file !== null || sidebarLogo.file !== null || sidebarCollapsedLogo.file !== null || homeLogo.file !== null || favicon.file !== null ||
+  const hasLogoChanges = loginLogo.file !== null || sidebarLogo.file !== null || sidebarCollapsedLogo.file !== null || homeLogo.file !== null || favicon.file !== null || qrCodeLogo.file !== null ||
                          (loginLogo.previewUrl === null && customer.loginLogo) ||
                          (sidebarLogo.previewUrl === null && customer.sidebarLogo) ||
                          (sidebarCollapsedLogo.previewUrl === null && customer.sidebarLogoCollapsed) ||
                          (homeLogo.previewUrl === null && customer.homeLogo) ||
-                         (favicon.previewUrl === null && (customer as any).favicon);
+                         (favicon.previewUrl === null && (customer as any).favicon) ||
+                         (qrCodeLogo.previewUrl === null && (customer as any).qrCodeLogo);
 
   const LogoUploadCard = ({ 
     title, 
@@ -237,7 +246,7 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
     description: string;
     logo: LogoPreview;
     inputRef: React.RefObject<HTMLInputElement>;
-    logoType: 'login' | 'sidebar' | 'sidebarCollapsed' | 'home' | 'favicon';
+    logoType: 'login' | 'sidebar' | 'sidebarCollapsed' | 'home' | 'favicon' | 'qrCodeLogo';
     recommendedSize: string;
   }) => (
     <Card>
@@ -360,6 +369,15 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
               inputRef={faviconRef}
               logoType="favicon"
               recommendedSize="32x32px ou 16x16px (formato .ico, .png)"
+            />
+
+            <LogoUploadCard
+              title="Logo do QR Code"
+              description="Logo exibida no centro dos QR codes gerados"
+              logo={qrCodeLogo}
+              inputRef={qrCodeLogoRef}
+              logoType="qrCodeLogo"
+              recommendedSize="100x100px (quadrado, fundo transparente)"
             />
           </TabsContent>
 

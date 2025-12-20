@@ -171,6 +171,7 @@ export const customers = pgTable("customers", {
   sidebarLogoCollapsed: text("sidebar_logo_collapsed"),
   homeLogo: text("home_logo"),
   favicon: text("favicon"),
+  qrCodeLogo: text("qr_code_logo"),
   moduleColors: jsonb("module_colors"),
   thirdPartyEnabled: boolean("third_party_enabled").default(false),
   thirdPartyWorkOrderApproval: thirdPartyWorkOrderApprovalEnum("third_party_work_order_approval").default('require_approval'),
