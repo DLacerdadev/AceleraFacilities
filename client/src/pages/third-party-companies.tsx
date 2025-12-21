@@ -81,6 +81,7 @@ export default function ThirdPartyCompanies() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("companies");
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
@@ -357,7 +358,7 @@ export default function ThirdPartyCompanies() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="companies" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="companies" className="flex items-center gap-2" data-testid="tab-third-party-companies">
             <Building2 className="w-4 h-4" />
@@ -637,6 +638,7 @@ export default function ThirdPartyCompanies() {
                               size="icon"
                               onClick={() => {
                                 setSelectedCompanyId(company.id);
+                                setActiveTab("users");
                               }}
                               title="Gerenciar Usuários"
                               data-testid={`button-manage-users-${company.id}`}
