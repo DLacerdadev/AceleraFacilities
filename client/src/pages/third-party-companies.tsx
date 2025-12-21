@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -81,7 +80,7 @@ export default function ThirdPartyCompanies() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("companies");
+  const [isUsersListDialogOpen, setIsUsersListDialogOpen] = useState(false);
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [isEditUserDialogOpen, setIsEditUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any | null>(null);
@@ -358,19 +357,8 @@ export default function ThirdPartyCompanies() {
 
   return (
     <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="companies" className="flex items-center gap-2" data-testid="tab-third-party-companies">
-            <Building2 className="w-4 h-4" />
-            Empresas
-          </TabsTrigger>
-          <TabsTrigger value="users" className="flex items-center gap-2" data-testid="tab-third-party-users" disabled={!selectedCompanyId}>
-            <UsersIcon className="w-4 h-4" />
-            Usuários {selectedCompanyId && `(${companies.find(c => c.id === selectedCompanyId)?.name || ''})`}
-          </TabsTrigger>
-        </TabsList>
+      <div className="space-y-4">
 
-        <TabsContent value="companies" className="space-y-4">
           <ModernCard variant="gradient">
             <CardHeader>
               <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -638,7 +626,7 @@ export default function ThirdPartyCompanies() {
                               size="icon"
                               onClick={() => {
                                 setSelectedCompanyId(company.id);
-                                setActiveTab("users");
+                                setIsUsersListDialogOpen(true);
                               }}
                               title="Gerenciar Usuários"
                               data-testid={`button-manage-users-${company.id}`}
@@ -672,204 +660,206 @@ export default function ThirdPartyCompanies() {
               )}
             </CardContent>
           </ModernCard>
-        </TabsContent>
+      </div>
 
-        <TabsContent value="users" className="space-y-4">
-          {selectedCompanyId && (
-            <ModernCard variant="gradient">
-              <CardHeader>
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <CardTitle className="flex items-center gap-2">
-                    <UsersIcon className="w-5 h-5" />
-                    Usuários - {companies.find(c => c.id === selectedCompanyId)?.name}
-                  </CardTitle>
-                  <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        className={theme.buttons.primary}
-                        style={theme.buttons.primaryStyle}
-                        data-testid="button-create-third-party-user"
-                      >
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        Novo Usuário
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Novo Usuário Terceirizado</DialogTitle>
-                        <DialogDescription>Adicione um usuário à empresa terceirizada</DialogDescription>
-                      </DialogHeader>
-                      <Form {...userForm}>
-                        <form onSubmit={userForm.handleSubmit(handleCreateUser)} className="space-y-4">
-                          <FormField
-                            control={userForm.control}
-                            name="name"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Nome Completo</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Nome do usuário" {...field} data-testid="input-user-name" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={userForm.control}
-                            name="username"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Username</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="username" {...field} data-testid="input-user-username" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={userForm.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl>
-                                  <Input type="email" placeholder="email@empresa.com" {...field} data-testid="input-user-email" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={userForm.control}
-                            name="password"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Senha</FormLabel>
-                                <FormControl>
-                                  <Input type="password" placeholder="Senha" {...field} data-testid="input-user-password" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={userForm.control}
-                            name="thirdPartyRole"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Função</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger data-testid="select-user-role">
-                                      <SelectValue placeholder="Selecione" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="THIRD_PARTY_MANAGER">Gerente</SelectItem>
-                                    <SelectItem value="THIRD_PARTY_TEAM_LEADER">Líder de Equipe</SelectItem>
-                                    <SelectItem value="THIRD_PARTY_OPERATOR">Operador</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <div className="flex justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => setIsUserDialogOpen(false)}>
-                              Cancelar
+      {/* Users List Dialog */}
+      <Dialog open={isUsersListDialogOpen} onOpenChange={setIsUsersListDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  <UsersIcon className="w-5 h-5" />
+                  Usuários - {companies.find(c => c.id === selectedCompanyId)?.name}
+                </DialogTitle>
+                <DialogDescription>Gerencie os usuários desta empresa terceirizada</DialogDescription>
+              </div>
+              <Button
+                onClick={() => setIsUserDialogOpen(true)}
+                className={theme.buttons.primary}
+                style={theme.buttons.primaryStyle}
+                data-testid="button-create-third-party-user-dialog"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Novo Usuário
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="mt-4">
+            {loadingUsers ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : companyUsers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <UsersIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhum usuário cadastrado nesta empresa</p>
+                <p className="text-sm">Clique em "Novo Usuário" para adicionar</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Username</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Função</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[50px]">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {companyUsers.map((user) => (
+                    <TableRow key={user.id} data-testid={`row-user-dialog-${user.id}`}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{getRoleBadge(user.thirdPartyRole)}</TableCell>
+                      <TableCell>
+                        {user.isActive ? (
+                          <Badge className="bg-chart-2/10 text-chart-2">Ativo</Badge>
+                        ) : (
+                          <Badge variant="outline">Inativo</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" data-testid={`button-user-actions-dialog-${user.id}`}>
+                              <MoreVertical className="w-4 h-4" />
                             </Button>
-                            <Button 
-                              type="submit" 
-                              disabled={createUserMutation.isPending}
-                              className={theme.buttons.primary}
-                              style={theme.buttons.primaryStyle}
-                              data-testid="button-submit-user"
-                            >
-                              {createUserMutation.isPending ? "Criando..." : "Criar Usuário"}
-                            </Button>
-                          </div>
-                        </form>
-                      </Form>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {loadingUsers ? (
-                  <div className="flex items-center justify-center p-8">
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  </div>
-                ) : companyUsers.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <UsersIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhum usuário cadastrado nesta empresa</p>
-                    <p className="text-sm">Clique em "Novo Usuário" para adicionar</p>
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nome</TableHead>
-                        <TableHead>Username</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Função</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="w-[50px]">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {companyUsers.map((user) => (
-                        <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
-                          <TableCell className="font-medium">{user.name}</TableCell>
-                          <TableCell>{user.username}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>{getRoleBadge(user.thirdPartyRole)}</TableCell>
-                          <TableCell>
-                            {user.isActive ? (
-                              <Badge className="bg-chart-2/10 text-chart-2">Ativo</Badge>
-                            ) : (
-                              <Badge variant="outline">Inativo</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" data-testid={`button-user-actions-${user.id}`}>
-                                  <MoreVertical className="w-4 h-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEditUser(user)} data-testid={`button-edit-user-${user.id}`}>
-                                  <Pencil className="w-4 h-4 mr-2" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleToggleUserStatus(user)} data-testid={`button-toggle-user-${user.id}`}>
-                                  {user.isActive ? (
-                                    <>
-                                      <UserX className="w-4 h-4 mr-2" />
-                                      Desativar
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserCheck className="w-4 h-4 mr-2" />
-                                      Ativar
-                                    </>
-                                  )}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditUser(user)} data-testid={`button-edit-user-dialog-${user.id}`}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleToggleUserStatus(user)} data-testid={`button-toggle-user-dialog-${user.id}`}>
+                              {user.isActive ? (
+                                <>
+                                  <UserX className="w-4 h-4 mr-2" />
+                                  Desativar
+                                </>
+                              ) : (
+                                <>
+                                  <UserCheck className="w-4 h-4 mr-2" />
+                                  Ativar
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog (used by both tab and popup) */}
+      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Usuário Terceirizado</DialogTitle>
+            <DialogDescription>Adicione um usuário à empresa terceirizada</DialogDescription>
+          </DialogHeader>
+          <Form {...userForm}>
+            <form onSubmit={userForm.handleSubmit(handleCreateUser)} className="space-y-4">
+              <FormField
+                control={userForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome Completo</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome do usuário" {...field} data-testid="input-user-name-dialog" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </CardContent>
-            </ModernCard>
-          )}
-        </TabsContent>
-      </Tabs>
+              />
+              <FormField
+                control={userForm.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input placeholder="username" {...field} data-testid="input-user-username-dialog" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={userForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="email@empresa.com" {...field} data-testid="input-user-email-dialog" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={userForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Senha</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Senha" {...field} data-testid="input-user-password-dialog" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={userForm.control}
+                name="thirdPartyRole"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Função</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-user-role-dialog">
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="THIRD_PARTY_MANAGER">Gerente</SelectItem>
+                        <SelectItem value="THIRD_PARTY_TEAM_LEADER">Líder de Equipe</SelectItem>
+                        <SelectItem value="THIRD_PARTY_OPERATOR">Operador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsUserDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={createUserMutation.isPending}
+                  className={theme.buttons.primary}
+                  style={theme.buttons.primaryStyle}
+                  data-testid="button-submit-user-dialog"
+                >
+                  {createUserMutation.isPending ? "Criando..." : "Criar Usuário"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Company Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
