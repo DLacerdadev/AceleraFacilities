@@ -150,6 +150,11 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   };
 
+  // Calculate if a color is dark (for determining foreground color)
+  const isColorDark = (hsl: { h: number; s: number; l: number }) => {
+    return hsl.l < 50; // If lightness is below 50%, color is dark
+  };
+
   // Apply colors to CSS variables
   // useSystemColors: true = pre-login (use systemColors), false = post-login (use moduleColors)
   const applyColors = (moduleColors: any, systemColors?: any, useSystemColors: boolean = false) => {
@@ -162,16 +167,23 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         const hsl = hexToHSL(systemColors.primary);
         root.style.setProperty('--primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
         root.style.setProperty('--module-primary', systemColors.primary);
+        // Set foreground color based on primary color brightness
+        const foreground = isColorDark(hsl) ? '0 0% 100%' : '0 0% 0%';
+        root.style.setProperty('--primary-foreground', foreground);
       }
       if (systemColors.secondary) {
         const hsl = hexToHSL(systemColors.secondary);
         root.style.setProperty('--secondary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
         root.style.setProperty('--module-secondary', systemColors.secondary);
+        const foreground = isColorDark(hsl) ? '0 0% 100%' : '0 0% 0%';
+        root.style.setProperty('--secondary-foreground', foreground);
       }
       if (systemColors.accent) {
         const hsl = hexToHSL(systemColors.accent);
         root.style.setProperty('--accent', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
         root.style.setProperty('--module-accent', systemColors.accent);
+        const foreground = isColorDark(hsl) ? '0 0% 100%' : '0 0% 0%';
+        root.style.setProperty('--accent-foreground', foreground);
       }
       return; // Don't apply module colors for pre-login
     }
