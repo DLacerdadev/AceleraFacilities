@@ -4512,104 +4512,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Erro ao atualizar branding' });
     }
   });
-      
-      const brandingUpdate: any = {};
-      if (loginLogo !== undefined) brandingUpdate.loginLogo = loginLogo;
-      if (sidebarLogo !== undefined) brandingUpdate.sidebarLogo = sidebarLogo;
-      if (sidebarLogoCollapsed !== undefined) brandingUpdate.sidebarLogoCollapsed = sidebarLogoCollapsed;
-      if (homeLogo !== undefined) brandingUpdate.homeLogo = homeLogo;
-      if (favicon !== undefined) brandingUpdate.favicon = favicon;
-      if (qrCodeLogo !== undefined) brandingUpdate.qrCodeLogo = qrCodeLogo;
-      if (moduleColors !== undefined) brandingUpdate.moduleColors = moduleColors;
-      
-      // Normalize and validate subdomain if provided
-      if (subdomain !== undefined) {
-        // Reject empty strings
-        if (subdomain === '') {
-          return res.status(400).json({ message: 'Subdomínio não pode ser vazio' });
-        }
-        
-        // Normalize subdomain: lowercase, remove accents, replace non-alphanumeric with hyphens
-        const normalizedSubdomain = subdomain
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '');
-        
-        // Validate format
-        if (!/^[a-z0-9-]+$/.test(normalizedSubdomain)) {
-          return res.status(400).json({ message: 'Subdomínio inválido. Use apenas letras, números e hífens.' });
-        }
-        
-        // Check uniqueness
-        const existing = await db
-          .select()
-          .from(customers)
-          .where(and(
-            eq(customers.subdomain, normalizedSubdomain),
-            ne(customers.id, req.params.id)
-          ))
-          .limit(1);
-        
-        if (existing.length > 0) {
-          return res.status(400).json({ message: 'Subdomínio já está em uso' });
-        }
-        
-        brandingUpdate.subdomain = normalizedSubdomain;
-      }
-      
-      const updatedCustomer = await storage.updateCustomer(req.params.id, brandingUpdate);
-      res.json(updatedCustomer);
-    } catch (error) {
-      console.error("Error updating customer branding:", error);
-      res.status(500).json({ message: "Failed to update customer branding" });
-    }
-  });
 
-  // Upload logo for customer branding
-  app.post("/api/customers/:id/upload-logo", requireManageClients, async (req, res) => {
+  // Upload logo for customer
+  app.post('/api/customers/:id/upload-logo', requirePermission('customers_edit'), async (req, res) => {
     try {
+      const { id } = req.params;
       const { logoType, imageData, fileName } = req.body;
       
-      if (!logoType || !imageData || !fileName) {
-        return res.status(400).json({ message: "logoType, imageData, and fileName are required" });
+      if (!imageData || !logoType) {
+        return res.status(400).json({ message: 'Dados da imagem e tipo da logo são obrigatórios' });
       }
+
+      // Process base64 data
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+      const buffer = Buffer.from(base64Data, 'base64');
       
-      if (!['loginLogo', 'sidebarLogo', 'sidebarLogoCollapsed', 'homeLogo', 'favicon', 'qrCodeLogo'].includes(logoType)) {
-        return res.status(400).json({ message: "Invalid logoType. Must be one of: loginLogo, sidebarLogo, sidebarLogoCollapsed, homeLogo, favicon, qrCodeLogo" });
-      }
-      
-      // Import fs promises
-      const fs = await import('fs/promises');
-      const path = await import('path');
-      
-      // Create customer logos directory if it doesn't exist
-      const customerLogosDir = path.join(process.cwd(), 'attached_assets', 'customer_logos');
-      await fs.mkdir(customerLogosDir, { recursive: true });
-      
-      // Generate unique filename
-      const ext = path.extname(fileName) || '.png';
-      const uniqueFileName = `${req.params.id}_${logoType}_${Date.now()}${ext}`;
-      const filePath = path.join(customerLogosDir, uniqueFileName);
-      
-      // Remove base64 prefix if present
-      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-      
-      // Write file
-      await fs.writeFile(filePath, base64Data, 'base64');
-      
-      // Return relative path for storage
-      const relativePath = `/attached_assets/customer_logos/${uniqueFileName}`;
-      
-      res.json({ 
-        success: true, 
-        path: relativePath,
-        logoType 
-      });
+      const fileExt = fileName ? fileName.split('.').pop() : 'png';
+      const storedFileName = `${id}_${logoType}_${Date.now()}.${fileExt}`;
+      const relativePath = `attached_assets/customer_logos/${storedFileName}`;
+      const absolutePath = path.resolve(process.cwd(), relativePath);
+
+      // Ensure directory exists
+      await fs.mkdir(path.dirname(absolutePath), { recursive: true });
+      await fs.writeFile(absolutePath, buffer);
+
+      const pathForDb = `/${relativePath}`;
+      res.json({ path: pathForDb });
     } catch (error) {
-      console.error("Error uploading customer logo:", error);
-      res.status(500).json({ message: "Failed to upload logo" });
+      console.error('Error uploading customer logo:', error);
+      res.status(500).json({ message: 'Erro ao fazer upload da logo' });
     }
   });
 
