@@ -172,71 +172,67 @@ export default function QrCodes() {
   const generateQrCodeImage = async (url: string, sizeCm: number): Promise<string> => {
     const sizePixels = cmToPixels(sizeCm);
     const moduleColor = getModuleColor();
+    const borderWidth = Math.max(8, sizePixels * 0.04); // Borda proporcional ao tamanho
+    const totalSize = sizePixels + (borderWidth * 2);
     
     try {
-      // Gerar QR code base com cor do módulo
+      // Gerar QR code base em PRETO E BRANCO
       const qrDataUrl = await QRCode.toDataURL(url, {
         width: sizePixels,
-        margin: 2,
-        color: { dark: moduleColor, light: '#FFFFFF' },
+        margin: 1,
+        color: { dark: '#000000', light: '#FFFFFF' },
         errorCorrectionLevel: 'H' // Alto nível de correção para permitir logo no centro
       });
+      
+      // Criar canvas com espaço para borda colorida
+      const canvas = document.createElement('canvas');
+      canvas.width = totalSize;
+      canvas.height = totalSize;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return qrDataUrl;
+      
+      // Desenhar borda colorida (moldura)
+      ctx.fillStyle = moduleColor;
+      ctx.fillRect(0, 0, totalSize, totalSize);
+      
+      // Desenhar fundo branco interno
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(borderWidth, borderWidth, sizePixels, sizePixels);
+      
+      // Desenhar o QR code no centro
+      const qrImage = await loadImage(qrDataUrl);
+      ctx.drawImage(qrImage, borderWidth, borderWidth, sizePixels, sizePixels);
       
       // Verificar se o customer tem logo para QR code
       const customerData = customer as any;
       const qrCodeLogo = customerData?.qrCodeLogo;
       
-      if (!qrCodeLogo) {
-        return qrDataUrl;
+      if (qrCodeLogo) {
+        try {
+          // Carregar e desenhar o logo no centro
+          const logoImage = await loadImage(qrCodeLogo);
+          
+          // Logo ocupa 22% do QR code (tamanho seguro para não comprometer leitura)
+          const logoSize = sizePixels * 0.22;
+          const centerX = totalSize / 2;
+          const centerY = totalSize / 2;
+          const logoX = centerX - logoSize / 2;
+          const logoY = centerY - logoSize / 2;
+          
+          // Desenhar fundo branco quadrado para o logo
+          const padding = 4;
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(logoX - padding, logoY - padding, logoSize + padding * 2, logoSize + padding * 2);
+          
+          // Desenhar o logo
+          ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+        } catch (logoError) {
+          console.warn('Não foi possível carregar o logo do QR code:', logoError);
+        }
       }
       
-      // Criar canvas para adicionar o logo no centro
-      const canvas = document.createElement('canvas');
-      canvas.width = sizePixels;
-      canvas.height = sizePixels;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) return qrDataUrl;
-      
-      // Desenhar o QR code no canvas
-      const qrImage = await loadImage(qrDataUrl);
-      ctx.drawImage(qrImage, 0, 0, sizePixels, sizePixels);
-      
-      try {
-        // Carregar e desenhar o logo no centro
-        const logoImage = await loadImage(qrCodeLogo);
-        
-        // Logo ocupa 20% do QR code (tamanho seguro para não comprometer leitura)
-        const logoSize = sizePixels * 0.22;
-        const logoX = (sizePixels - logoSize) / 2;
-        const logoY = (sizePixels - logoSize) / 2;
-        
-        // Desenhar fundo branco circular para o logo
-        ctx.beginPath();
-        ctx.arc(sizePixels / 2, sizePixels / 2, logoSize / 2 + 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fill();
-        
-        // Desenhar borda com cor do módulo
-        ctx.beginPath();
-        ctx.arc(sizePixels / 2, sizePixels / 2, logoSize / 2 + 4, 0, Math.PI * 2);
-        ctx.strokeStyle = moduleColor;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Desenhar o logo (clipado em círculo)
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(sizePixels / 2, sizePixels / 2, logoSize / 2, 0, Math.PI * 2);
-        ctx.clip();
-        ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
-        ctx.restore();
-        
-        return canvas.toDataURL('image/png');
-      } catch (logoError) {
-        console.warn('Não foi possível carregar o logo do QR code:', logoError);
-        return qrDataUrl;
-      }
+      return canvas.toDataURL('image/png');
     } catch (error) {
       console.error('Erro ao gerar QR code:', error);
       return '';
