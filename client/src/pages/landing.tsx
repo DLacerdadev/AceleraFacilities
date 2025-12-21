@@ -472,24 +472,25 @@ export default function Landing() {
           ))}
         </div>
       </section>
-      {/* CTA Final */}
-      <section className="bg-gradient-to-br from-slate-900 to-slate-800 py-20">
+      {/* CTA Final - Uses system primary color */}
+      <section className="bg-primary py-20">
         <div className="container mx-auto px-6 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl font-bold text-white mb-6">
+            <h2 className="text-4xl font-bold text-primary-foreground mb-6">
               Pronto para transformar sua gestão de facilities?
             </h2>
-            <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
+            <p className="text-xl text-primary-foreground/80 mb-10 max-w-2xl mx-auto">
               Junte-se a centenas de empresas que já otimizaram suas operações com o Acelera it Full Facilities
             </p>
             <Button 
               onClick={() => navigateTo("/login")}
               size="lg"
-              className="bg-white text-primary hover:bg-slate-100 font-bold px-10 py-7 text-lg rounded-xl shadow-2xl"
+              variant="outline"
+              className="bg-white/10 border-white text-primary-foreground hover:bg-white/20 font-bold px-10 py-7 text-lg rounded-xl shadow-2xl backdrop-blur-sm"
             >
               Começar Gratuitamente
               <ArrowRight className="ml-2 w-5 h-5" />
