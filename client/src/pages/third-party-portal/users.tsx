@@ -116,32 +116,46 @@ export default function ThirdPartyUsers() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-white via-slate-50/40 to-slate-100/20 dark:from-slate-900 dark:via-slate-800/40 dark:to-slate-900/20 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="relative">
+            <div className="w-20 h-20 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+          </div>
+          <p className="text-base font-semibold text-slate-900 dark:text-slate-100">Carregando...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Gestão de Usuários</h1>
-          <p className="text-muted-foreground">
-            Gerencie os membros da sua equipe
-          </p>
-        </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              className={theme.buttons.primary}
-              style={theme.buttons.primaryStyle}
-              data-testid="button-new-user"
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Novo Usuário
-            </Button>
-          </DialogTrigger>
+    <div className="min-h-screen bg-gradient-to-br from-white via-slate-50/40 to-slate-100/20 dark:from-slate-900 dark:via-slate-800/40 dark:to-slate-900/20">
+      {/* Modern Glassmorphic Header */}
+      <div className="sticky top-0 z-50 backdrop-blur-xl bg-white/90 dark:bg-slate-900/90 border-b border-slate-200/60 dark:border-slate-700/60 shadow-sm">
+        <div className="w-full px-6 py-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+                  Gestão de Usuários
+                </h1>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Gerencie os membros da sua equipe</p>
+              </div>
+            </div>
+            
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  className={theme.buttons.primary}
+                  style={theme.buttons.primaryStyle}
+                  data-testid="button-new-user"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Novo Usuário
+                </Button>
+              </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Novo Usuário</DialogTitle>
@@ -240,8 +254,12 @@ export default function ThirdPartyUsers() {
             </Form>
           </DialogContent>
         </Dialog>
+          </div>
+        </div>
       </div>
 
+      {/* Main Content */}
+      <div className="w-full px-6 py-4 space-y-6">
       <ModernCard variant="gradient">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -323,6 +341,7 @@ export default function ThirdPartyUsers() {
           )}
         </CardContent>
       </ModernCard>
+      </div>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
