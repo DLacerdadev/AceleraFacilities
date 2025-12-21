@@ -66,6 +66,12 @@ export default function QrCodes() {
     enabled: !!activeClientId,
   });
 
+  // Buscar dados do customer para obter o logo do QR code e cores
+  const { data: customer } = useQuery({
+    queryKey: ["/api/customers", activeClientId],
+    enabled: !!activeClientId,
+  });
+
   const createQrPointMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest("POST", `/api/customers/${activeClientId}/qr-points`, data);
@@ -138,14 +144,99 @@ export default function QrCodes() {
     return `${baseUrl}/qr-public/${point.code}`;
   };
 
+  // Obter a cor do módulo para usar no QR code
+  const getModuleColor = (): string => {
+    const customerData = customer as any;
+    const moduleColors = customerData?.moduleColors;
+    if (moduleColors && currentModule) {
+      const moduleKey = currentModule === 'clean' ? 'cleanPrimary' : 'maintenancePrimary';
+      if (moduleColors[moduleKey]) {
+        return moduleColors[moduleKey];
+      }
+    }
+    // Fallback para cores padrão dos módulos
+    return currentModule === 'clean' ? '#3b82f6' : '#f97316';
+  };
+
+  // Função para carregar uma imagem
+  const loadImage = (src: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  };
+
   const generateQrCodeImage = async (url: string, sizeCm: number): Promise<string> => {
     const sizePixels = cmToPixels(sizeCm);
+    const moduleColor = getModuleColor();
+    
     try {
-      return await QRCode.toDataURL(url, {
+      // Gerar QR code base com cor do módulo
+      const qrDataUrl = await QRCode.toDataURL(url, {
         width: sizePixels,
         margin: 2,
-        color: { dark: '#000000', light: '#FFFFFF' }
+        color: { dark: moduleColor, light: '#FFFFFF' },
+        errorCorrectionLevel: 'H' // Alto nível de correção para permitir logo no centro
       });
+      
+      // Verificar se o customer tem logo para QR code
+      const customerData = customer as any;
+      const qrCodeLogo = customerData?.qrCodeLogo;
+      
+      if (!qrCodeLogo) {
+        return qrDataUrl;
+      }
+      
+      // Criar canvas para adicionar o logo no centro
+      const canvas = document.createElement('canvas');
+      canvas.width = sizePixels;
+      canvas.height = sizePixels;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return qrDataUrl;
+      
+      // Desenhar o QR code no canvas
+      const qrImage = await loadImage(qrDataUrl);
+      ctx.drawImage(qrImage, 0, 0, sizePixels, sizePixels);
+      
+      try {
+        // Carregar e desenhar o logo no centro
+        const logoImage = await loadImage(qrCodeLogo);
+        
+        // Logo ocupa 20% do QR code (tamanho seguro para não comprometer leitura)
+        const logoSize = sizePixels * 0.22;
+        const logoX = (sizePixels - logoSize) / 2;
+        const logoY = (sizePixels - logoSize) / 2;
+        
+        // Desenhar fundo branco circular para o logo
+        ctx.beginPath();
+        ctx.arc(sizePixels / 2, sizePixels / 2, logoSize / 2 + 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+        
+        // Desenhar borda com cor do módulo
+        ctx.beginPath();
+        ctx.arc(sizePixels / 2, sizePixels / 2, logoSize / 2 + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = moduleColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Desenhar o logo (clipado em círculo)
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sizePixels / 2, sizePixels / 2, logoSize / 2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+        ctx.restore();
+        
+        return canvas.toDataURL('image/png');
+      } catch (logoError) {
+        console.warn('Não foi possível carregar o logo do QR code:', logoError);
+        return qrDataUrl;
+      }
     } catch (error) {
       console.error('Erro ao gerar QR code:', error);
       return '';
@@ -171,7 +262,7 @@ export default function QrCodes() {
     };
 
     generateAllQrCodes();
-  }, [qrPoints]);
+  }, [qrPoints, customer, currentModule]);
 
   const downloadPDF = async (point: any) => {
     const url = generateQrCodeUrl(point);
