@@ -305,7 +305,7 @@ export default function Landing() {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-              Transforme a Gestão de <span className="text-blue-600">Facilities</span> da sua Empresa
+              Transforme a Gestão de <span className="text-primary">Facilities</span> da sua Empresa
             </h1>
 
             <p className="text-xl text-slate-600 mb-8 leading-relaxed">
@@ -323,7 +323,7 @@ export default function Landing() {
                   transition={{ duration: 0.5, delay: 0.2 + index * 0.1 }}
                   className="text-center"
                 >
-                  <div className="text-3xl font-bold text-blue-600 mb-1">{stat.value}</div>
+                  <div className="text-3xl font-bold text-primary mb-1">{stat.value}</div>
                   <div className="text-sm text-slate-600 font-medium">{stat.label}</div>
                 </motion.div>
               ))}
@@ -334,7 +334,7 @@ export default function Landing() {
               <Button 
                 onClick={() => navigateTo("/login")}
                 size="lg"
-                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-bold px-8 py-7 text-lg rounded-xl shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 transition-all duration-300 group"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 py-7 text-lg rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 group"
                 data-testid="button-start"
               >
                 Começar Agora
@@ -362,10 +362,10 @@ export default function Landing() {
               {/* Dashboard Header */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     {(() => {
                       const Icon = dashboardSlides[activeSlide].icon;
-                      return <Icon className="w-5 h-5 text-blue-600" />;
+                      return <Icon className="w-5 h-5 text-primary" />;
                     })()}
                   </div>
                   <div>
@@ -384,7 +384,7 @@ export default function Landing() {
                       onClick={() => setActiveSlide(index)}
                       className={`w-2 h-2 rounded-full transition-all duration-300 ${
                         index === activeSlide 
-                          ? 'bg-blue-500 w-6' 
+                          ? 'bg-primary w-6' 
                           : 'bg-slate-300 hover:bg-slate-400'
                       }`}
                       data-testid={`button-slide-${index}`}
@@ -415,7 +415,7 @@ export default function Landing() {
         </div>
       </section>
       {/* Benefits Bar */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-500 py-12">
+      <section className="bg-primary py-12">
         <div className="container mx-auto px-6">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {benefits.map((benefit, index) => (
@@ -461,9 +461,9 @@ export default function Landing() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <Card className="p-8 h-full border-2 border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6 shadow-lg shadow-blue-200">
-                  <feature.icon className="w-7 h-7 text-white" />
+              <Card className="p-8 h-full border-2 border-slate-200 hover:border-primary/30 hover:shadow-xl transition-all duration-300 bg-white">
+                <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center mb-6 shadow-lg shadow-primary/20">
+                  <feature.icon className="w-7 h-7 text-primary-foreground" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">{feature.title}</h3>
                 <p className="text-slate-600 leading-relaxed">{feature.description}</p>
@@ -489,7 +489,7 @@ export default function Landing() {
             <Button 
               onClick={() => navigateTo("/login")}
               size="lg"
-              className="bg-white text-blue-600 hover:bg-slate-100 font-bold px-10 py-7 text-lg rounded-xl shadow-2xl"
+              className="bg-white text-primary hover:bg-slate-100 font-bold px-10 py-7 text-lg rounded-xl shadow-2xl"
             >
               Começar Gratuitamente
               <ArrowRight className="ml-2 w-5 h-5" />
