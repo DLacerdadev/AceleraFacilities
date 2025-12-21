@@ -261,12 +261,32 @@ export default function QrCodes() {
     generateAllQrCodes();
   }, [qrPoints, customer, currentModule]);
 
-  // Helper para converter hex para RGB
-  const hexToRgb = (hex: string): number[] => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result 
-      ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
-      : [59, 130, 246];
+  // Helper para converter hex/rgb para array RGB
+  const colorToRgb = (color: string): number[] => {
+    // Tenta hex
+    const hexResult = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(color);
+    if (hexResult) {
+      return [parseInt(hexResult[1], 16), parseInt(hexResult[2], 16), parseInt(hexResult[3], 16)];
+    }
+    // Tenta rgb(r, g, b)
+    const rgbResult = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/.exec(color);
+    if (rgbResult) {
+      return [parseInt(rgbResult[1]), parseInt(rgbResult[2]), parseInt(rgbResult[3])];
+    }
+    return [59, 130, 246]; // Fallback azul
+  };
+  
+  // Obtém as cores CSS reais do módulo/cliente
+  const getModuleColors = (): { primary: number[], secondary: number[] } => {
+    const root = document.documentElement;
+    const computedStyle = getComputedStyle(root);
+    const primaryColor = computedStyle.getPropertyValue('--module-primary').trim();
+    const secondaryColor = computedStyle.getPropertyValue('--module-secondary').trim();
+    
+    return {
+      primary: colorToRgb(primaryColor),
+      secondary: colorToRgb(secondaryColor)
+    };
   };
 
   const downloadPDF = async (point: any) => {
@@ -279,18 +299,10 @@ export default function QrCodes() {
     const pageWidth = 210;
     const pageHeight = 297;
     
-    // Cores do módulo
-    const moduleColors = currentModule === 'clean' 
-      ? { primary: [59, 130, 246], secondary: [96, 165, 250] }
-      : { primary: [249, 115, 22], secondary: [251, 146, 60] };
-    
-    // Cores do cliente (se houver)
-    const primaryRgb = customerData?.primaryColor 
-      ? hexToRgb(customerData.primaryColor) 
-      : moduleColors.primary;
-    const secondaryRgb = customerData?.secondaryColor
-      ? hexToRgb(customerData.secondaryColor)
-      : moduleColors.secondary;
+    // Obtém as cores reais do cliente/módulo das variáveis CSS
+    const moduleColors = getModuleColors();
+    const primaryRgb = moduleColors.primary;
+    const secondaryRgb = moduleColors.secondary;
     
     // ========== CARD CENTRALIZADO ==========
     const cardWidth = 140;
