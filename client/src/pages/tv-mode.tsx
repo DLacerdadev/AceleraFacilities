@@ -6,7 +6,8 @@ import ReactApexChart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Medal, Award, TrendingUp, Activity, Wifi, WifiOff, MapPin } from "lucide-react";
+import { Trophy, Medal, Award, TrendingUp, Activity, Wifi, WifiOff, MapPin, Maximize2, Minimize2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
@@ -36,6 +37,34 @@ export default function TvMode() {
   const queryClient = useQueryClient();
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [updateCount, setUpdateCount] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Handle fullscreen toggle
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error("Fullscreen error:", error);
+    }
+  };
+
+  // Listen for fullscreen changes (e.g., when pressing ESC)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, []);
 
   // WebSocket for real-time updates
   const { isConnected, connectionStatus } = useWebSocket({
@@ -197,6 +226,24 @@ export default function TvMode() {
               {updateCount} atualiza{updateCount === 1 ? 'ção' : 'ções'}
             </Badge>
           )}
+          <Button
+            onClick={toggleFullscreen}
+            variant="outline"
+            className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+            data-testid="button-toggle-fullscreen"
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-4 h-4 mr-2" />
+                Sair da Tela Cheia
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-4 h-4 mr-2" />
+                Tela Cheia
+              </>
+            )}
+          </Button>
         </div>
       </motion.div>
 
