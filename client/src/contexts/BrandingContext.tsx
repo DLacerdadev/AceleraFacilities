@@ -174,17 +174,17 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     // Apply clean module colors if available
     if (moduleColors.clean) {
       const colors = moduleColors.clean;
-      if (colors.primary) {
+      if (colors.primary && (!systemColors || !systemColors.primary)) {
         const hsl = hexToHSL(colors.primary);
         root.style.setProperty('--primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
         root.style.setProperty('--module-primary', colors.primary);
       }
-      if (colors.secondary) {
+      if (colors.secondary && (!systemColors || !systemColors.secondary)) {
         const hsl = hexToHSL(colors.secondary);
         root.style.setProperty('--secondary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
         root.style.setProperty('--module-secondary', colors.secondary);
       }
-      if (colors.accent) {
+      if (colors.accent && (!systemColors || !systemColors.accent)) {
         const hsl = hexToHSL(colors.accent);
         root.style.setProperty('--accent', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
         root.style.setProperty('--module-accent', colors.accent);
