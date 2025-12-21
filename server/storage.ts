@@ -1149,15 +1149,28 @@ export class DatabaseStorage implements IStorage {
     // REAL: Savings (exemplo: diferença entre custo planejado e real, ou economia fixa por OS)
     const savings = completed * 12.30; 
 
+    // Ocultar dados financeiros se for módulo de limpeza
+    const financialData = module === 'clean' ? {
+      totalCost: 0,
+      costPerWorkOrder: 0,
+      budgetUtilization: 0,
+      savings: 0
+    } : {
+      totalCost: totalActualCost,
+      costPerWorkOrder: costPerWorkOrder,
+      budgetUtilization,
+      savings
+    };
+
     // REAL: Safety Incidents - contar WOs com incidentes de segurança (campo notes contém "incidente" ou similar)
-    const safetyIncidents = customerWorkOrders.filter(wo => 
+    const safetyIncidents = customerWorkOrders.filter((wo: any) => 
       wo.notes?.toLowerCase().includes('incidente') || 
       wo.notes?.toLowerCase().includes('acidente') ||
       wo.notes?.toLowerCase().includes('segurança')
     ).length;
 
     // REAL: Quality Score - baseado em SLA compliance e ratings
-    const onTimeWork = customerWorkOrders.filter(wo => {
+    const onTimeWork = customerWorkOrders.filter((wo: any) => {
       if (!wo.dueDate || !wo.completedAt) return false;
       return new Date(wo.completedAt) <= new Date(wo.dueDate);
     }).length;
@@ -1185,12 +1198,7 @@ export class DatabaseStorage implements IStorage {
         resourceUtilization,
         averageCompletionTime
       },
-      financial: {
-        totalCost: totalActualCost,
-        costPerWorkOrder: 85.50,
-        budgetUtilization,
-        savings: completed * 12.30
-      },
+      financial: financialData,
       compliance: {
         slaCompliance: slaComplianceRate,
         safetyIncidents,
