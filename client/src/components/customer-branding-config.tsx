@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useModuleTheme } from "@/hooks/use-module-theme";
 import type { Customer } from "@shared/schema";
 
 interface CustomerBrandingConfigProps {
@@ -43,6 +44,7 @@ interface LogoPreview {
 
 export function CustomerBrandingConfig({ customer, open, onOpenChange }: CustomerBrandingConfigProps) {
   const { toast } = useToast();
+  const theme = useModuleTheme();
   const [moduleColors, setModuleColors] = useState<ModuleColors>((customer.moduleColors as ModuleColors) || {});
   const [systemColors, setSystemColors] = useState<SystemColors>((customer as any).systemColors || {
     primary: '#1e3a8a',
@@ -69,6 +71,7 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
   const qrCodeLogoRef = useRef<HTMLInputElement>(null);
 
   // Resetar previews quando o diálogo abrir ou o cliente mudar
+  useEffect(() => {
     if (open) {
       setLoginLogo({ file: null, previewUrl: customer.loginLogo || null });
       setSidebarLogo({ file: null, previewUrl: customer.sidebarLogo || null });
@@ -609,14 +612,14 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
                     <div className="flex gap-2">
                       <Input
                         type="color"
-                        value={moduleColors.maintenance?.accent || '#FFB74D'}
+                        value={moduleColors.maintenance?.accent || '#FFA726'}
                         onChange={(e) => handleColorChange('maintenance', 'accent', e.target.value)}
                         className="h-10 w-14"
                         data-testid="input-maintenance-accent-color"
                       />
                       <Input
                         type="text"
-                        value={moduleColors.maintenance?.accent || '#FFB74D'}
+                        value={moduleColors.maintenance?.accent || '#FFA726'}
                         onChange={(e) => handleColorChange('maintenance', 'accent', e.target.value)}
                         className="flex-1"
                       />
@@ -628,35 +631,32 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
           </TabsContent>
         </Tabs>
 
-        {/* Rodapé fixo com botões - sempre visível */}
-        <div className="flex justify-end gap-2 border-t pt-4 mt-4">
+        <div className="flex justify-end gap-2 p-4 border-t bg-gray-50/50">
           <Button
-            type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
+            data-testid="button-cancel-branding"
           >
             Cancelar
           </Button>
-          
           {activeTab === 'logos' ? (
             <Button
-              variant="outline"
               onClick={handleSaveLogos}
               disabled={!hasLogoChanges || isSavingLogos}
+              className={theme.buttons.primary}
+              style={theme.buttons.primaryStyle}
               data-testid="button-save-logos"
             >
-              <Check className="mr-2 h-4 w-4" />
-              {isSavingLogos ? 'Salvando...' : 'Confirmar Logos'}
+              {isSavingLogos ? "Salvando..." : "Salvar Logos"}
             </Button>
           ) : (
             <Button
-              variant="outline"
               onClick={handleSaveColors}
-              disabled={updateBrandingMutation.isPending}
+              className={theme.buttons.primary}
+              style={theme.buttons.primaryStyle}
               data-testid="button-save-colors"
             >
-              <Check className="mr-2 h-4 w-4" />
-              {updateBrandingMutation.isPending ? 'Salvando...' : 'Salvar Cores'}
+              Salvar Cores
             </Button>
           )}
         </div>
