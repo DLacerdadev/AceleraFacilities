@@ -141,17 +141,20 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       colors: brandingConfig.moduleColors
     });
 
-    // Apply module colors dynamically via CSS variables
-    applyModuleColors(customerData.moduleColors, customerData.systemColors);
+    // Apply colors: use systemColors for pre-login, moduleColors for post-login
+    const useSystemColors = !isAuthenticated;
+    applyColors(customerData.moduleColors, customerData.systemColors, useSystemColors);
     setIsLoading(false);
   };
 
-  // Apply module colors to CSS variables
-  const applyModuleColors = (moduleColors: any, systemColors?: any) => {
+  // Apply colors to CSS variables
+  // useSystemColors: true = pre-login (use systemColors), false = post-login (use moduleColors)
+  const applyColors = (moduleColors: any, systemColors?: any, useSystemColors: boolean = false) => {
     const root = document.documentElement;
 
-    // Priority 1: Apply System Colors as defaults if available
-    if (systemColors) {
+    // PRE-LOGIN: Apply System Colors for public pages (landing, login, etc)
+    if (useSystemColors && systemColors) {
+      console.log('[BRANDING] 🎨 Aplicando cores do sistema (pré-login):', systemColors);
       if (systemColors.primary) {
         const hsl = hexToHSL(systemColors.primary);
         root.style.setProperty('--primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
@@ -167,31 +170,29 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         root.style.setProperty('--accent', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
         root.style.setProperty('--module-accent', systemColors.accent);
       }
+      return; // Don't apply module colors for pre-login
     }
 
+    // POST-LOGIN: Apply module colors only
     if (!moduleColors) return;
     
-    // Apply clean module colors if available
+    // Store module-specific colors for later switching
     if (moduleColors.clean) {
       const colors = moduleColors.clean;
-      if (colors.primary && (!systemColors || !systemColors.primary)) {
+      if (colors.primary) {
         const hsl = hexToHSL(colors.primary);
-        root.style.setProperty('--primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
-        root.style.setProperty('--module-primary', colors.primary);
+        root.style.setProperty('--clean-primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
       }
-      if (colors.secondary && (!systemColors || !systemColors.secondary)) {
+      if (colors.secondary) {
         const hsl = hexToHSL(colors.secondary);
-        root.style.setProperty('--secondary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
-        root.style.setProperty('--module-secondary', colors.secondary);
+        root.style.setProperty('--clean-secondary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
       }
-      if (colors.accent && (!systemColors || !systemColors.accent)) {
+      if (colors.accent) {
         const hsl = hexToHSL(colors.accent);
-        root.style.setProperty('--accent', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
-        root.style.setProperty('--module-accent', colors.accent);
+        root.style.setProperty('--clean-accent', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
       }
     }
     
-    // Apply maintenance module colors if available
     if (moduleColors.maintenance) {
       const colors = moduleColors.maintenance;
       if (colors.primary) {
@@ -207,6 +208,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
         root.style.setProperty('--maintenance-accent', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
       }
     }
+    
+    // Note: Active module colors are applied by ModuleContext when module is selected
+    console.log('[BRANDING] 🎨 Cores dos módulos armazenadas (pós-login). Cores ativas controladas pelo ModuleContext.');
   };
 
   // Reset CSS variables to defaults (to prevent mixed branding)
@@ -270,6 +274,20 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       appliedSubdomainRef.current = activeSubdomain;
     }
   }, [subdomainCustomer, activeSubdomain]);
+
+  // CRITICAL: Re-apply colors when authentication state changes
+  // Login: switch from systemColors to moduleColors
+  // Logout: switch from moduleColors to systemColors
+  const prevAuthRef = useRef<boolean>(isAuthenticated);
+  useEffect(() => {
+    if (prevAuthRef.current !== isAuthenticated && branding) {
+      console.log('[BRANDING] 🔄 Estado de autenticação mudou:', isAuthenticated ? 'logado' : 'deslogado');
+      resetCSSVariables();
+      const useSystemColors = !isAuthenticated;
+      applyColors(branding.moduleColors, branding.systemColors, useSystemColors);
+      prevAuthRef.current = isAuthenticated;
+    }
+  }, [isAuthenticated, branding]);
 
   // CRITICAL: Reload branding when activeClientId changes (after login or client switch)
   useEffect(() => {
