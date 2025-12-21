@@ -37,27 +37,34 @@ export default function Login() {
   const { branding, isLoading: isBrandingLoading } = useBranding();
   const { navigateTo } = useSubdomainNavigation();
 
-  // Determine the single module color if customer has only one module
-  const getSingleModuleColors = () => {
-    if (!branding?.modules || branding.modules.length !== 1) {
-      return null;
-    }
-    
-    const singleModule = branding.modules[0];
-    const colors = branding.moduleColors?.[singleModule as 'clean' | 'maintenance'];
-    
-    if (colors?.primary) {
+  // Get system colors from branding (used for pre-login pages like landing and login)
+  const getSystemColors = () => {
+    // Priority 1: Use systemColors (company branding colors)
+    if (branding?.systemColors?.primary) {
       return {
-        module: singleModule,
-        primary: colors.primary,
-        secondary: colors.secondary,
-        accent: colors.accent,
+        primary: branding.systemColors.primary,
+        secondary: branding.systemColors.secondary || branding.systemColors.primary,
+        accent: branding.systemColors.accent || branding.systemColors.primary,
       };
     }
+    
+    // Fallback: If customer has only one module, use that module's colors
+    if (branding?.modules?.length === 1) {
+      const singleModule = branding.modules[0];
+      const colors = branding.moduleColors?.[singleModule as 'clean' | 'maintenance'];
+      if (colors?.primary) {
+        return {
+          primary: colors.primary,
+          secondary: colors.secondary || colors.primary,
+          accent: colors.accent || colors.primary,
+        };
+      }
+    }
+    
     return null;
   };
   
-  const singleModuleColors = getSingleModuleColors();
+  const systemColors = getSystemColors();
 
   useEffect(() => {
     if (isMobile) {
@@ -154,8 +161,8 @@ export default function Login() {
         <motion.div
           className="absolute -top-40 -right-40 w-80 h-80 rounded-full opacity-10"
           style={{
-            background: singleModuleColors 
-              ? `radial-gradient(circle, ${singleModuleColors.primary}66 0%, transparent 70%)`
+            background: systemColors 
+              ? `radial-gradient(circle, ${systemColors.primary}66 0%, transparent 70%)`
               : "radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, transparent 70%)",
           }}
           animate={{
@@ -171,8 +178,8 @@ export default function Login() {
         <motion.div
           className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full opacity-10"
           style={{
-            background: singleModuleColors 
-              ? `radial-gradient(circle, ${singleModuleColors.primary}4D 0%, transparent 70%)`
+            background: systemColors 
+              ? `radial-gradient(circle, ${systemColors.primary}4D 0%, transparent 70%)`
               : "radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)",
           }}
           animate={{
@@ -232,8 +239,8 @@ export default function Login() {
                     value={credentials.username}
                     onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
                     className="pl-11 h-12 border-2 border-slate-300"
-                    style={singleModuleColors ? { 
-                      borderColor: credentials.username ? singleModuleColors.primary : undefined 
+                    style={systemColors ? { 
+                      borderColor: credentials.username ? systemColors.primary : undefined 
                     } : undefined}
                     placeholder="seu@email.com"
                     required
@@ -253,8 +260,8 @@ export default function Login() {
                     value={credentials.password}
                     onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
                     className="pl-11 pr-11 h-12 border-2 border-slate-300"
-                    style={singleModuleColors ? { 
-                      borderColor: credentials.password ? singleModuleColors.primary : undefined 
+                    style={systemColors ? { 
+                      borderColor: credentials.password ? systemColors.primary : undefined 
                     } : undefined}
                     placeholder="••••••••"
                     required
@@ -289,7 +296,7 @@ export default function Login() {
                 <button
                   type="button"
                   className="text-sm font-semibold"
-                  style={{ color: singleModuleColors?.primary || '#2563eb' }}
+                  style={{ color: systemColors?.primary || '#2563eb' }}
                   data-testid="link-forgot-password"
                 >
                   Esqueci minha senha
@@ -300,9 +307,9 @@ export default function Login() {
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full h-12 text-white font-bold text-base shadow-lg hover:shadow-xl transition-all"
-                style={singleModuleColors ? {
-                  background: `linear-gradient(to right, ${singleModuleColors.primary}, ${singleModuleColors.secondary || singleModuleColors.primary})`,
-                  boxShadow: `0 10px 15px -3px ${singleModuleColors.primary}33`,
+                style={systemColors ? {
+                  background: `linear-gradient(to right, ${systemColors.primary}, ${systemColors.secondary || systemColors.primary})`,
+                  boxShadow: `0 10px 15px -3px ${systemColors.primary}33`,
                 } : {
                   background: 'linear-gradient(to right, #2563eb, #3b82f6)',
                   boxShadow: '0 10px 15px -3px rgba(59, 130, 246, 0.3)',
@@ -329,7 +336,7 @@ export default function Login() {
                 Não tem uma conta?{" "}
                 <button 
                   className="font-semibold"
-                  style={{ color: singleModuleColors?.primary || '#2563eb' }}
+                  style={{ color: systemColors?.primary || '#2563eb' }}
                   onClick={() => toast({ title: "Entre em contato com o administrador" })}
                   data-testid="link-signup"
                 >
