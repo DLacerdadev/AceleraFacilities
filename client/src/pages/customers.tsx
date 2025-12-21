@@ -1031,7 +1031,7 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
       {/* Branding Configuration Dialog */}
       {brandingCustomer && (
         <CustomerBrandingConfig
-          customer={brandingCustomer}
+          customer={brandingCustomer as any}
           open={isBrandingDialogOpen}
           onOpenChange={setIsBrandingDialogOpen}
         />
