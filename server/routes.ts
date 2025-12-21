@@ -4550,8 +4550,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "logoType, imageData, and fileName are required" });
       }
       
-      if (!['loginLogo', 'sidebarLogo', 'sidebarLogoCollapsed', 'homeLogo', 'favicon'].includes(logoType)) {
-        return res.status(400).json({ message: "Invalid logoType. Must be one of: loginLogo, sidebarLogo, sidebarLogoCollapsed, homeLogo, favicon" });
+      if (!['loginLogo', 'sidebarLogo', 'sidebarLogoCollapsed', 'homeLogo', 'favicon', 'qrCodeLogo'].includes(logoType)) {
+        return res.status(400).json({ message: "Invalid logoType. Must be one of: loginLogo, sidebarLogo, sidebarLogoCollapsed, homeLogo, favicon, qrCodeLogo" });
       }
       
       // Import fs promises
