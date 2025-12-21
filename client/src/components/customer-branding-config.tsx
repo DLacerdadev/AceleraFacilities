@@ -69,7 +69,6 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
   const qrCodeLogoRef = useRef<HTMLInputElement>(null);
 
   // Resetar previews quando o diálogo abrir ou o cliente mudar
-  useEffect(() => {
     if (open) {
       setLoginLogo({ file: null, previewUrl: customer.loginLogo || null });
       setSidebarLogo({ file: null, previewUrl: customer.sidebarLogo || null });
