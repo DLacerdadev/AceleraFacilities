@@ -25,7 +25,8 @@ import {
   RefreshCw,
   Globe,
   Link,
-  Eye
+  Eye,
+  MapPin
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import jsPDF from 'jspdf';
@@ -725,59 +726,75 @@ export default function QrCodes() {
                 {(qrPoints as any[])?.map((point: any) => {
                   const sizeCm = point.sizeCm || 5;
                   const isSelected = selectedQrCodes.includes(point.id);
+                  const customerData = customer as any;
                   
                   return (
                     <Card 
                       key={point.id} 
                       className={cn(
-                        "relative transition-all duration-200",
+                        "relative transition-all duration-200 overflow-hidden",
                         isSelected && "ring-2 ring-offset-2",
                         isSelected && theme.borders.primary
                       )}
                     >
-                      <CardContent className="p-6">
+                      {/* Header com cor do cliente */}
+                      <div 
+                        className="px-4 py-3 flex items-center justify-between"
+                        style={{
+                          background: 'linear-gradient(135deg, var(--module-primary), var(--module-secondary))'
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          {customerData?.sidebarLogoCollapsed ? (
+                            <img 
+                              src={customerData.sidebarLogoCollapsed} 
+                              alt={customerData?.name || 'Logo'} 
+                              className="h-6 w-6 object-contain bg-white rounded-sm p-0.5"
+                            />
+                          ) : (
+                            <div className="h-6 w-6 rounded-sm bg-white/20 flex items-center justify-center">
+                              <QrCodeIcon className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          <span className="text-white font-semibold text-sm truncate max-w-[120px]">
+                            {customerData?.name || 'Cliente'}
+                          </span>
+                        </div>
+                        <Badge className="bg-white/20 text-white text-xs border-0">
+                          {currentModule === 'clean' ? 'Limpeza' : 'Manutenção'}
+                        </Badge>
+                      </div>
+
+                      <CardContent className="p-4">
                         {/* Checkbox */}
                         <button
                           onClick={() => toggleSelection(point.id)}
                           data-testid={`checkbox-qr-${point.id}`}
                           className={cn(
-                            "absolute top-4 left-4 w-7 h-7 rounded-md border-2 flex items-center justify-center transition-all duration-200 hover:scale-110",
+                            "absolute top-14 left-4 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all duration-200 hover:scale-110 z-10",
                             isSelected 
                               ? "border-transparent shadow-lg"
-                              : 'border-gray-400 bg-white hover:border-gray-600 hover:bg-gray-50'
+                              : 'border-gray-300 bg-white hover:border-gray-500'
                           )}
                           style={isSelected ? {
                             background: 'linear-gradient(135deg, var(--module-primary), var(--module-secondary))'
                           } : undefined}
                         >
-                          {isSelected && <Check className="w-5 h-5 text-white font-bold" />}
+                          {isSelected && <Check className="w-4 h-4 text-white font-bold" />}
                         </button>
 
-                        {/* Badge Tipo */}
-                        <Badge 
-                          className={cn("absolute top-4 right-4 text-white")}
-                          style={theme.backgrounds.primaryStyle}
-                        >
-                          Execução
-                        </Badge>
-
-                        {/* QR Code com borda dinâmica */}
-                        <div className="flex justify-center my-4">
+                        {/* QR Code centralizado */}
+                        <div className="flex justify-center my-3">
                           <div className="relative">
-                            <div 
-                              className="p-4 rounded-2xl"
-                              style={theme.backgrounds.primaryStyle}
-                            >
-                              {qrCodeImages[point.id] && (
-                                <div className="bg-white p-2">
-                                  <img 
-                                    src={qrCodeImages[point.id]} 
-                                    alt={point.name}
-                                    className="w-32 h-32"
-                                  />
-                                </div>
-                              )}
-                            </div>
+                            {qrCodeImages[point.id] && (
+                              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-1">
+                                <img 
+                                  src={qrCodeImages[point.id]} 
+                                  alt={point.name}
+                                  className="w-36 h-36"
+                                />
+                              </div>
+                            )}
                             {/* Badge de QR Code Público */}
                             {point.isPublic && point.publicSlug && (
                               <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
@@ -786,43 +803,36 @@ export default function QrCodes() {
                                   data-testid={`badge-public-qr-${point.id}`}
                                 >
                                   <Globe className="w-3 h-3 mr-1" />
-                                  Escaneável
+                                  Público
                                 </Badge>
                               </div>
                             )}
                           </div>
                         </div>
-                        
-                        {/* Mensagem de QR público */}
-                        {point.isPublic && point.publicSlug && (
-                          <p className="text-xs text-center text-green-600 font-medium mb-2" data-testid={`text-public-info-${point.id}`}>
-                            Qualquer pessoa pode escanear este QR code
-                          </p>
-                        )}
 
-                        {/* Badge Execução */}
-                        <div className="flex justify-center mb-3">
-                          <Badge 
-                            className="px-4 py-1"
-                            style={theme.badges.lightStyle}
-                          >
-                            Execução
-                          </Badge>
-                        </div>
-
-                        {/* Informações */}
-                        <div className="text-center space-y-1 mb-4">
-                          <h3 className="font-bold text-base">{point.name}</h3>
-                          <p className="text-sm text-muted-foreground">Código: {point.code}</p>
+                        {/* Informações do local */}
+                        <div 
+                          className="text-center rounded-lg p-3 mb-3"
+                          style={{
+                            background: 'linear-gradient(135deg, var(--module-primary) / 0.08, var(--module-secondary) / 0.05)'
+                          }}
+                        >
+                          <h3 className="font-bold text-base" style={{ color: 'var(--module-primary)' }}>
+                            {point.name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground font-mono mt-1">{point.code}</p>
                           {point.zoneName && (
-                            <>
-                              <p className="text-xs text-muted-foreground">Local: {point.zoneName}</p>
+                            <div className="mt-2 pt-2 border-t border-gray-200/50">
+                              <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {point.zoneName}
+                              </p>
                               {point.siteName && (
-                                <p className="text-xs text-muted-foreground">
-                                  Endereço: {point.siteName}
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {point.siteName}
                                 </p>
                               )}
-                            </>
+                            </div>
                           )}
                         </div>
 
