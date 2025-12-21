@@ -1522,28 +1522,30 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* Financial */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-800">💰 Financeiro</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Custo Total:</span>
-                <span className="font-semibold">R$ {(data.financial?.totalCost || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Custo por OS:</span>
-                <span className="font-semibold">R$ {(data.financial?.costPerWorkOrder || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Utilização do Orçamento:</span>
-                <span className="font-semibold">{data.financial?.budgetUtilization || 0}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-600">Economia:</span>
-                <span className="font-semibold text-green-600">R$ {(data.financial?.savings || 0).toFixed(2)}</span>
+          {/* Financial - Only for maintenance module */}
+          {currentModule === 'maintenance' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-slate-800">💰 Financeiro</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-slate-600">Custo Total:</span>
+                  <span className="font-semibold">R$ {(data.financial?.totalCost || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-slate-600">Custo por OS:</span>
+                  <span className="font-semibold">R$ {(data.financial?.costPerWorkOrder || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-slate-600">Utilização do Orçamento:</span>
+                  <span className="font-semibold">{data.financial?.budgetUtilization || 0}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-slate-600">Economia:</span>
+                  <span className="font-semibold text-green-600">R$ {(data.financial?.savings || 0).toFixed(2)}</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Compliance */}
           <div className="space-y-4">

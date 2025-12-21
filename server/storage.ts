@@ -1176,12 +1176,12 @@ export class DatabaseStorage implements IStorage {
     }).length;
     const slaComplianceRate = total > 0 ? Math.round((onTimeWork / total) * 100) : 0;
     const qualityScore = workOrdersWithRating.length > 0
-      ? Math.round((qualityIndex * 0.6) + (slaComplianceRate * 0.4))
+      ? Math.round((Number(qualityIndex) * 0.6) + (slaComplianceRate * 0.4))
       : slaComplianceRate;
 
     // REAL: Audit Score - combinação de SLA, qualidade e conclusão
     const auditScore = total > 0
-      ? Math.round((slaComplianceRate * 0.5) + (qualityScore * 0.3) + ((completed / total) * 100 * 0.2))
+      ? Math.round((slaComplianceRate * 0.5) + (Number(qualityScore) * 0.3) + ((completed / total) * 100 * 0.2))
       : 0;
 
     return {
