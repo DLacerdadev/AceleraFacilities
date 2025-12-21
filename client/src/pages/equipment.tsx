@@ -170,6 +170,7 @@ export default function Equipment({ customerId }: EquipmentProps) {
   const [installationDate, setInstallationDate] = useState("");
   const [warrantyExpiry, setWarrantyExpiry] = useState("");
   const [value, setValue] = useState("");
+  const [usefulLifeMonths, setUsefulLifeMonths] = useState("");
   const [status, setStatus] = useState("operacional");
   const [description, setDescription] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -406,6 +407,7 @@ export default function Equipment({ customerId }: EquipmentProps) {
       installationDate: installationDate || null,
       warrantyExpiry: warrantyExpiry || null,
       value: value ? parseFloat(value) : null,
+      usefulLifeMonths: usefulLifeMonths ? parseInt(usefulLifeMonths) : null,
       status,
       description: description || null,
       module: currentModule,
@@ -425,6 +427,7 @@ export default function Equipment({ customerId }: EquipmentProps) {
     setInstallationDate(equip.installationDate || "");
     setWarrantyExpiry(equip.warrantyExpiry || "");
     setValue(equip.value || "");
+    setUsefulLifeMonths(equip.usefulLifeMonths?.toString() || "");
     setStatus(equip.status);
     setDescription(equip.description || "");
     setPhotoPreview(equip.photoUrl || null);
@@ -465,6 +468,7 @@ export default function Equipment({ customerId }: EquipmentProps) {
       installationDate: installationDate || null,
       warrantyExpiry: warrantyExpiry || null,
       value: value ? parseFloat(value) : null,
+      usefulLifeMonths: usefulLifeMonths ? parseInt(usefulLifeMonths) : null,
       status,
       description: description || null,
       photoUrl: photoUrl || null,
@@ -730,6 +734,19 @@ export default function Equipment({ customerId }: EquipmentProps) {
                         value={value}
                         onChange={(e) => setValue(e.target.value)}
                         placeholder="0.00"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="usefulLifeMonths">Vida Útil (meses)</Label>
+                      <Input
+                        id="usefulLifeMonths"
+                        type="number"
+                        min="1"
+                        data-testid="input-useful-life-months"
+                        value={usefulLifeMonths}
+                        onChange={(e) => setUsefulLifeMonths(e.target.value)}
+                        placeholder="Ex: 60 (5 anos)"
                       />
                     </div>
                   </div>
@@ -1074,6 +1091,17 @@ export default function Equipment({ customerId }: EquipmentProps) {
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     placeholder="0.00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Vida Útil (meses)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={usefulLifeMonths}
+                    onChange={(e) => setUsefulLifeMonths(e.target.value)}
+                    placeholder="Ex: 60 (5 anos)"
                   />
                 </div>
               </div>
