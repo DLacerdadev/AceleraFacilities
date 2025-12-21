@@ -230,10 +230,10 @@ export default function TvMode() {
         className="text-center mb-8"
       >
         <h1 className="text-5xl font-bold text-white mb-2">
-          Dashboard TV Mode
+          TV Mode
         </h1>
         <p className="text-xl text-slate-300">
-          Atualização em tempo real via WebSocket
+          Atualização em tempo real
         </p>
         <div className="flex items-center justify-center gap-4 mt-4">
           <Badge 
