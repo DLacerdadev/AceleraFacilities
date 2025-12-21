@@ -120,6 +120,38 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activeClient, currentModule, canAccessModule, setLocation]);
 
+  // Helper to convert HEX to HSL
+  const hexToHSL = (hex: string): { h: number; s: number; l: number } => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return { h: 0, s: 0, l: 50 };
+    
+    let r = parseInt(result[1], 16) / 255;
+    let g = parseInt(result[2], 16) / 255;
+    let b = parseInt(result[3], 16) / 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+    
+    return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+  };
+
+  // Helper to check if color is dark (for foreground color)
+  const isColorDark = (hsl: { h: number; s: number; l: number }) => {
+    return hsl.l < 50;
+  };
+
   useEffect(() => {
     if (currentModule) {
       localStorage.setItem('opus:currentModule', currentModule);
@@ -138,12 +170,35 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
       const secondaryColor = customColors?.secondary || moduleConfig.secondaryColor;
       const accentColor = customColors?.accent || moduleConfig.accentColor;
       
+      // Apply module colors to legacy CSS variables
       document.documentElement.style.setProperty('--module-primary', primaryColor);
       document.documentElement.style.setProperty('--module-secondary', secondaryColor);
       document.documentElement.style.setProperty('--module-accent', accentColor);
       
-      console.log(`[MODULE] Aplicando cores personalizadas do módulo ${currentModule}:`, {
+      // CRITICAL: Also apply to --primary, --secondary, --accent for UI components
+      const root = document.documentElement;
+      
+      // Apply primary color
+      const primaryHSL = hexToHSL(primaryColor);
+      root.style.setProperty('--primary', `hsl(${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%)`);
+      const primaryForeground = isColorDark(primaryHSL) ? 'hsl(0 0% 100%)' : 'hsl(0 0% 0%)';
+      root.style.setProperty('--primary-foreground', primaryForeground);
+      
+      // Apply secondary color
+      const secondaryHSL = hexToHSL(secondaryColor);
+      root.style.setProperty('--secondary', `hsl(${secondaryHSL.h} ${secondaryHSL.s}% ${secondaryHSL.l}%)`);
+      const secondaryForeground = isColorDark(secondaryHSL) ? 'hsl(0 0% 100%)' : 'hsl(0 0% 0%)';
+      root.style.setProperty('--secondary-foreground', secondaryForeground);
+      
+      // Apply accent color
+      const accentHSL = hexToHSL(accentColor);
+      root.style.setProperty('--accent', `hsl(${accentHSL.h} ${accentHSL.s}% ${accentHSL.l}%)`);
+      const accentForeground = isColorDark(accentHSL) ? 'hsl(0 0% 100%)' : 'hsl(0 0% 0%)';
+      root.style.setProperty('--accent-foreground', accentForeground);
+      
+      console.log(`[MODULE] Aplicando cores do módulo ${currentModule} em --primary:`, {
         primary: primaryColor,
+        primaryHSL: `hsl(${primaryHSL.h} ${primaryHSL.s}% ${primaryHSL.l}%)`,
         secondary: secondaryColor,
         accent: accentColor,
         customized: !!customColors
