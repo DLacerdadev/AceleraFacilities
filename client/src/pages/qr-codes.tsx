@@ -265,51 +265,142 @@ export default function QrCodes() {
     const url = generateQrCodeUrl(point);
     const sizeCm = point.sizeCm || 5;
     const qrCodeDataUrl = await generateQrCodeImage(url, sizeCm);
+    const customerData = customer as any;
     
     const pdf = new jsPDF();
     const pageWidth = 210;
     const pageHeight = 297;
     
-    // QR Code padrão centralizado
+    // Cores do módulo
+    const moduleColors = currentModule === 'clean' 
+      ? { primary: [59, 130, 246], secondary: [37, 99, 235] }  // blue
+      : { primary: [249, 115, 22], secondary: [234, 88, 12] }; // orange
+    
+    // Cores personalizadas do cliente (se houver)
+    const clientColors = customerData?.primaryColor 
+      ? hexToRgb(customerData.primaryColor) 
+      : moduleColors.primary;
+    const clientSecondary = customerData?.secondaryColor
+      ? hexToRgb(customerData.secondaryColor)
+      : moduleColors.secondary;
+    
+    // Header com gradiente (simples cor sólida no PDF)
+    const headerHeight = 35;
+    pdf.setFillColor(clientColors[0], clientColors[1], clientColors[2]);
+    pdf.rect(0, 0, pageWidth, headerHeight, 'F');
+    
+    // Logo do cliente no header (se houver)
+    let logoX = 15;
+    const logoY = 8;
+    const logoSize = 18;
+    
+    if (customerData?.sidebarLogoCollapsed) {
+      try {
+        // Fundo branco arredondado para o logo
+        pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(logoX - 2, logoY - 2, logoSize + 4, logoSize + 4, 2, 2, 'F');
+        pdf.addImage(customerData.sidebarLogoCollapsed, 'PNG', logoX, logoY, logoSize, logoSize);
+        logoX += logoSize + 10;
+      } catch (e) {
+        logoX = 15;
+      }
+    }
+    
+    // Nome do cliente no header
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    const clientName = customerData?.name || 'Cliente';
+    pdf.text(clientName, logoX, 20);
+    
+    // Badge do módulo
+    const moduleName = currentModule === 'clean' ? 'Limpeza' : 'Manutenção';
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'normal');
+    const badgeWidth = pdf.getTextWidth(moduleName) + 8;
+    const badgeX = pageWidth - badgeWidth - 15;
+    pdf.setFillColor(255, 255, 255, 0.2);
+    pdf.roundedRect(badgeX, 12, badgeWidth, 12, 2, 2, 'F');
+    pdf.text(moduleName, badgeX + 4, 20);
+    
+    // Linha decorativa abaixo do header
+    pdf.setFillColor(clientSecondary[0], clientSecondary[1], clientSecondary[2]);
+    pdf.rect(0, headerHeight, pageWidth, 3, 'F');
+    
+    // QR Code centralizado
     const qrSizeMM = sizeCm * 10;
-    const borderMM = 5;
+    const borderMM = 8;
     const qrWithBorderMM = qrSizeMM + (borderMM * 2);
     const qrX = (pageWidth - qrWithBorderMM) / 2;
-    const qrY = 50;
+    const qrY = headerHeight + 25;
     
-    // Borda simples cinza
-    pdf.setFillColor(240, 240, 240);
-    pdf.roundedRect(qrX, qrY, qrWithBorderMM, qrWithBorderMM, 3, 3, 'F');
+    // Sombra suave para o container do QR
+    pdf.setFillColor(230, 230, 230);
+    pdf.roundedRect(qrX + 2, qrY + 2, qrWithBorderMM, qrWithBorderMM, 4, 4, 'F');
     
-    // Fundo branco para QR
+    // Container branco com borda colorida
     pdf.setFillColor(255, 255, 255);
-    pdf.rect(qrX + borderMM, qrY + borderMM, qrSizeMM, qrSizeMM, 'F');
+    pdf.roundedRect(qrX, qrY, qrWithBorderMM, qrWithBorderMM, 4, 4, 'F');
+    pdf.setDrawColor(clientColors[0], clientColors[1], clientColors[2]);
+    pdf.setLineWidth(1.5);
+    pdf.roundedRect(qrX, qrY, qrWithBorderMM, qrWithBorderMM, 4, 4, 'S');
     
     // QR Code
     pdf.addImage(qrCodeDataUrl, 'PNG', qrX + borderMM, qrY + borderMM, qrSizeMM, qrSizeMM);
     
-    // Informações abaixo do QR code
-    const textStartY = qrY + qrWithBorderMM + 15;
+    // Card de informações
+    const infoY = qrY + qrWithBorderMM + 15;
+    const infoWidth = Math.max(qrWithBorderMM + 20, 80);
+    const infoX = (pageWidth - infoWidth) / 2;
+    const infoHeight = 40;
     
-    // Nome
-    pdf.setTextColor(30, 41, 59);
+    // Fundo suave para informações (cor clara derivada da primária)
+    const lightColor = [
+      Math.min(255, clientColors[0] + 180),
+      Math.min(255, clientColors[1] + 180),
+      Math.min(255, clientColors[2] + 180)
+    ];
+    pdf.setFillColor(lightColor[0], lightColor[1], lightColor[2]);
+    pdf.roundedRect(infoX, infoY, infoWidth, infoHeight, 4, 4, 'F');
+    
+    // Borda colorida sutil
+    pdf.setDrawColor(clientColors[0], clientColors[1], clientColors[2]);
+    pdf.setLineWidth(0.5);
+    pdf.roundedRect(infoX, infoY, infoWidth, infoHeight, 4, 4, 'S');
+    
+    // Nome do ponto
+    pdf.setTextColor(clientColors[0], clientColors[1], clientColors[2]);
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(point.name, pageWidth / 2, textStartY, { align: 'center' });
+    pdf.text(point.name, pageWidth / 2, infoY + 12, { align: 'center' });
     
     // Código
     pdf.setTextColor(100, 116, 139);
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Código: ${point.code}`, pageWidth / 2, textStartY + 8, { align: 'center' });
+    pdf.text(point.code, pageWidth / 2, infoY + 22, { align: 'center' });
     
     // Local
     if (point.zoneName) {
       pdf.setFontSize(9);
-      pdf.text(`Local: ${point.zoneName}`, pageWidth / 2, textStartY + 15, { align: 'center' });
+      const localText = point.siteName ? `${point.zoneName} - ${point.siteName}` : point.zoneName;
+      pdf.text(localText, pageWidth / 2, infoY + 32, { align: 'center' });
     }
     
+    // Rodapé discreto
+    pdf.setTextColor(180, 180, 180);
+    pdf.setFontSize(7);
+    pdf.text('Escaneie para executar tarefa', pageWidth / 2, pageHeight - 15, { align: 'center' });
+    
     pdf.save(`qr_${point.name.replace(/\s+/g, '_')}_${sizeCm}cm.pdf`);
+  };
+  
+  // Helper para converter hex para RGB
+  const hexToRgb = (hex: string): number[] => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result 
+      ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
+      : [59, 130, 246];
   };
 
   const downloadMultiplePDF = async () => {
