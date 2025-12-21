@@ -165,24 +165,25 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       console.log('[BRANDING] 🎨 Aplicando cores do sistema (pré-login):', systemColors);
       if (systemColors.primary) {
         const hsl = hexToHSL(systemColors.primary);
-        root.style.setProperty('--primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
+        // CSS variable format must include hsl() wrapper to match index.css format
+        root.style.setProperty('--primary', `hsl(${hsl.h} ${hsl.s}% ${hsl.l}%)`);
         root.style.setProperty('--module-primary', systemColors.primary);
         // Set foreground color based on primary color brightness
-        const foreground = isColorDark(hsl) ? '0 0% 100%' : '0 0% 0%';
+        const foreground = isColorDark(hsl) ? 'hsl(0 0% 100%)' : 'hsl(0 0% 0%)';
         root.style.setProperty('--primary-foreground', foreground);
       }
       if (systemColors.secondary) {
         const hsl = hexToHSL(systemColors.secondary);
-        root.style.setProperty('--secondary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
+        root.style.setProperty('--secondary', `hsl(${hsl.h} ${hsl.s}% ${hsl.l}%)`);
         root.style.setProperty('--module-secondary', systemColors.secondary);
-        const foreground = isColorDark(hsl) ? '0 0% 100%' : '0 0% 0%';
+        const foreground = isColorDark(hsl) ? 'hsl(0 0% 100%)' : 'hsl(0 0% 0%)';
         root.style.setProperty('--secondary-foreground', foreground);
       }
       if (systemColors.accent) {
         const hsl = hexToHSL(systemColors.accent);
-        root.style.setProperty('--accent', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
+        root.style.setProperty('--accent', `hsl(${hsl.h} ${hsl.s}% ${hsl.l}%)`);
         root.style.setProperty('--module-accent', systemColors.accent);
-        const foreground = isColorDark(hsl) ? '0 0% 100%' : '0 0% 0%';
+        const foreground = isColorDark(hsl) ? 'hsl(0 0% 100%)' : 'hsl(0 0% 0%)';
         root.style.setProperty('--accent-foreground', foreground);
       }
       return; // Don't apply module colors for pre-login
