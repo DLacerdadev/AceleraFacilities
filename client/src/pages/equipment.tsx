@@ -36,7 +36,8 @@ import {
   Building2,
   MapPin,
   Tag,
-  FileText
+  FileText,
+  TrendingDown
 } from "lucide-react";
 
 interface EquipmentProps {
@@ -1521,6 +1522,99 @@ export default function Equipment({ customerId }: EquipmentProps) {
                         : "-"}
                     </p>
                   </div>
+
+                  {/* Useful Life Chart */}
+                  {selectedEquipmentForInfo.usefulLifeMonths && selectedEquipmentForInfo.installationDate && (
+                    <div className="col-span-2 bg-muted/50 rounded-lg p-4" data-testid="useful-life-chart">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                        <TrendingDown className="h-4 w-4" />
+                        Vida Útil do Equipamento
+                      </div>
+                      {(() => {
+                        const installDate = new Date(selectedEquipmentForInfo.installationDate);
+                        const now = new Date();
+                        const monthsElapsed = Math.max(0, 
+                          (now.getFullYear() - installDate.getFullYear()) * 12 + 
+                          (now.getMonth() - installDate.getMonth())
+                        );
+                        const totalMonths = selectedEquipmentForInfo.usefulLifeMonths;
+                        const monthsRemaining = Math.max(0, totalMonths - monthsElapsed);
+                        const percentUsed = Math.min(100, (monthsElapsed / totalMonths) * 100);
+                        const percentRemaining = 100 - percentUsed;
+                        
+                        const progressColor = percentRemaining > 50 
+                          ? 'bg-green-500' 
+                          : percentRemaining > 25 
+                            ? 'bg-yellow-500' 
+                            : 'bg-red-500';
+                        
+                        const statusText = percentRemaining > 50 
+                          ? 'Bom estado' 
+                          : percentRemaining > 25 
+                            ? 'Atenção' 
+                            : monthsRemaining === 0 
+                              ? 'Substituir' 
+                              : 'Crítico';
+                        
+                        const statusColor = percentRemaining > 50 
+                          ? 'text-green-600' 
+                          : percentRemaining > 25 
+                            ? 'text-yellow-600' 
+                            : 'text-red-600';
+
+                        const depreciatedValue = selectedEquipmentForInfo.value 
+                          ? (parseFloat(selectedEquipmentForInfo.value) * percentRemaining / 100).toFixed(2)
+                          : null;
+
+                        return (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                  <span>Vida útil consumida</span>
+                                  <span>{percentUsed.toFixed(0)}%</span>
+                                </div>
+                                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full ${progressColor} transition-all duration-500`}
+                                    style={{ width: `${percentUsed}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4 text-center">
+                              <div className="bg-background rounded-lg p-3">
+                                <p className="text-2xl font-bold" style={{ color: 'var(--module-primary)' }}>
+                                  {monthsRemaining}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Meses restantes</p>
+                              </div>
+                              <div className="bg-background rounded-lg p-3">
+                                <p className={`text-lg font-semibold ${statusColor}`}>
+                                  {statusText}
+                                </p>
+                                <p className="text-xs text-muted-foreground">Status</p>
+                              </div>
+                              {depreciatedValue && (
+                                <div className="bg-background rounded-lg p-3">
+                                  <p className="text-lg font-bold text-muted-foreground">
+                                    R$ {parseFloat(depreciatedValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">Valor depreciado</p>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex justify-between text-xs text-muted-foreground pt-2 border-t">
+                              <span>Instalado: {installDate.toLocaleDateString('pt-BR')}</span>
+                              <span>Vida útil: {totalMonths} meses ({Math.floor(totalMonths / 12)} anos)</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
 
                   {/* Description */}
                   {selectedEquipmentForInfo.description && (
