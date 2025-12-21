@@ -261,6 +261,14 @@ export default function QrCodes() {
     generateAllQrCodes();
   }, [qrPoints, customer, currentModule]);
 
+  // Helper para converter hex para RGB
+  const hexToRgb = (hex: string): number[] => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result 
+      ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
+      : [59, 130, 246];
+  };
+
   const downloadPDF = async (point: any) => {
     const url = generateQrCodeUrl(point);
     const sizeCm = point.sizeCm || 5;
@@ -273,134 +281,136 @@ export default function QrCodes() {
     
     // Cores do módulo
     const moduleColors = currentModule === 'clean' 
-      ? { primary: [59, 130, 246], secondary: [37, 99, 235] }  // blue
-      : { primary: [249, 115, 22], secondary: [234, 88, 12] }; // orange
+      ? { primary: [59, 130, 246], secondary: [96, 165, 250] }
+      : { primary: [249, 115, 22], secondary: [251, 146, 60] };
     
-    // Cores personalizadas do cliente (se houver)
-    const clientColors = customerData?.primaryColor 
+    // Cores do cliente (se houver)
+    const primaryRgb = customerData?.primaryColor 
       ? hexToRgb(customerData.primaryColor) 
       : moduleColors.primary;
-    const clientSecondary = customerData?.secondaryColor
+    const secondaryRgb = customerData?.secondaryColor
       ? hexToRgb(customerData.secondaryColor)
       : moduleColors.secondary;
     
-    // Header com gradiente (simples cor sólida no PDF)
-    const headerHeight = 35;
-    pdf.setFillColor(clientColors[0], clientColors[1], clientColors[2]);
-    pdf.rect(0, 0, pageWidth, headerHeight, 'F');
+    // ========== CARD CENTRALIZADO ==========
+    const cardWidth = 140;
+    const cardHeight = 200;
+    const cardX = (pageWidth - cardWidth) / 2;
+    const cardY = (pageHeight - cardHeight) / 2 - 20;
     
-    // Logo do cliente no header (se houver)
-    let logoX = 15;
-    const logoY = 8;
-    const logoSize = 18;
+    // Sombra do card
+    pdf.setFillColor(200, 200, 200);
+    pdf.roundedRect(cardX + 3, cardY + 3, cardWidth, cardHeight, 6, 6, 'F');
     
+    // Fundo branco do card
+    pdf.setFillColor(255, 255, 255);
+    pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 6, 6, 'F');
+    
+    // Borda do card
+    pdf.setDrawColor(230, 230, 230);
+    pdf.setLineWidth(0.5);
+    pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 6, 6, 'S');
+    
+    // ========== HEADER DO CARD ==========
+    const headerH = 28;
+    
+    // Fundo colorido do header
+    pdf.setFillColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
+    pdf.roundedRect(cardX, cardY, cardWidth, headerH, 6, 6, 'F');
+    // Retângulo para cobrir cantos inferiores arredondados
+    pdf.rect(cardX, cardY + headerH - 6, cardWidth, 6, 'F');
+    
+    // Logo do cliente no header
+    let textStartX = cardX + 12;
     if (customerData?.sidebarLogoCollapsed) {
       try {
-        // Fundo branco arredondado para o logo
+        const logoSize = 16;
+        const logoX = cardX + 8;
+        const logoY = cardY + 6;
         pdf.setFillColor(255, 255, 255);
-        pdf.roundedRect(logoX - 2, logoY - 2, logoSize + 4, logoSize + 4, 2, 2, 'F');
-        pdf.addImage(customerData.sidebarLogoCollapsed, 'PNG', logoX, logoY, logoSize, logoSize);
-        logoX += logoSize + 10;
+        pdf.roundedRect(logoX, logoY, logoSize, logoSize, 2, 2, 'F');
+        pdf.addImage(customerData.sidebarLogoCollapsed, 'PNG', logoX + 1, logoY + 1, logoSize - 2, logoSize - 2);
+        textStartX = logoX + logoSize + 6;
       } catch (e) {
-        logoX = 15;
+        // Ignora erro de logo
       }
     }
     
-    // Nome do cliente no header
+    // Nome do cliente
     pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(14);
+    pdf.setFontSize(11);
     pdf.setFont('helvetica', 'bold');
     const clientName = customerData?.name || 'Cliente';
-    pdf.text(clientName, logoX, 20);
+    const maxNameWidth = cardWidth - (textStartX - cardX) - 40;
+    const truncatedName = clientName.length > 18 ? clientName.substring(0, 16) + '...' : clientName;
+    pdf.text(truncatedName, textStartX, cardY + 17);
     
     // Badge do módulo
     const moduleName = currentModule === 'clean' ? 'Limpeza' : 'Manutenção';
-    pdf.setFontSize(9);
+    pdf.setFontSize(7);
     pdf.setFont('helvetica', 'normal');
-    const badgeWidth = pdf.getTextWidth(moduleName) + 8;
-    const badgeX = pageWidth - badgeWidth - 15;
-    pdf.setFillColor(255, 255, 255, 0.2);
-    pdf.roundedRect(badgeX, 12, badgeWidth, 12, 2, 2, 'F');
-    pdf.text(moduleName, badgeX + 4, 20);
-    
-    // Linha decorativa abaixo do header
-    pdf.setFillColor(clientSecondary[0], clientSecondary[1], clientSecondary[2]);
-    pdf.rect(0, headerHeight, pageWidth, 3, 'F');
-    
-    // QR Code centralizado
-    const qrSizeMM = sizeCm * 10;
-    const borderMM = 8;
-    const qrWithBorderMM = qrSizeMM + (borderMM * 2);
-    const qrX = (pageWidth - qrWithBorderMM) / 2;
-    const qrY = headerHeight + 25;
-    
-    // Sombra suave para o container do QR
-    pdf.setFillColor(230, 230, 230);
-    pdf.roundedRect(qrX + 2, qrY + 2, qrWithBorderMM, qrWithBorderMM, 4, 4, 'F');
-    
-    // Container branco com borda colorida
+    const badgeW = pdf.getTextWidth(moduleName) + 6;
+    const badgeX = cardX + cardWidth - badgeW - 8;
+    const badgeY = cardY + 9;
     pdf.setFillColor(255, 255, 255);
-    pdf.roundedRect(qrX, qrY, qrWithBorderMM, qrWithBorderMM, 4, 4, 'F');
-    pdf.setDrawColor(clientColors[0], clientColors[1], clientColors[2]);
-    pdf.setLineWidth(1.5);
-    pdf.roundedRect(qrX, qrY, qrWithBorderMM, qrWithBorderMM, 4, 4, 'S');
+    pdf.roundedRect(badgeX, badgeY, badgeW, 10, 2, 2, 'F');
+    pdf.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
+    pdf.text(moduleName, badgeX + 3, badgeY + 7);
     
-    // QR Code
-    pdf.addImage(qrCodeDataUrl, 'PNG', qrX + borderMM, qrY + borderMM, qrSizeMM, qrSizeMM);
+    // ========== QR CODE ==========
+    const qrSizeMM = Math.min(sizeCm * 10, 90);
+    const qrX = cardX + (cardWidth - qrSizeMM) / 2;
+    const qrY = cardY + headerH + 12;
     
-    // Card de informações
-    const infoY = qrY + qrWithBorderMM + 15;
-    const infoWidth = Math.max(qrWithBorderMM + 20, 80);
-    const infoX = (pageWidth - infoWidth) / 2;
-    const infoHeight = 40;
+    // Borda colorida ao redor do QR
+    const borderWidth = 4;
+    pdf.setFillColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
+    pdf.roundedRect(qrX - borderWidth, qrY - borderWidth, qrSizeMM + borderWidth * 2, qrSizeMM + borderWidth * 2, 4, 4, 'F');
     
-    // Fundo suave para informações (cor clara derivada da primária)
-    const lightColor = [
-      Math.min(255, clientColors[0] + 180),
-      Math.min(255, clientColors[1] + 180),
-      Math.min(255, clientColors[2] + 180)
-    ];
-    pdf.setFillColor(lightColor[0], lightColor[1], lightColor[2]);
-    pdf.roundedRect(infoX, infoY, infoWidth, infoHeight, 4, 4, 'F');
+    // Fundo branco para o QR
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(qrX, qrY, qrSizeMM, qrSizeMM, 'F');
     
-    // Borda colorida sutil
-    pdf.setDrawColor(clientColors[0], clientColors[1], clientColors[2]);
-    pdf.setLineWidth(0.5);
-    pdf.roundedRect(infoX, infoY, infoWidth, infoHeight, 4, 4, 'S');
+    // Imagem do QR Code
+    pdf.addImage(qrCodeDataUrl, 'PNG', qrX, qrY, qrSizeMM, qrSizeMM);
+    
+    // ========== INFORMAÇÕES DO PONTO ==========
+    const infoY = qrY + qrSizeMM + borderWidth + 10;
+    
+    // Linha separadora
+    pdf.setDrawColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
+    pdf.setLineWidth(0.8);
+    pdf.line(cardX + 20, infoY, cardX + cardWidth - 20, infoY);
     
     // Nome do ponto
-    pdf.setTextColor(clientColors[0], clientColors[1], clientColors[2]);
+    pdf.setTextColor(30, 41, 59);
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(point.name, pageWidth / 2, infoY + 12, { align: 'center' });
+    const centerX = cardX + cardWidth / 2;
+    pdf.text(point.name, centerX, infoY + 14, { align: 'center' });
     
     // Código
-    pdf.setTextColor(100, 116, 139);
-    pdf.setFontSize(10);
+    pdf.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
+    pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(point.code, pageWidth / 2, infoY + 22, { align: 'center' });
+    pdf.text(point.code, centerX, infoY + 24, { align: 'center' });
     
-    // Local
+    // Local (zona e site)
     if (point.zoneName) {
-      pdf.setFontSize(9);
-      const localText = point.siteName ? `${point.zoneName} - ${point.siteName}` : point.zoneName;
-      pdf.text(localText, pageWidth / 2, infoY + 32, { align: 'center' });
+      pdf.setTextColor(100, 116, 139);
+      pdf.setFontSize(8);
+      const localText = point.siteName ? `${point.zoneName} | ${point.siteName}` : point.zoneName;
+      const maxLocalWidth = cardWidth - 16;
+      const localParts = pdf.splitTextToSize(localText, maxLocalWidth);
+      pdf.text(localParts[0], centerX, infoY + 34, { align: 'center' });
     }
     
-    // Rodapé discreto
-    pdf.setTextColor(180, 180, 180);
+    // ========== FOOTER DO CARD ==========
+    pdf.setTextColor(160, 160, 160);
     pdf.setFontSize(7);
-    pdf.text('Escaneie para executar tarefa', pageWidth / 2, pageHeight - 15, { align: 'center' });
+    pdf.text('Escaneie para executar', centerX, cardY + cardHeight - 8, { align: 'center' });
     
     pdf.save(`qr_${point.name.replace(/\s+/g, '_')}_${sizeCm}cm.pdf`);
-  };
-  
-  // Helper para converter hex para RGB
-  const hexToRgb = (hex: string): number[] => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result 
-      ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
-      : [59, 130, 246];
   };
 
   const downloadMultiplePDF = async () => {
