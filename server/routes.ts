@@ -4486,7 +4486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer branding configuration
   app.put("/api/customers/:id/branding", requirePermission('customers_edit'), async (req, res) => {
     try {
-      const { loginLogo, sidebarLogo, sidebarLogoCollapsed, homeLogo, favicon, moduleColors, subdomain } = req.body;
+      const { loginLogo, sidebarLogo, sidebarLogoCollapsed, homeLogo, favicon, qrCodeLogo, moduleColors, subdomain } = req.body;
       
       const brandingUpdate: any = {};
       if (loginLogo !== undefined) brandingUpdate.loginLogo = loginLogo;
@@ -4494,6 +4494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (sidebarLogoCollapsed !== undefined) brandingUpdate.sidebarLogoCollapsed = sidebarLogoCollapsed;
       if (homeLogo !== undefined) brandingUpdate.homeLogo = homeLogo;
       if (favicon !== undefined) brandingUpdate.favicon = favicon;
+      if (qrCodeLogo !== undefined) brandingUpdate.qrCodeLogo = qrCodeLogo;
       if (moduleColors !== undefined) brandingUpdate.moduleColors = moduleColors;
       
       // Normalize and validate subdomain if provided
