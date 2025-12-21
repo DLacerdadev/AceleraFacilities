@@ -13,7 +13,14 @@ interface Customer {
   loginLogo?: string | null;
   sidebarLogo?: string | null;
   sidebarLogoCollapsed?: string | null;
+  homeLogo?: string | null;
+  favicon?: string | null;
   moduleColors?: any;
+  systemColors?: {
+    primary?: string;
+    secondary?: string;
+    accent?: string;
+  } | null;
 }
 
 interface ClientContextType {
