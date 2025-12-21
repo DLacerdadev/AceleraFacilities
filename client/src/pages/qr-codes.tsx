@@ -374,11 +374,6 @@ export default function QrCodes() {
     const qrX = cardX + (cardWidth - qrSizeMM) / 2;
     const qrY = cardY + headerH + 12;
     
-    // Borda colorida ao redor do QR
-    const borderWidth = 4;
-    pdf.setFillColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
-    pdf.roundedRect(qrX - borderWidth, qrY - borderWidth, qrSizeMM + borderWidth * 2, qrSizeMM + borderWidth * 2, 4, 4, 'F');
-    
     // Fundo branco para o QR
     pdf.setFillColor(255, 255, 255);
     pdf.rect(qrX, qrY, qrSizeMM, qrSizeMM, 'F');
@@ -387,7 +382,7 @@ export default function QrCodes() {
     pdf.addImage(qrCodeDataUrl, 'PNG', qrX, qrY, qrSizeMM, qrSizeMM);
     
     // ========== INFORMAÇÕES DO PONTO ==========
-    const infoY = qrY + qrSizeMM + borderWidth + 10;
+    const infoY = qrY + qrSizeMM + 10;
     
     // Linha separadora
     pdf.setDrawColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
