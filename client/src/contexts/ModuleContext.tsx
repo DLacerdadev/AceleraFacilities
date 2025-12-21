@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { useUserModules } from '@/hooks/useUserModules';
 import { useClient } from './ClientContext';
 import { queryClient } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/useAuth';
 
 export type ModuleType = 'clean' | 'maintenance';
 
@@ -70,6 +71,9 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
   // Importar ClientContext para sincronizar módulo com cliente
   const { activeClient, customers, setActiveClientId } = useClient();
   
+  // Hook de autenticação para verificar se deve aplicar cores do módulo
+  const { isAuthenticated } = useAuth();
+  
   // Hook de navegação para redirecionamento automático
   const [, setLocation] = useLocation();
 
@@ -119,8 +123,14 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (currentModule) {
       localStorage.setItem('opus:currentModule', currentModule);
-      
       document.documentElement.setAttribute('data-module', currentModule);
+      
+      // IMPORTANT: Only apply module colors when user is authenticated
+      // Before login, BrandingContext applies systemColors which should not be overwritten
+      if (!isAuthenticated) {
+        console.log(`[MODULE] ⏳ Usuário não autenticado - Cores do módulo não aplicadas (systemColors do BrandingContext em uso)`);
+        return;
+      }
       
       // Usar cores customizadas do cliente se disponíveis, senão usar cores padrão
       const customColors = activeClient?.moduleColors?.[currentModule];
@@ -139,7 +149,7 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
         customized: !!customColors
       });
     }
-  }, [currentModule, moduleConfig, activeClient]);
+  }, [currentModule, moduleConfig, activeClient, isAuthenticated]);
 
   const setModule = (module: ModuleType) => {
     // 🔥 VALIDAÇÃO: Verificar se usuário TEM ACESSO ao módulo

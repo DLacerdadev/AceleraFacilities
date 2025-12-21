@@ -129,20 +129,23 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     
     setBranding(brandingConfig);
     
+    // Apply colors: use systemColors for pre-login, moduleColors for post-login
+    const useSystemColors = !isAuthenticated;
     console.log('[BRANDING] 🎨 Branding aplicado:', {
       name: brandingConfig.name,
+      isAuthenticated,
+      useSystemColors,
+      systemColors: brandingConfig.systemColors,
+      moduleColors: brandingConfig.moduleColors,
       logos: {
         login: !!brandingConfig.loginLogo,
         sidebar: !!brandingConfig.sidebarLogo,
         sidebarCollapsed: !!brandingConfig.sidebarLogoCollapsed,
         home: !!brandingConfig.homeLogo,
         favicon: !!brandingConfig.favicon,
-      },
-      colors: brandingConfig.moduleColors
+      }
     });
 
-    // Apply colors: use systemColors for pre-login, moduleColors for post-login
-    const useSystemColors = !isAuthenticated;
     applyColors(customerData.moduleColors, customerData.systemColors, useSystemColors);
     setIsLoading(false);
   };
