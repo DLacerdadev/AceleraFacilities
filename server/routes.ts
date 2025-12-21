@@ -4486,7 +4486,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer branding configuration
   app.put("/api/customers/:id/branding", requirePermission('customers_edit'), async (req, res) => {
     try {
-      const { loginLogo, sidebarLogo, sidebarLogoCollapsed, homeLogo, favicon, qrCodeLogo, moduleColors, subdomain } = req.body;
+      const { 
+        loginLogo, sidebarLogo, sidebarLogoCollapsed, homeLogo, 
+        favicon, qrCodeLogo, moduleColors, systemColors, subdomain 
+      } = req.body;
+      const { id } = req.params;
+
+      const customer = await storage.updateCustomer(id, {
+        loginLogo,
+        sidebarLogo,
+        sidebarLogoCollapsed,
+        homeLogo,
+        favicon,
+        qrCodeLogo,
+        moduleColors,
+        systemColors,
+        subdomain,
+        updatedAt: new Date()
+      });
+
+      broadcast({ type: 'update', resource: 'customers', data: customer });
+      res.json(customer);
+    } catch (error) {
+      console.error('Error updating customer branding:', error);
+      res.status(500).json({ message: 'Erro ao atualizar branding' });
+    }
+  });
       
       const brandingUpdate: any = {};
       if (loginLogo !== undefined) brandingUpdate.loginLogo = loginLogo;
