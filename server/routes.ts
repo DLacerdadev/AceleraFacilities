@@ -4556,7 +4556,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sidebarLogoCollapsed: customers.sidebarLogoCollapsed,
           homeLogo: customers.homeLogo,
           favicon: customers.favicon,
-          moduleColors: customers.moduleColors
+          moduleColors: customers.moduleColors,
+          systemColors: customers.systemColors
         })
         .from(customers)
         .where(eq(customers.subdomain, req.params.subdomain))
@@ -4586,7 +4587,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Cliente não encontrado para este subdomínio' });
       }
       
-      // Return complete branding data
+      // Return complete branding data including systemColors
       res.json({
         id: customer.id,
         name: customer.name,
@@ -4597,6 +4598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         homeLogo: customer.homeLogo,
         favicon: customer.favicon,
         moduleColors: customer.moduleColors,
+        systemColors: customer.systemColors,
       });
     } catch (error) {
       console.error('Error fetching customer by subdomain:', error);

@@ -410,7 +410,7 @@ export default function Landing() {
             </div>
             
             {/* Decorative Element */}
-            <div className="absolute -bottom-6 -right-6 w-48 h-48 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-6 -right-6 w-48 h-48 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full blur-3xl"></div>
           </motion.div>
         </div>
       </section>
