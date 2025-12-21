@@ -252,6 +252,14 @@ function AuthenticatedAdminRouter() {
     return <AdminMobile companyId={companyId} />;
   }
 
+  // Check if we're in TV mode - no sidebar for immersive experience
+  const isTvMode = location === "/tv-mode";
+
+  // TV Mode renders without sidebar for immersive fullscreen experience
+  if (isTvMode) {
+    return <TvMode />;
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar 
@@ -284,9 +292,6 @@ function AuthenticatedAdminRouter() {
           <Route path="/maintenance-checklist-templates" component={() => <MaintenanceChecklistTemplates customerId={activeClientId} />} />
           <Route path="/parts-inventory" component={() => <PartsInventory customerId={activeClientId} companyId={companyId} />} />
           <Route path="/asset-report" component={() => <AssetReport customerId={activeClientId} />} />
-          
-          {/* TV Mode Dashboard */}
-          <Route path="/tv-mode" component={() => <TvMode />} />
           
           {/* Supplier Portal Routes */}
           <Route path="/supplier-portal" component={() => <SupplierPortal />} />

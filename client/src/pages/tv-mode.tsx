@@ -6,8 +6,9 @@ import ReactApexChart from "react-apexcharts";
 import { ApexOptions } from "apexcharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, Medal, Award, TrendingUp, Activity, Wifi, WifiOff, MapPin, Maximize2, Minimize2 } from "lucide-react";
+import { Trophy, Medal, Award, TrendingUp, Activity, Wifi, WifiOff, MapPin, Maximize2, Minimize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
@@ -35,9 +36,19 @@ export default function TvMode() {
   const { activeClientId } = useClient();
   const { currentModule } = useModule();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [updateCount, setUpdateCount] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Exit TV mode and go back to dashboard
+  const exitTvMode = async () => {
+    // Exit fullscreen first if active
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+    setLocation("/");
+  };
 
   // Handle fullscreen toggle
   const toggleFullscreen = async () => {
@@ -186,7 +197,31 @@ export default function TvMode() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 relative">
+      {/* Fixed corner controls */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <Button
+          onClick={toggleFullscreen}
+          size="icon"
+          variant="outline"
+          className="border-slate-600 bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white backdrop-blur-sm"
+          data-testid="button-toggle-fullscreen"
+          title={isFullscreen ? "Sair da Tela Cheia" : "Tela Cheia"}
+        >
+          {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+        </Button>
+        <Button
+          onClick={exitTvMode}
+          size="icon"
+          variant="outline"
+          className="border-slate-600 bg-slate-800/80 text-slate-300 hover:bg-red-600 hover:text-white hover:border-red-600 backdrop-blur-sm"
+          data-testid="button-exit-tv-mode"
+          title="Sair do Modo TV"
+        >
+          <X className="w-5 h-5" />
+        </Button>
+      </div>
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -226,24 +261,6 @@ export default function TvMode() {
               {updateCount} atualiza{updateCount === 1 ? 'ção' : 'ções'}
             </Badge>
           )}
-          <Button
-            onClick={toggleFullscreen}
-            variant="outline"
-            className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
-            data-testid="button-toggle-fullscreen"
-          >
-            {isFullscreen ? (
-              <>
-                <Minimize2 className="w-4 h-4 mr-2" />
-                Sair da Tela Cheia
-              </>
-            ) : (
-              <>
-                <Maximize2 className="w-4 h-4 mr-2" />
-                Tela Cheia
-              </>
-            )}
-          </Button>
         </div>
       </motion.div>
 
