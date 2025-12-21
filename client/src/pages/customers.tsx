@@ -285,12 +285,12 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
     );
   };
 
-  const filteredCustomers = customers
+  const filteredCustomers = (customers as any[])
     .filter(customer => customer.isActive) // Mostrar apenas clientes ativos
     .filter(customer =>
       customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (customer.document && customer.document.includes(searchTerm))
+      (customer.email && (customer.email as string).toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (customer.document && (customer.document as string).includes(searchTerm))
     );
 
   if (isLoading) {
@@ -399,13 +399,13 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
                 {filteredCustomers.map((customer) => (
                   <TableRow key={customer.id}>
                     <TableCell className="font-medium">{customer.name}</TableCell>
-                    <TableCell>{customer.email || "-"}</TableCell>
-                    <TableCell>{customer.phone || "-"}</TableCell>
-                    <TableCell>{customer.document || "-"}</TableCell>
-                    <TableCell>{customer.city || "-"}</TableCell>
+                    <TableCell>{(customer as any).email || "-"}</TableCell>
+                    <TableCell>{(customer as any).phone || "-"}</TableCell>
+                    <TableCell>{(customer as any).document || "-"}</TableCell>
+                    <TableCell>{(customer as any).city || "-"}</TableCell>
                     <TableCell>{getModulesBadges(customer)}</TableCell>
                     <TableCell>
-                      {customer.thirdPartyEnabled ? (
+                      {(customer as any).thirdPartyEnabled ? (
                         <Badge className="bg-chart-2/10 text-chart-2">
                           <UserCheck className="w-3 h-3 mr-1" />
                           Ativo
@@ -438,7 +438,7 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
                           variant="ghost" 
                           size="sm"
                           onClick={() => {
-                            setBrandingCustomer(customer);
+                            setBrandingCustomer(customer as any);
                             setIsBrandingDialogOpen(true);
                           }}
                           data-testid={`button-branding-customer-${customer.id}`}
@@ -449,7 +449,7 @@ export default function CustomersPage({ companyId }: CustomersPageProps) {
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            onClick={() => handleTestSubdomain(customer)}
+                            onClick={() => handleTestSubdomain(customer as any)}
                             data-testid={`button-test-subdomain-${customer.id}`}
                             title="Testar subdomínio"
                           >
