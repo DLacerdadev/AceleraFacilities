@@ -30,6 +30,12 @@ interface ModuleColors {
   };
 }
 
+interface SystemColors {
+  primary?: string;
+  secondary?: string;
+  accent?: string;
+}
+
 interface LogoPreview {
   file: File | null;
   previewUrl: string | null;
@@ -38,6 +44,11 @@ interface LogoPreview {
 export function CustomerBrandingConfig({ customer, open, onOpenChange }: CustomerBrandingConfigProps) {
   const { toast } = useToast();
   const [moduleColors, setModuleColors] = useState<ModuleColors>((customer.moduleColors as ModuleColors) || {});
+  const [systemColors, setSystemColors] = useState<SystemColors>((customer as any).systemColors || {
+    primary: '#1e3a8a',
+    secondary: '#3b82f6',
+    accent: '#60a5fa'
+  });
   const [activeTab, setActiveTab] = useState('logos');
   
   // Estados para preview de logos
@@ -67,6 +78,11 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
       setFavicon({ file: null, previewUrl: (customer as any).favicon || null });
       setQrCodeLogo({ file: null, previewUrl: (customer as any).qrCodeLogo || null });
       setModuleColors((customer.moduleColors as ModuleColors) || {});
+      setSystemColors((customer as any).systemColors || {
+        primary: '#1e3a8a',
+        secondary: '#3b82f6',
+        accent: '#60a5fa'
+      });
     }
   }, [open, customer]);
 
@@ -223,7 +239,17 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
   };
 
   const handleSaveColors = () => {
-    updateBrandingMutation.mutate({ moduleColors });
+    updateBrandingMutation.mutate({ moduleColors, systemColors });
+  };
+
+  const handleSystemColorChange = (
+    colorType: 'primary' | 'secondary' | 'accent',
+    value: string
+  ) => {
+    setSystemColors(prev => ({
+      ...prev,
+      [colorType]: value,
+    }));
   };
 
   const hasLogoChanges = loginLogo.file !== null || sidebarLogo.file !== null || sidebarCollapsedLogo.file !== null || homeLogo.file !== null || favicon.file !== null || qrCodeLogo.file !== null ||
@@ -322,7 +348,7 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
         <Tabs defaultValue="logos" value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="logos">Logos</TabsTrigger>
-            <TabsTrigger value="colors">Cores dos Módulos</TabsTrigger>
+            <TabsTrigger value="colors">Cores</TabsTrigger>
           </TabsList>
 
           <TabsContent value="logos" className="space-y-4 overflow-y-auto flex-1">
@@ -382,6 +408,79 @@ export function CustomerBrandingConfig({ customer, open, onOpenChange }: Custome
           </TabsContent>
 
           <TabsContent value="colors" className="space-y-6 overflow-y-auto flex-1">
+            {/* Cores do Sistema */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-primary" />
+                  Cores do Sistema
+                </CardTitle>
+                <CardDescription>
+                  Defina as cores padrão que serão aplicadas ao sistema para este cliente
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Cor Primária</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={systemColors.primary || '#1e3a8a'}
+                        onChange={(e) => handleSystemColorChange('primary', e.target.value)}
+                        className="h-10 w-14"
+                        data-testid="input-system-primary-color"
+                      />
+                      <Input
+                        type="text"
+                        value={systemColors.primary || '#1e3a8a'}
+                        onChange={(e) => handleSystemColorChange('primary', e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Cor Secundária</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={systemColors.secondary || '#3b82f6'}
+                        onChange={(e) => handleSystemColorChange('secondary', e.target.value)}
+                        className="h-10 w-14"
+                        data-testid="input-system-secondary-color"
+                      />
+                      <Input
+                        type="text"
+                        value={systemColors.secondary || '#3b82f6'}
+                        onChange={(e) => handleSystemColorChange('secondary', e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Cor de Destaque</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={systemColors.accent || '#60a5fa'}
+                        onChange={(e) => handleSystemColorChange('accent', e.target.value)}
+                        className="h-10 w-14"
+                        data-testid="input-system-accent-color"
+                      />
+                      <Input
+                        type="text"
+                        value={systemColors.accent || '#60a5fa'}
+                        onChange={(e) => handleSystemColorChange('accent', e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Módulo Clean */}
             <Card>
               <CardHeader>

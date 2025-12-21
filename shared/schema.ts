@@ -173,6 +173,7 @@ export const customers = pgTable("customers", {
   favicon: text("favicon"),
   qrCodeLogo: text("qr_code_logo"),
   moduleColors: jsonb("module_colors"),
+   systemColors: jsonb("system_colors"),
   thirdPartyEnabled: boolean("third_party_enabled").default(false),
   thirdPartyWorkOrderApproval: thirdPartyWorkOrderApprovalEnum("third_party_work_order_approval").default('require_approval'),
   isActive: boolean("is_active").default(true),

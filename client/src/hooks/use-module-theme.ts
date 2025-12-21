@@ -27,6 +27,14 @@ export function useModuleTheme() {
       borderColor: {
         borderColor: 'var(--module-primary)'
       } as CSSProperties,
+      
+      // New: system base colors (standard colors from BrandingConfig)
+      systemColor: {
+        color: 'var(--primary)'
+      } as CSSProperties,
+      systemBg: {
+        backgroundColor: 'var(--primary)'
+      } as CSSProperties,
     },
     
     // Gradientes - neutros ou usando variáveis CSS

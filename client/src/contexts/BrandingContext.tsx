@@ -12,6 +12,11 @@ interface BrandingConfig {
   homeLogo: string | null;
   favicon: string | null;
   modules: string[] | null;
+  systemColors: {
+    primary?: string;
+    secondary?: string;
+    accent?: string;
+  } | null;
   moduleColors: {
     clean?: {
       primary: string;
@@ -118,6 +123,7 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       homeLogo: customerData.homeLogo || null,
       favicon: customerData.favicon || null,
       modules: customerData.modules || null,
+      systemColors: customerData.systemColors || null,
       moduleColors: customerData.moduleColors || null,
     };
     
@@ -136,15 +142,34 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
     });
 
     // Apply module colors dynamically via CSS variables
-    applyModuleColors(customerData.moduleColors);
+    applyModuleColors(customerData.moduleColors, customerData.systemColors);
     setIsLoading(false);
   };
 
   // Apply module colors to CSS variables
-  const applyModuleColors = (moduleColors: any) => {
-    if (!moduleColors) return;
-    
+  const applyModuleColors = (moduleColors: any, systemColors?: any) => {
     const root = document.documentElement;
+
+    // Priority 1: Apply System Colors as defaults if available
+    if (systemColors) {
+      if (systemColors.primary) {
+        const hsl = hexToHSL(systemColors.primary);
+        root.style.setProperty('--primary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
+        root.style.setProperty('--module-primary', systemColors.primary);
+      }
+      if (systemColors.secondary) {
+        const hsl = hexToHSL(systemColors.secondary);
+        root.style.setProperty('--secondary', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
+        root.style.setProperty('--module-secondary', systemColors.secondary);
+      }
+      if (systemColors.accent) {
+        const hsl = hexToHSL(systemColors.accent);
+        root.style.setProperty('--accent', `${hsl.h} ${hsl.s}% ${hsl.l}%`);
+        root.style.setProperty('--module-accent', systemColors.accent);
+      }
+    }
+
+    if (!moduleColors) return;
     
     // Apply clean module colors if available
     if (moduleColors.clean) {
