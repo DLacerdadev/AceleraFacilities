@@ -135,16 +135,27 @@ export default function MobileQrScanner() {
     stopScanner();
     setScannedQrCode(qrCode);
     
-    // Extrair código da URL se necessário
+    // Extrair código da URL se necessário e detectar tipo
     let extractedCode = qrCode;
-    if (qrCode.includes('replit.dev/qr-execution/') || qrCode.includes('/qr-execution/')) {
+    let isPublicQr = false;
+    
+    // Detectar QR code público (atendimento)
+    if (qrCode.includes('/qr-public/')) {
+      const match = qrCode.match(/\/qr-public\/([^\/\?]+)/);
+      if (match) {
+        extractedCode = match[1];
+        isPublicQr = true;
+      }
+    }
+    // Detectar QR code de execução
+    else if (qrCode.includes('replit.dev/qr-execution/') || qrCode.includes('/qr-execution/')) {
       const match = qrCode.match(/\/qr-execution\/([^\/\?]+)/);
       if (match) {
         extractedCode = match[1];
       }
     }
 
-    console.log('[QR SCANNER] Processando QR code:', { extractedCode, isOnline });
+    console.log('[QR SCANNER] Processando QR code:', { extractedCode, isOnline, isPublicQr });
 
     try {
       // MODO OFFLINE: Buscar do IndexedDB
@@ -203,8 +214,12 @@ export default function MobileQrScanner() {
       }
       
       const baseUrl = getApiBaseUrl();
-      const apiUrl = `${baseUrl}/api/qr-execution/${encodeURIComponent(extractedCode)}`;
-      console.log('[QR SCANNER ONLINE] Chamando API:', apiUrl);
+      
+      // Usar rota correta baseado no tipo de QR code
+      // QR codes públicos usam /api/qr-public/, QR codes de execução usam /api/qr-execution/
+      const apiEndpoint = isPublicQr ? 'qr-public' : 'qr-execution';
+      const apiUrl = `${baseUrl}/api/${apiEndpoint}/${encodeURIComponent(extractedCode)}`;
+      console.log('[QR SCANNER ONLINE] Chamando API:', apiUrl, { isPublicQr });
       
       const response = await fetch(apiUrl, {
         cache: 'no-store',
@@ -214,31 +229,44 @@ export default function MobileQrScanner() {
       if (response.ok) {
         const executionData = await response.json();
         
-        console.log('[QR SCANNER] Dados recebidos:', executionData);
+        console.log('[QR SCANNER] Dados recebidos:', executionData, { isPublicQr });
         
-        // Adaptar estrutura da nova API para o formato esperado
-        // Nova API retorna: { point, zone, hasScheduledActivity, scheduledWorkOrder }
-        // Precisamos converter para: { qrPoint, zone, site, customer }
+        // Adaptar estrutura da API para o formato esperado
+        // qr-execution retorna: { point, zone, hasScheduledActivity, scheduledWorkOrder }
+        // qr-public retorna: { point } (apenas o point, precisa buscar zone separadamente)
         
-        if (!executionData.point || !executionData.zone) {
+        if (!executionData.point) {
           throw new Error('QR code com dados incompletos');
         }
         
-        // Buscar customerId da zona (via site)
-        const zoneResponse = await fetch(`${baseUrl}/api/zones/${executionData.zone.id}`, { headers });
-        const fullZone = await zoneResponse.json();
+        let zone = executionData.zone;
+        let site = null;
         
-        const siteResponse = await fetch(`${baseUrl}/api/sites/${fullZone.siteId}`, { headers });
-        const site = await siteResponse.json();
+        // Para QR codes públicos, buscar a zona separadamente
+        if (isPublicQr && executionData.point.zoneId) {
+          const zoneResponse = await fetch(`${baseUrl}/api/zones/${executionData.point.zoneId}`, { headers });
+          if (zoneResponse.ok) {
+            zone = await zoneResponse.json();
+          }
+        }
+        
+        if (!zone) {
+          throw new Error('QR code sem zona associada');
+        }
+        
+        // Buscar site e customerId da zona
+        const siteResponse = await fetch(`${baseUrl}/api/sites/${zone.siteId}`, { headers });
+        site = await siteResponse.json();
         
         // Montar estrutura compatível com o resto do código
         const resolved = {
           qrPoint: executionData.point,
-          zone: executionData.zone,
+          zone: zone,
           site: site,
           customer: { id: site.customerId },
-          hasScheduledActivity: executionData.hasScheduledActivity,
-          scheduledWorkOrder: executionData.scheduledWorkOrder
+          hasScheduledActivity: executionData.hasScheduledActivity || false,
+          scheduledWorkOrder: executionData.scheduledWorkOrder || null,
+          isPublicQr: isPublicQr
         };
         
         // SALVAR NO CACHE para uso offline futuro (MOBILE-ONLY)
