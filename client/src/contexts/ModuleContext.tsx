@@ -72,7 +72,7 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
   const { activeClient, customers, setActiveClientId } = useClient();
   
   // Hook de autenticação para verificar se deve aplicar cores do módulo
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   
   // Hook de navegação para redirecionamento automático
   const [, setLocation] = useLocation();
@@ -83,7 +83,19 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
       // Se não tem módulos configurados, forçar 'clean' como padrão seguro
       const safeDefaultModule = allowedModules.length > 0 ? defaultModule : 'clean';
       
-      // Primeira inicialização - usar localStorage ou defaultModule
+      // TERCEIROS: Sempre usar o módulo padrão da API, ignorando localStorage
+      // Isso garante que o operador de manutenção não veja dados de limpeza
+      const isThirdPartyUser = !!user?.thirdPartyCompanyId;
+      
+      if (isThirdPartyUser) {
+        console.log(`[MODULE] Terceiro detectado - Inicializando com módulo da empresa: ${safeDefaultModule}`);
+        // Limpar localStorage para evitar conflitos
+        localStorage.removeItem('opus:currentModule');
+        setCurrentModule(safeDefaultModule);
+        return;
+      }
+      
+      // Primeira inicialização - usar localStorage ou defaultModule (apenas para usuários normais)
       const stored = localStorage.getItem('opus:currentModule');
       const storedModule = (stored === 'clean' || stored === 'maintenance') ? stored : null;
       
@@ -96,7 +108,7 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
         setCurrentModule(safeDefaultModule);
       }
     }
-  }, [isLoading, allowedModules, currentModule, canAccessModule, defaultModule]);
+  }, [isLoading, allowedModules, currentModule, canAccessModule, defaultModule, user]);
 
   // Sincronizar módulo quando o cliente mudar
   useEffect(() => {

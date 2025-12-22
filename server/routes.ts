@@ -35,7 +35,7 @@ import {
   workOrders, zones, equipment, services, checklistTemplates, sites,
   workOrderExecutionLogs, workOrderAttachments,
   thirdPartyCompanies, thirdPartyTeams, thirdPartyWorkOrderProposals, thirdPartyPlanProposals, thirdPartyChecklists,
-  users
+  users, teamMembers, operationalScopes
 } from "@shared/schema";
 import multer from "multer";
 import {
@@ -4904,6 +4904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // SPECIAL HANDLING FOR THIRD-PARTY USERS
       // They should only see modules allowed by their company, not all user modules
+      // AND the default module should be based on their team's operational scope
       if (user.userType === 'third_party_user' && user.thirdPartyCompanyId) {
         const company = await db.select()
           .from(thirdPartyCompanies)
@@ -4912,6 +4913,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (company.length > 0 && company[0].allowedModules) {
           modules = company[0].allowedModules as ('clean' | 'maintenance')[];
+        }
+        
+        // Determine default module from user's team operational scope
+        // This ensures maintenance operators see maintenance first, not clean
+        const userTeams = await db.select({
+          teamId: teamMembers.teamId,
+          scopeId: thirdPartyTeams.operationalScopeId
+        })
+          .from(teamMembers)
+          .innerJoin(thirdPartyTeams, eq(teamMembers.teamId, thirdPartyTeams.id))
+          .where(and(
+            eq(teamMembers.userId, user.id),
+            eq(teamMembers.isActive, true)
+          ));
+        
+        if (userTeams.length > 0 && userTeams[0].scopeId) {
+          const scope = await db.select()
+            .from(operationalScopes)
+            .where(eq(operationalScopes.id, userTeams[0].scopeId))
+            .limit(1);
+          
+          if (scope.length > 0 && scope[0].moduleId) {
+            const scopeModule = scope[0].moduleId as 'clean' | 'maintenance';
+            // Put the scope's module first in the list
+            if (modules.includes(scopeModule)) {
+              modules = [scopeModule, ...modules.filter(m => m !== scopeModule)];
+              console.log(`[AUTH MODULES] Third-party user ${user.id} default module set from scope: ${scopeModule}`);
+            }
+          }
         }
       } else {
         // For OPUS and customer users: get modules from the user directly
