@@ -10601,18 +10601,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const customerId = company[0].customerId;
       
       // Filtrar apenas zonas e sites ATIVOS
+      // Zonas só são consideradas ativas se a própria zona E o site dela estiverem ativos
       let allowedZoneIds: string[] = [];
       let allowedSiteIds: string[] = [];
-      
-      if (rawAllowedZoneIds.length > 0) {
-        const activeZones = await db.select({ id: zones.id })
-          .from(zones)
-          .where(and(
-            inArray(zones.id, rawAllowedZoneIds),
-            eq(zones.isActive, true)
-          ));
-        allowedZoneIds = activeZones.map(z => z.id);
-      }
       
       if (rawAllowedSiteIds.length > 0) {
         const activeSites = await db.select({ id: sites.id })
@@ -10622,6 +10613,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             eq(sites.isActive, true)
           ));
         allowedSiteIds = activeSites.map(s => s.id);
+      }
+      
+      if (rawAllowedZoneIds.length > 0) {
+        // Buscar zonas ativas cujo SITE também está ativo
+        const activeZones = await db.select({ id: zones.id })
+          .from(zones)
+          .innerJoin(sites, eq(zones.siteId, sites.id))
+          .where(and(
+            inArray(zones.id, rawAllowedZoneIds),
+            eq(zones.isActive, true),
+            eq(sites.isActive, true)
+          ));
+        allowedZoneIds = activeZones.map(z => z.id);
       }
       
       // Obter os escopos operacionais do usuário (baseado nas equipes)
@@ -10710,11 +10714,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      const zonesData = await db.select()
+      // Buscar zonas ativas cujo SITE também está ativo
+      const zonesData = await db.select({
+        id: zones.id,
+        name: zones.name,
+        siteId: zones.siteId,
+        customerId: zones.customerId,
+        module: zones.module,
+        category: zones.category,
+        isActive: zones.isActive,
+        createdAt: zones.createdAt,
+        updatedAt: zones.updatedAt,
+      })
         .from(zones)
+        .innerJoin(sites, eq(zones.siteId, sites.id))
         .where(and(
           inArray(zones.id, allowedZoneIds),
-          eq(zones.isActive, true)
+          eq(zones.isActive, true),
+          eq(sites.isActive, true)
         ));
 
       res.json(zonesData);
