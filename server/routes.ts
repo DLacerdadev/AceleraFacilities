@@ -10596,15 +10596,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      const allowedZoneIds = (company[0].allowedZones || []).filter((id): id is string => id != null && id !== '');
-      const allowedSiteIds = (company[0].allowedSites || []).filter((id): id is string => id != null && id !== '');
+      const rawAllowedZoneIds = (company[0].allowedZones || []).filter((id): id is string => id != null && id !== '');
+      const rawAllowedSiteIds = (company[0].allowedSites || []).filter((id): id is string => id != null && id !== '');
       const customerId = company[0].customerId;
+      
+      // Filtrar apenas zonas e sites ATIVOS
+      let allowedZoneIds: string[] = [];
+      let allowedSiteIds: string[] = [];
+      
+      if (rawAllowedZoneIds.length > 0) {
+        const activeZones = await db.select({ id: zones.id })
+          .from(zones)
+          .where(and(
+            inArray(zones.id, rawAllowedZoneIds),
+            eq(zones.isActive, true)
+          ));
+        allowedZoneIds = activeZones.map(z => z.id);
+      }
+      
+      if (rawAllowedSiteIds.length > 0) {
+        const activeSites = await db.select({ id: sites.id })
+          .from(sites)
+          .where(and(
+            inArray(sites.id, rawAllowedSiteIds),
+            eq(sites.isActive, true)
+          ));
+        allowedSiteIds = activeSites.map(s => s.id);
+      }
       
       // Obter os escopos operacionais do usuário (baseado nas equipes)
       const userScopes = await storage.getOperationalScopesForUser(user.id);
       const userScopeIds = userScopes.map(s => s.id);
       
-      console.log('[THIRD-PARTY WO] Company:', company[0].name, 'Zones:', allowedZoneIds, 'Sites:', allowedSiteIds);
+      console.log('[THIRD-PARTY WO] Company:', company[0].name, 'Active Zones:', allowedZoneIds, 'Active Sites:', allowedSiteIds);
       console.log('[THIRD-PARTY WO] User scopes:', userScopeIds);
       
       // Get all work orders for the customer that this third-party has access to
