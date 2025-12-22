@@ -194,27 +194,28 @@ export function ClientProvider({ children }: ClientProviderProps) {
       return; // Não executar lógica de admin
     }
     
-    // Priority 1: If subdomain customer is loaded, use it
-    if (subdomainCustomer && customers.length > 0) {
-      const subdomainClientValid = customers.some(c => c.id === subdomainCustomer.id);
-      if (subdomainClientValid && activeClientId !== subdomainCustomer.id) {
-        console.log(`[CLIENT CONTEXT] 🎯 Auto-selecting subdomain customer: ${subdomainCustomer.name}`);
-        setActiveClientId(subdomainCustomer.id);
-        return;
-      }
-    }
-    
-    // Se é admin/opus_user e não tem cliente selecionado
+    // Para admin/opus_user, só auto-selecionar quando NÃO há cliente selecionado
     if (!isCustomerUser && !activeClientId && customers.length > 0) {
-      // Verificar se o cliente do localStorage é válido antes de sobrescrever
+      // Verificar se tem cliente salvo no localStorage
       const savedClientId = localStorage.getItem('opus:activeClientId');
       const savedClientExists = savedClientId && customers.some(c => c.id === savedClientId);
       
       if (savedClientExists) {
         // Se existe um cliente válido salvo, usar ele
+        console.log(`[CLIENT CONTEXT] 🎯 Restoring saved customer from localStorage`);
         setActiveClientId(savedClientId);
+      } else if (subdomainCustomer) {
+        // Se há subdomain customer válido, usar ele como padrão inicial
+        const subdomainClientValid = customers.some(c => c.id === subdomainCustomer.id);
+        if (subdomainClientValid) {
+          console.log(`[CLIENT CONTEXT] 🎯 Auto-selecting subdomain customer: ${subdomainCustomer.name}`);
+          setActiveClientId(subdomainCustomer.id);
+        } else {
+          // Subdomain customer não está na lista, usar primeiro
+          setActiveClientId(customers[0].id);
+        }
       } else {
-        // Caso contrário, usar o primeiro da lista
+        // Sem subdomain, usar o primeiro da lista
         setActiveClientId(customers[0].id);
       }
     }
