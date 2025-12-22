@@ -10605,6 +10605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let allowedZoneIds: string[] = [];
       let allowedSiteIds: string[] = [];
       
+      // Primeiro: buscar sites ativos da lista permitida
       if (rawAllowedSiteIds.length > 0) {
         const activeSites = await db.select({ id: sites.id })
           .from(sites)
@@ -10615,25 +10616,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allowedSiteIds = activeSites.map(s => s.id);
       }
       
+      // Segundo: buscar zonas ativas cujo SITE também está ativo
       if (rawAllowedZoneIds.length > 0) {
-        // Buscar zonas ativas cujo SITE também está ativo
-        const activeZones = await db.select({ id: zones.id })
-          .from(zones)
-          .innerJoin(sites, eq(zones.siteId, sites.id))
-          .where(and(
-            inArray(zones.id, rawAllowedZoneIds),
-            eq(zones.isActive, true),
-            eq(sites.isActive, true)
-          ));
-        allowedZoneIds = activeZones.map(z => z.id);
+        // Buscar IDs de todos os sites ativos primeiro
+        const allActiveSites = await db.select({ id: sites.id })
+          .from(sites)
+          .where(eq(sites.isActive, true));
+        const activeSiteIdsList = allActiveSites.map(s => s.id);
+        
+        if (activeSiteIdsList.length > 0) {
+          const activeZones = await db.select({ id: zones.id })
+            .from(zones)
+            .where(and(
+              inArray(zones.id, rawAllowedZoneIds),
+              eq(zones.isActive, true),
+              inArray(zones.siteId, activeSiteIdsList)
+            ));
+          allowedZoneIds = activeZones.map(z => z.id);
+        }
       }
+      
+      console.log('[THIRD-PARTY WO] Raw zones:', rawAllowedZoneIds.length, 'Raw sites:', rawAllowedSiteIds.length);
+      console.log('[THIRD-PARTY WO] Active zones:', allowedZoneIds.length, 'Active sites:', allowedSiteIds.length);
       
       // Obter os escopos operacionais do usuário (baseado nas equipes)
       const userScopes = await storage.getOperationalScopesForUser(user.id);
       const userScopeIds = userScopes.map(s => s.id);
-      
-      console.log('[THIRD-PARTY WO] Company:', company[0].name, 'Active Zones:', allowedZoneIds, 'Active Sites:', allowedSiteIds);
-      console.log('[THIRD-PARTY WO] User scopes:', userScopeIds);
       
       // Get all work orders for the customer that this third-party has access to
       const allCustomerWorkOrders = await db.select()
@@ -10722,24 +10730,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
+      // Primeiro buscar sites ativos
+      const activeSiteIds = await db.select({ id: sites.id })
+        .from(sites)
+        .where(eq(sites.isActive, true));
+      const activeSiteIdsList = activeSiteIds.map(s => s.id);
+      
       // Buscar zonas ativas cujo SITE também está ativo
-      const zonesData = await db.select({
-        id: zones.id,
-        name: zones.name,
-        siteId: zones.siteId,
-        customerId: zones.customerId,
-        module: zones.module,
-        category: zones.category,
-        isActive: zones.isActive,
-        createdAt: zones.createdAt,
-        updatedAt: zones.updatedAt,
-      })
+      const zonesData = await db.select()
         .from(zones)
-        .innerJoin(sites, eq(zones.siteId, sites.id))
         .where(and(
           inArray(zones.id, allowedZoneIds),
           eq(zones.isActive, true),
-          eq(sites.isActive, true)
+          inArray(zones.siteId, activeSiteIdsList.length > 0 ? activeSiteIdsList : ['__none__'])
         ));
 
       res.json(zonesData);
