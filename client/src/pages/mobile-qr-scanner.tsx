@@ -153,7 +153,7 @@ export default function MobileQrScanner() {
     let extractedCode = qrCode;
     let isPublicQr = false;
     
-    // Detectar QR code público (atendimento)
+    // Detectar QR code público (atendimento) - formato /qr-public/CODE
     if (qrCode.includes('/qr-public/')) {
       const match = qrCode.match(/\/qr-public\/([^\/\?]+)/);
       if (match) {
@@ -161,7 +161,15 @@ export default function MobileQrScanner() {
         isPublicQr = true;
       }
     }
-    // Detectar QR code de execução
+    // Detectar QR code de TV pública - formato /public/tv/CODE (usado para atendimento)
+    else if (qrCode.includes('/public/tv/')) {
+      const match = qrCode.match(/\/public\/tv\/([^\/\?]+)/);
+      if (match) {
+        extractedCode = match[1];
+        isPublicQr = true;
+      }
+    }
+    // Detectar QR code de execução - formato /qr-execution/CODE
     else if (qrCode.includes('replit.dev/qr-execution/') || qrCode.includes('/qr-execution/')) {
       const match = qrCode.match(/\/qr-execution\/([^\/\?]+)/);
       if (match) {
