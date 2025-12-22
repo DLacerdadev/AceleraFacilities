@@ -39,7 +39,7 @@ export default function ThirdPartyDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>("total");
 
   const { data: workOrders = [], isLoading: loadingWorkOrders } = useQuery<WorkOrder[]>({
-    queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId, currentModule],
+    queryKey: ['/api/third-party-portal/work-orders', { module: currentModule, _cacheKey: user?.thirdPartyCompanyId }],
     enabled: !!user?.thirdPartyCompanyId && !!currentModule,
     staleTime: 0,
     gcTime: 0,
