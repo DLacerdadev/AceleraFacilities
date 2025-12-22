@@ -11,13 +11,17 @@ import {
   LogOut,
   Building2,
   ClipboardCheck,
-  Target
+  Target,
+  Sparkles,
+  Wrench
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useModuleTheme } from "@/hooks/use-module-theme";
+import { useModule } from "@/contexts/ModuleContext";
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
 import ThirdPartyDashboard from "./dashboard";
 import ThirdPartyUsers from "./users";
 import ThirdPartyTeams from "./teams";
@@ -42,10 +46,27 @@ export default function ThirdPartyPortal() {
   const [location] = useLocation();
   const { user } = useAuth();
   const theme = useModuleTheme();
+  const { currentModule, setCurrentModule } = useModule();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Fetch allowed modules for this third-party company
+  const { data: modulesData } = useQuery<{
+    allowedModules: string[];
+    companyName: string;
+    customerId: string;
+  }>({
+    queryKey: ['/api/third-party-portal/my-modules', user?.thirdPartyCompanyId],
+    enabled: !!user?.thirdPartyCompanyId,
+  });
+
+  const allowedModules = modulesData?.allowedModules || [];
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleModuleChange = (module: 'clean' | 'maintenance') => {
+    setCurrentModule(module);
   };
 
   return (
@@ -112,7 +133,70 @@ export default function ThirdPartyPortal() {
           >
             <Menu className="w-5 h-5" />
           </Button>
-          <div className="flex items-center gap-4">
+          
+          {/* Module Selector */}
+          {allowedModules.length > 1 && (
+            <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+              {allowedModules.includes('clean') && (
+                <Button
+                  variant={currentModule === 'clean' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleModuleChange('clean')}
+                  className={cn(
+                    "gap-2 transition-all",
+                    currentModule === 'clean' 
+                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                      : "hover:bg-muted"
+                  )}
+                  data-testid="button-module-clean"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Limpeza
+                </Button>
+              )}
+              {allowedModules.includes('maintenance') && (
+                <Button
+                  variant={currentModule === 'maintenance' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => handleModuleChange('maintenance')}
+                  className={cn(
+                    "gap-2 transition-all",
+                    currentModule === 'maintenance' 
+                      ? "bg-orange-600 hover:bg-orange-700 text-white" 
+                      : "hover:bg-muted"
+                  )}
+                  data-testid="button-module-maintenance"
+                >
+                  <Wrench className="w-4 h-4" />
+                  Manutenção
+                </Button>
+              )}
+            </div>
+          )}
+          
+          {/* Single module indicator */}
+          {allowedModules.length === 1 && (
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium",
+              allowedModules[0] === 'clean' 
+                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" 
+                : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
+            )}>
+              {allowedModules[0] === 'clean' ? (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Limpeza
+                </>
+              ) : (
+                <>
+                  <Wrench className="w-4 h-4" />
+                  Manutenção
+                </>
+              )}
+            </div>
+          )}
+          
+          <div className="flex items-center gap-4 ml-auto">
             <span className="text-sm text-muted-foreground">
               {user?.name}
             </span>
