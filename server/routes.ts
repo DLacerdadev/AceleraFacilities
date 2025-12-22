@@ -10585,6 +10585,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user.thirdPartyCompanyId) {
         return res.status(403).json({ message: 'Acesso não autorizado' });
       }
+      
+      // Get module filter from query string
+      const moduleFilter = req.query.module as string | undefined;
+      console.log('[THIRD-PARTY WO] Module filter:', moduleFilter || 'none');
 
       // Get the third-party company to find allowed zones and sites
       const company = await db.select()
@@ -10644,12 +10648,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userScopeIds = userScopes.map(s => s.id);
       
       // Get all work orders for the customer that this third-party has access to
+      // Apply module filter if provided
+      const workOrderConditions = [eq(workOrders.customerId, customerId)];
+      if (moduleFilter && (moduleFilter === 'clean' || moduleFilter === 'maintenance')) {
+        workOrderConditions.push(eq(workOrders.module, moduleFilter));
+      }
+      
       const allCustomerWorkOrders = await db.select()
         .from(workOrders)
-        .where(eq(workOrders.customerId, customerId))
+        .where(and(...workOrderConditions))
         .orderBy(desc(workOrders.createdAt));
       
-      console.log('[THIRD-PARTY WO] Total customer work orders:', allCustomerWorkOrders.length);
+      console.log('[THIRD-PARTY WO] Module:', moduleFilter || 'all', 'Total work orders:', allCustomerWorkOrders.length);
       
       // Filter work orders based on third-party access rules:
       // IMPORTANTE: Todas as O.S. devem estar em zonas/sites ATIVOS

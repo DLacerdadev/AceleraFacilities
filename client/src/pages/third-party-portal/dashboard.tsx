@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useModuleTheme } from "@/hooks/use-module-theme";
+import { useModule } from "@/contexts/ModuleContext";
 import { ModernCard } from "@/components/ui/modern-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
@@ -32,12 +33,13 @@ import { useState } from "react";
 export default function ThirdPartyDashboard() {
   const { user } = useAuth();
   const theme = useModuleTheme();
+  const { currentModule } = useModule();
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<string>("total");
 
   const { data: workOrders = [], isLoading: loadingWorkOrders } = useQuery<WorkOrder[]>({
-    queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId],
+    queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId, currentModule],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
@@ -100,7 +102,7 @@ export default function ThirdPartyDashboard() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId] });
+    queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId, currentModule] });
     queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/stats', user?.thirdPartyCompanyId] });
     queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/company-info', user?.thirdPartyCompanyId] });
     setTimeout(() => setIsRefreshing(false), 1000);

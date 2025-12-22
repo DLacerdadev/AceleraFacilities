@@ -28,6 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useModuleTheme } from "@/hooks/use-module-theme";
+import { useModule } from "@/contexts/ModuleContext";
 import { ModernCard, ModernCardHeader, ModernCardContent } from "@/components/ui/modern-card";
 import { ModernPageHeader } from "@/components/ui/modern-page-header";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,6 +54,7 @@ export default function ThirdPartyWorkOrders() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const theme = useModuleTheme();
+  const { currentModule } = useModule();
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<WorkOrder | null>(null);
@@ -61,7 +63,7 @@ export default function ThirdPartyWorkOrders() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: workOrders = [], isLoading: loadingWorkOrders, refetch } = useQuery<WorkOrder[]>({
-    queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId],
+    queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId, currentModule],
     enabled: !!user?.thirdPartyCompanyId,
   });
 

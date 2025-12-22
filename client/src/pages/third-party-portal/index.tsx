@@ -46,7 +46,7 @@ export default function ThirdPartyPortal() {
   const [location] = useLocation();
   const { user } = useAuth();
   const theme = useModuleTheme();
-  const { currentModule, setCurrentModule } = useModule();
+  const { currentModule, setModule } = useModule();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Fetch allowed modules for this third-party company
@@ -66,7 +66,8 @@ export default function ThirdPartyPortal() {
   };
 
   const handleModuleChange = (module: 'clean' | 'maintenance') => {
-    setCurrentModule(module);
+    console.log('[THIRD-PARTY] Changing module to:', module);
+    setModule(module);
   };
 
   return (

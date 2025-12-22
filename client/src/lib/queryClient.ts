@@ -120,6 +120,13 @@ export const getQueryFn: <T>(options: {
           continue;
         }
         
+        // Check if this is a module identifier for third-party portal queries
+        // Modules should be passed as query params, not path segments
+        if (i > 0 && isThirdPartyPortalQuery && (part === 'clean' || part === 'maintenance')) {
+          queryParams['module'] = part;
+          continue;
+        }
+        
         // Build URL path
         url += (url ? "/" : "") + part;
       } else if (part !== null && part !== undefined) {
