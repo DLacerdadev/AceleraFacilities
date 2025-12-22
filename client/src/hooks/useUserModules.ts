@@ -13,9 +13,11 @@ interface UserModulesResponse {
 export function useUserModules() {
   const { user, isAuthenticated } = useAuth();
 
+  // CRITICAL: Include user.id in queryKey to refetch when user changes
   const { data, isLoading, error } = useQuery<UserModulesResponse>({
-    queryKey: ['/api/auth/user-modules'],
+    queryKey: ['/api/auth/user-modules', user?.id],
     enabled: !!user && isAuthenticated,
+    staleTime: 0, // Always refetch on mount
   });
 
   // Normalizar: garantir que sempre tenha pelo menos um módulo
