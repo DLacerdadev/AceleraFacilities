@@ -3929,11 +3929,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/qr-execution/:code", requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
-      const point = await storage.getQrCodePointByCode(req.params.code);
+      const codeParam = req.params.code;
+      
+      // Tentar buscar pelo código direto primeiro, depois pelo public_slug
+      let point = await storage.getQrCodePointByCode(codeParam);
+      if (!point) {
+        // Se não encontrou pelo code, tenta pelo public_slug (URLs públicas)
+        point = await storage.getQrCodePointByPublicSlug(codeParam);
+        if (point) {
+          console.log(`[QR EXECUTION] Found by public_slug: ${codeParam} -> code: ${point.code}`);
+        }
+      }
       
       // Usuários autenticados podem acessar tanto QR codes de execução quanto de atendimento
       if (!point) {
-        console.log(`[QR EXECUTION] QR code not found: ${req.params.code}`);
+        console.log(`[QR EXECUTION] QR code not found by code or public_slug: ${codeParam}`);
         return res.status(404).json({ message: "QR code não encontrado" });
       }
       
