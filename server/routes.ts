@@ -10688,7 +10688,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const zonesData = await db.select()
         .from(zones)
-        .where(inArray(zones.id, allowedZoneIds));
+        .where(and(
+          inArray(zones.id, allowedZoneIds),
+          eq(zones.isActive, true)
+        ));
 
       res.json(zonesData);
     } catch (error) {
@@ -10721,7 +10724,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const sitesData = await db.select()
         .from(sites)
-        .where(inArray(sites.id, allowedSiteIds));
+        .where(and(
+          inArray(sites.id, allowedSiteIds),
+          eq(sites.isActive, true)
+        ));
 
       res.json(sitesData);
     } catch (error) {
