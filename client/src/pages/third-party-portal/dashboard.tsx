@@ -37,7 +37,7 @@ export default function ThirdPartyDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<string>("total");
 
   const { data: workOrders = [], isLoading: loadingWorkOrders } = useQuery<WorkOrder[]>({
-    queryKey: ['/api/third-party-portal/work-orders'],
+    queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
@@ -50,7 +50,7 @@ export default function ThirdPartyDashboard() {
     usersCount: number;
     teamsCount: number;
   }>({
-    queryKey: ['/api/third-party-portal/stats'],
+    queryKey: ['/api/third-party-portal/stats', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
@@ -60,7 +60,7 @@ export default function ThirdPartyDashboard() {
     customerName: string;
     customerId: string;
   }>({
-    queryKey: ['/api/third-party-portal/company-info'],
+    queryKey: ['/api/third-party-portal/company-info', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
@@ -100,7 +100,9 @@ export default function ThirdPartyDashboard() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId] });
+    queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/stats', user?.thirdPartyCompanyId] });
+    queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/company-info', user?.thirdPartyCompanyId] });
     setTimeout(() => setIsRefreshing(false), 1000);
   };
 

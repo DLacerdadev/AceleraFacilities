@@ -60,17 +60,17 @@ export default function ThirdPartyTeams() {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
   const { data: teams = [], isLoading: loadingTeams } = useQuery<any[]>({
-    queryKey: ['/api/third-party-portal/teams'],
+    queryKey: ['/api/third-party-portal/teams', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: users = [] } = useQuery<any[]>({
-    queryKey: ['/api/third-party-portal/users'],
+    queryKey: ['/api/third-party-portal/users', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: operationalScopes = [] } = useQuery<OperationalScope[]>({
-    queryKey: ['/api/third-party-portal/operational-scopes'],
+    queryKey: ['/api/third-party-portal/operational-scopes', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
@@ -92,7 +92,7 @@ export default function ThirdPartyTeams() {
     },
     onSuccess: () => {
       toast({ title: "Equipe criada com sucesso" });
-      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/teams'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/teams', user?.thirdPartyCompanyId] });
       setIsCreateDialogOpen(false);
       form.reset();
     },
@@ -107,7 +107,7 @@ export default function ThirdPartyTeams() {
     },
     onSuccess: () => {
       toast({ title: "Equipe atualizada com sucesso" });
-      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/teams'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/teams', user?.thirdPartyCompanyId] });
       setIsEditDialogOpen(false);
       setEditingTeam(null);
     },
@@ -122,7 +122,7 @@ export default function ThirdPartyTeams() {
     },
     onSuccess: () => {
       toast({ title: "Membros atualizados com sucesso" });
-      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/teams'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/teams', user?.thirdPartyCompanyId] });
       setIsMembersDialogOpen(false);
       setSelectedTeam(null);
     },
@@ -137,7 +137,7 @@ export default function ThirdPartyTeams() {
     },
     onSuccess: () => {
       toast({ title: "Equipe excluída com sucesso" });
-      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/teams'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/teams', user?.thirdPartyCompanyId] });
       setDeleteDialogOpen(false);
       setTeamToDelete(null);
     },

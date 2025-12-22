@@ -51,7 +51,7 @@ export default function ThirdPartyReports() {
       overdue: number;
     }>;
   }>({
-    queryKey: ['/api/third-party-portal/reports', period, reportType],
+    queryKey: ['/api/third-party-portal/reports', user?.thirdPartyCompanyId, period, reportType],
     enabled: !!user?.thirdPartyCompanyId,
   });
 

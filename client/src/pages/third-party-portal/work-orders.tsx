@@ -61,22 +61,22 @@ export default function ThirdPartyWorkOrders() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: workOrders = [], isLoading: loadingWorkOrders, refetch } = useQuery<WorkOrder[]>({
-    queryKey: ['/api/third-party-portal/work-orders'],
+    queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: proposals = [], isLoading: loadingProposals } = useQuery<any[]>({
-    queryKey: ['/api/third-party-portal/proposals'],
+    queryKey: ['/api/third-party-portal/proposals', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: zones = [] } = useQuery<Zone[]>({
-    queryKey: ['/api/third-party-portal/zones'],
+    queryKey: ['/api/third-party-portal/zones', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: equipment = [] } = useQuery<Equipment[]>({
-    queryKey: ['/api/third-party-portal/equipment'],
+    queryKey: ['/api/third-party-portal/equipment', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
@@ -99,7 +99,7 @@ export default function ThirdPartyWorkOrders() {
     },
     onSuccess: () => {
       toast({ title: "Proposta de O.S. criada com sucesso" });
-      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/proposals', user?.thirdPartyCompanyId] });
       setIsCreateDialogOpen(false);
       form.reset();
     },

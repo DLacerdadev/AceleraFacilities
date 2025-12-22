@@ -19,6 +19,7 @@ import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useAuth } from "@/hooks/useAuth";
 
 const weekDays = [
   { id: 0, name: "Dom" },
@@ -46,6 +47,7 @@ const planProposalSchema = z.object({
 type PlanProposalFormData = z.infer<typeof planProposalSchema>;
 
 export default function ThirdPartyPlans() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
@@ -58,27 +60,33 @@ export default function ThirdPartyPlans() {
     companyName: string;
     customerId: string;
   }>({
-    queryKey: ['/api/third-party-portal/my-modules'],
+    queryKey: ['/api/third-party-portal/my-modules', user?.thirdPartyCompanyId],
+    enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: sites = [] } = useQuery<any[]>({
-    queryKey: ['/api/third-party-portal/sites'],
+    queryKey: ['/api/third-party-portal/sites', user?.thirdPartyCompanyId],
+    enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: zones = [] } = useQuery<any[]>({
-    queryKey: ['/api/third-party-portal/zones'],
+    queryKey: ['/api/third-party-portal/zones', user?.thirdPartyCompanyId],
+    enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: equipment = [] } = useQuery<any[]>({
-    queryKey: ['/api/third-party-portal/equipment'],
+    queryKey: ['/api/third-party-portal/equipment', user?.thirdPartyCompanyId],
+    enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: checklists = [] } = useQuery<any[]>({
-    queryKey: ['/api/third-party-portal/checklists'],
+    queryKey: ['/api/third-party-portal/checklists', user?.thirdPartyCompanyId],
+    enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: proposals = [], isLoading: loadingProposals } = useQuery<any[]>({
-    queryKey: ['/api/third-party-portal/plan-proposals'],
+    queryKey: ['/api/third-party-portal/plan-proposals', user?.thirdPartyCompanyId],
+    enabled: !!user?.thirdPartyCompanyId,
   });
 
   // Filter zones by selected sites
@@ -113,7 +121,7 @@ export default function ThirdPartyPlans() {
     },
     onSuccess: () => {
       toast({ title: "Proposta de plano enviada com sucesso" });
-      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/plan-proposals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/plan-proposals', user?.thirdPartyCompanyId] });
       setIsCreateDialogOpen(false);
       setSelectedModule(null);
       setSelectedSiteIds([]);

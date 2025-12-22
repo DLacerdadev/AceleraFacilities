@@ -48,7 +48,7 @@ export default function ThirdPartyUsers() {
   const [editingUser, setEditingUser] = useState<any | null>(null);
 
   const { data: users = [], isLoading } = useQuery<any[]>({
-    queryKey: ['/api/third-party-portal/users'],
+    queryKey: ['/api/third-party-portal/users', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
@@ -69,7 +69,7 @@ export default function ThirdPartyUsers() {
     },
     onSuccess: () => {
       toast({ title: "Usuário criado com sucesso" });
-      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/users', user?.thirdPartyCompanyId] });
       setIsCreateDialogOpen(false);
       form.reset();
     },
@@ -84,7 +84,7 @@ export default function ThirdPartyUsers() {
     },
     onSuccess: () => {
       toast({ title: "Usuário atualizado com sucesso" });
-      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/third-party-portal/users', user?.thirdPartyCompanyId] });
       setIsEditDialogOpen(false);
       setEditingUser(null);
     },

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Edit2, Trash2, Loader2, AlertCircle, Type, Hash, Camera, CheckSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ChecklistItem {
   id: string;
@@ -59,6 +60,7 @@ const getTypeIcon = (type: string) => {
 };
 
 export default function ThirdPartyChecklists() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -78,11 +80,13 @@ export default function ThirdPartyChecklists() {
 
   // Queries
   const { data: modules } = useQuery<{ allowedModules: string[] }>({
-    queryKey: ['/api/third-party-portal/my-modules'],
+    queryKey: ['/api/third-party-portal/my-modules', user?.thirdPartyCompanyId],
+    enabled: !!user?.thirdPartyCompanyId,
   });
 
   const { data: checklists = [], refetch } = useQuery<Checklist[]>({
-    queryKey: ['/api/third-party-portal/checklists'],
+    queryKey: ['/api/third-party-portal/checklists', user?.thirdPartyCompanyId],
+    enabled: !!user?.thirdPartyCompanyId,
   });
 
   // Mutations

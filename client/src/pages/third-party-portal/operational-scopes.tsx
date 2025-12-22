@@ -28,7 +28,7 @@ export default function ThirdPartyOperationalScopes() {
   const theme = useModuleTheme();
 
   const { data: scopes = [], isLoading: loadingScopes } = useQuery<OperationalScope[]>({
-    queryKey: ['/api/third-party-portal/operational-scopes'],
+    queryKey: ['/api/third-party-portal/operational-scopes', user?.thirdPartyCompanyId],
     enabled: !!user?.thirdPartyCompanyId,
   });
 
