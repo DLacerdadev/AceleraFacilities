@@ -60,7 +60,8 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
     canAccessModule, 
     getValidModule,
     hasMultipleModules,
-    isLoading 
+    isLoading,
+    hasApiData 
   } = useUserModules();
 
   // Inicializar com null e esperar os dados carregarem
@@ -78,26 +79,30 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
 
   // SEMPRE usar o módulo da API - sem persistência entre usuários
-  // Quando os dados do usuário carregam, definir o módulo correto
+  // Quando os dados REAIS do usuário carregam (não fallback), definir o módulo correto
   useEffect(() => {
-    // Aguardar os dados carregarem
+    // Aguardar os dados REAIS carregarem (não usar fallback)
     if (isLoading) return;
     
-    // Usar SEMPRE o defaultModule da API - é o módulo correto para este usuário
-    const apiModule = allowedModules.length > 0 ? defaultModule : 'clean';
-    
-    // Se o módulo atual já está correto e é permitido, não fazer nada
-    if (currentModule === apiModule && allowedModules.includes(currentModule)) {
+    // Se não temos dados da API ainda (isAuthenticated mas API não respondeu), esperar
+    if (isAuthenticated && !hasApiData) {
+      console.log(`[MODULE] ⏳ Aguardando dados da API de módulos...`);
       return;
     }
     
-    // Se o módulo atual é diferente do da API, atualizar
-    if (currentModule !== apiModule) {
-      console.log(`[MODULE] 🔄 Atualizando módulo para: ${apiModule} (API defaultModule)`);
-      console.log(`[MODULE] allowedModules: [${allowedModules.join(', ')}], user: ${user?.username || 'none'}`);
-      setCurrentModule(apiModule);
+    // Usar SEMPRE o defaultModule da API - é o módulo correto para este usuário
+    const apiModule = hasApiData ? defaultModule : 'clean';
+    
+    // Se o módulo atual já está correto e é permitido, não fazer nada
+    if (currentModule === apiModule && (hasApiData ? allowedModules.includes(currentModule) : true)) {
+      return;
     }
-  }, [isLoading, allowedModules, defaultModule, user?.id, currentModule]);
+    
+    // Atualizar para o módulo da API
+    console.log(`[MODULE] 🔄 Atualizando módulo para: ${apiModule} (API defaultModule, hasApiData: ${hasApiData})`);
+    console.log(`[MODULE] allowedModules: [${allowedModules.join(', ')}], user: ${user?.username || 'none'}`);
+    setCurrentModule(apiModule);
+  }, [isLoading, hasApiData, allowedModules, defaultModule, user?.id, currentModule, isAuthenticated]);
 
   // Sincronizar módulo quando o cliente mudar
   useEffect(() => {
@@ -259,8 +264,10 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
     return `/${currentModule}${cleanPath}`;
   };
 
-  // Se ainda está carregando, não renderizar nada
-  if (isLoading || currentModule === null) {
+  // Se ainda está carregando ou aguardando dados da API, mostrar loading
+  const isWaitingForData = isLoading || (isAuthenticated && !hasApiData) || currentModule === null;
+  
+  if (isWaitingForData) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">

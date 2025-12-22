@@ -33,6 +33,9 @@ export function useUserModules() {
     staleTime: 0, // Always refetch on mount
   });
 
+  // Indica se os dados reais da API já chegaram (não é fallback)
+  const hasApiData = !!data && data.modules && data.modules.length > 0;
+  
   // Normalizar: garantir que sempre tenha pelo menos um módulo
   const rawModules = data?.modules || [];
   const allowedModules: ModuleType[] = rawModules.length > 0 ? rawModules : ['clean'];
@@ -66,6 +69,7 @@ export function useUserModules() {
     canAccessModule,
     getValidModule,
     isLoading,
+    hasApiData, // Indica se os dados vieram da API (não é fallback)
     error,
   };
 }
