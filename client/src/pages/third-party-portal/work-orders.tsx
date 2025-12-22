@@ -613,7 +613,12 @@ export default function ThirdPartyWorkOrders() {
                               <TableCell>{formatDateOnly(wo.dueDate)}</TableCell>
                               <TableCell>{getStatusBadge(wo.status)}</TableCell>
                               <TableCell>
-                                <Button variant="ghost" size="icon" data-testid={`button-view-wo-${wo.id}`}>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => setSelectedWorkOrder(wo)}
+                                  data-testid={`button-view-wo-${wo.id}`}
+                                >
                                   <Eye className="w-4 h-4" />
                                 </Button>
                               </TableCell>
@@ -681,6 +686,81 @@ export default function ThirdPartyWorkOrders() {
           </Tabs>
         </div>
       </main>
+
+      {/* Modal de Detalhes da O.S. */}
+      <Dialog open={!!selectedWorkOrder} onOpenChange={(open) => !open && setSelectedWorkOrder(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5" />
+              Detalhes da Ordem de Serviço
+            </DialogTitle>
+            <DialogDescription>
+              Visualize os detalhes da ordem de serviço atribuída
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedWorkOrder && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Título</label>
+                  <p className="text-sm font-semibold">{selectedWorkOrder.title}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Status</label>
+                  <div className="mt-1">{getStatusBadge(selectedWorkOrder.status)}</div>
+                </div>
+              </div>
+
+              {selectedWorkOrder.description && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Descrição</label>
+                  <p className="text-sm mt-1 p-3 bg-muted rounded-md">{selectedWorkOrder.description}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Zona</label>
+                  <p className="text-sm">{zones.find(z => z.id === selectedWorkOrder.zoneId)?.name || '-'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Prioridade</label>
+                  <div className="mt-1">{getPriorityBadge(selectedWorkOrder.priority)}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Prazo</label>
+                  <p className="text-sm">{formatDateOnly(selectedWorkOrder.dueDate)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Módulo</label>
+                  <Badge variant="outline">
+                    {selectedWorkOrder.module === 'clean' ? 'Limpeza' : 'Manutenção'}
+                  </Badge>
+                </div>
+              </div>
+
+              {selectedWorkOrder.equipmentId && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Equipamento</label>
+                  <p className="text-sm">{equipment.find(e => e.id === selectedWorkOrder.equipmentId)?.name || '-'}</p>
+                </div>
+              )}
+
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setSelectedWorkOrder(null)}>
+                  Fechar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
