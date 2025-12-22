@@ -4903,43 +4903,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let modules: ('clean' | 'maintenance')[] = [];
 
       // SPECIAL HANDLING FOR THIRD-PARTY USERS
-      // They should only see modules allowed by their company, not all user modules
-      // AND the default module should be based on their team's operational scope
+      // Operators should only see modules from their team's operational scopes
+      // Managers can see all modules allowed by their company
       if (user.userType === 'third_party_user' && user.thirdPartyCompanyId) {
         const company = await db.select()
           .from(thirdPartyCompanies)
           .where(eq(thirdPartyCompanies.id, user.thirdPartyCompanyId))
           .limit(1);
         
-        if (company.length > 0 && company[0].allowedModules) {
-          modules = company[0].allowedModules as ('clean' | 'maintenance')[];
-        }
+        const companyModules = (company.length > 0 && company[0].allowedModules) 
+          ? company[0].allowedModules as ('clean' | 'maintenance')[]
+          : [];
         
-        // Determine default module from user's team operational scope
-        // This ensures maintenance operators see maintenance first, not clean
-        // Note: Members are stored in member_ids array column, not in team_members table
-        const userTeams = await db.select({
+        // Get all teams from the company
+        const allTeams = await db.select({
           teamId: thirdPartyTeams.id,
           scopeId: thirdPartyTeams.operationalScopeId,
-          memberIds: thirdPartyTeams.memberIds
+          memberIds: thirdPartyTeams.memberIds,
+          leaderId: thirdPartyTeams.leaderId
         })
           .from(thirdPartyTeams)
           .where(eq(thirdPartyTeams.thirdPartyCompanyId, user.thirdPartyCompanyId));
         
-        // Find the team that contains this user in member_ids
-        const userTeam = userTeams.find(team => 
-          team.memberIds && team.memberIds.includes(user.id)
+        // Find all teams where this user is a member or leader
+        const userTeams = allTeams.filter(team => 
+          (team.memberIds && team.memberIds.includes(user.id)) || team.leaderId === user.id
         );
         
-        if (userTeam && userTeam.scopeId) {
+        // If user is an operator (not manager), only show modules from their teams
+        const isOperator = user.thirdPartyRole === 'THIRD_PARTY_OPERATOR' || user.role === 'operador';
+        
+        if (isOperator && userTeams.length > 0) {
+          // Get unique modules from user's team scopes
+          const scopeIds = userTeams.map(t => t.scopeId).filter((id): id is string => !!id);
+          
+          if (scopeIds.length > 0) {
+            const scopes = await db.select()
+              .from(operationalScopes)
+              .where(inArray(operationalScopes.id, scopeIds));
+            
+            const teamModules = [...new Set(scopes.map(s => s.moduleId))] as ('clean' | 'maintenance')[];
+            
+            // Only show modules that are both in company modules AND in team scopes
+            modules = teamModules.filter(m => companyModules.includes(m));
+            console.log(`[AUTH MODULES] Operator ${user.id} modules restricted to team scopes: ${modules.join(', ')}`);
+          } else {
+            modules = companyModules;
+          }
+        } else {
+          // Managers see all company modules
+          modules = companyModules;
+        }
+        
+        // Put the first team's module first in the list
+        if (userTeams.length > 0 && userTeams[0].scopeId) {
           const scope = await db.select()
             .from(operationalScopes)
-            .where(eq(operationalScopes.id, userTeam.scopeId))
+            .where(eq(operationalScopes.id, userTeams[0].scopeId))
             .limit(1);
           
           if (scope.length > 0 && scope[0].moduleId) {
             const scopeModule = scope[0].moduleId as 'clean' | 'maintenance';
-            // Put the scope's module first in the list
             if (modules.includes(scopeModule)) {
               modules = [scopeModule, ...modules.filter(m => m !== scopeModule)];
               console.log(`[AUTH MODULES] Third-party user ${user.id} default module set from team scope: ${scopeModule}`);
