@@ -77,36 +77,57 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
   // Hook de navegação para redirecionamento automático
   const [, setLocation] = useLocation();
 
+  // Rastrear o ID do usuário anterior para detectar mudanças de login
+  const [previousUserId, setPreviousUserId] = useState<string | null>(null);
+  
+  // RESET: Quando o usuário muda (logout ou login de outro usuário), resetar o módulo
+  useEffect(() => {
+    const newUserId = user?.id || null;
+    
+    // Detectar mudança de usuário
+    if (previousUserId !== null && previousUserId !== newUserId) {
+      console.log(`[MODULE] 🔄 Usuário mudou de ${previousUserId} para ${newUserId} - Resetando módulo`);
+      setCurrentModule(null);
+      localStorage.removeItem('opus:currentModule');
+    }
+    
+    setPreviousUserId(newUserId);
+  }, [user?.id, previousUserId]);
+  
   // Inicializar o módulo apenas DEPOIS que os dados do usuário carregarem
   useEffect(() => {
-    if (!isLoading && currentModule === null) {
-      // Se não tem módulos configurados, forçar 'clean' como padrão seguro
-      const safeDefaultModule = allowedModules.length > 0 ? defaultModule : 'clean';
-      
-      // TERCEIROS: Sempre usar o módulo padrão da API, ignorando localStorage
-      // Isso garante que o operador de manutenção não veja dados de limpeza
-      const isThirdPartyUser = !!user?.thirdPartyCompanyId;
-      
-      if (isThirdPartyUser) {
-        console.log(`[MODULE] Terceiro detectado - Inicializando com módulo da empresa: ${safeDefaultModule}`);
-        // Limpar localStorage para evitar conflitos
-        localStorage.removeItem('opus:currentModule');
-        setCurrentModule(safeDefaultModule);
-        return;
-      }
-      
-      // Primeira inicialização - usar localStorage ou defaultModule (apenas para usuários normais)
-      const stored = localStorage.getItem('opus:currentModule');
-      const storedModule = (stored === 'clean' || stored === 'maintenance') ? stored : null;
-      
-      // Validar se o módulo salvo é permitido
-      if (storedModule && allowedModules.length > 0 && canAccessModule(storedModule)) {
-        console.log(`[MODULE] Inicializando com módulo salvo: ${storedModule}`);
-        setCurrentModule(storedModule);
-      } else {
-        console.log(`[MODULE] Inicializando com módulo padrão: ${safeDefaultModule}`);
-        setCurrentModule(safeDefaultModule);
-      }
+    // Aguardar os dados carregarem
+    if (isLoading) return;
+    
+    // Se já tem um módulo válido e não é a primeira inicialização, não fazer nada
+    if (currentModule !== null && allowedModules.includes(currentModule)) return;
+    
+    // Se não tem módulos configurados, forçar 'clean' como padrão seguro
+    const safeDefaultModule = allowedModules.length > 0 ? defaultModule : 'clean';
+    
+    // TERCEIROS: Sempre usar o módulo padrão da API, ignorando localStorage
+    // Isso garante que o operador de manutenção não veja dados de limpeza
+    const isThirdPartyUser = !!user?.thirdPartyCompanyId;
+    
+    if (isThirdPartyUser) {
+      console.log(`[MODULE] Terceiro detectado - Inicializando com módulo da empresa: ${safeDefaultModule}`);
+      // Limpar localStorage para evitar conflitos
+      localStorage.removeItem('opus:currentModule');
+      setCurrentModule(safeDefaultModule);
+      return;
+    }
+    
+    // Primeira inicialização - usar localStorage ou defaultModule (apenas para usuários normais)
+    const stored = localStorage.getItem('opus:currentModule');
+    const storedModule = (stored === 'clean' || stored === 'maintenance') ? stored : null;
+    
+    // Validar se o módulo salvo é permitido
+    if (storedModule && allowedModules.length > 0 && canAccessModule(storedModule)) {
+      console.log(`[MODULE] Inicializando com módulo salvo: ${storedModule}`);
+      setCurrentModule(storedModule);
+    } else {
+      console.log(`[MODULE] Inicializando com módulo padrão: ${safeDefaultModule}`);
+      setCurrentModule(safeDefaultModule);
     }
   }, [isLoading, allowedModules, currentModule, canAccessModule, defaultModule, user]);
 
