@@ -62,6 +62,15 @@ export default function ThirdPartyWorkOrders() {
   const [zoneFilter, setZoneFilter] = useState<string>("todas");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Debug: log current module state
+  useEffect(() => {
+    console.log('[THIRD-PARTY WO PAGE] Module state:', {
+      currentModule,
+      companyId: user?.thirdPartyCompanyId,
+      queryEnabled: !!user?.thirdPartyCompanyId && !!currentModule
+    });
+  }, [currentModule, user?.thirdPartyCompanyId]);
+
   const { data: workOrders = [], isLoading: loadingWorkOrders, refetch } = useQuery<WorkOrder[]>({
     queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId, currentModule],
     enabled: !!user?.thirdPartyCompanyId && !!currentModule,
