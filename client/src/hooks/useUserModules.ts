@@ -18,7 +18,8 @@ export function useUserModules() {
   const { data, isLoading, error } = useQuery<UserModulesResponse>({
     queryKey: ['user-modules', user?.id],
     queryFn: async () => {
-      const token = localStorage.getItem('opus:token');
+      // Use the correct token key that login/auth flows use
+      const token = localStorage.getItem('acelera_token');
       const response = await fetch('/api/auth/user-modules', {
         headers: {
           'Authorization': `Bearer ${token}`,

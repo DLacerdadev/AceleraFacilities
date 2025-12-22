@@ -24,15 +24,9 @@ export function MobileHeader({ title, subtitle, showBack = false, backUrl = "/mo
   const effectiveAllowedModules = allowedModules.filter(module => clientModules.includes(module));
   const effectiveHasMultipleModules = effectiveAllowedModules.length > 1;
 
-  // 🔥 CORRIGIDO: Se usuário não tem acesso ao módulo atual, forçar para o primeiro permitido
-  if (!canAccessModule(currentModule)) {
-    console.warn(`[MOBILE HEADER] ⚠️ Usuário não tem acesso ao módulo ${currentModule}. Forçando para ${allowedModules[0]}`);
-    // Forçar troca para o primeiro módulo permitido ao invés de esconder tudo
-    if (allowedModules.length > 0 && allowedModules[0] !== currentModule) {
-      setModule(allowedModules[0]);
-    }
-    // Renderizar o header mesmo assim para evitar tela quebrada
-  }
+  // 🔥 REMOVIDO: Não forçar módulo aqui - o ModuleContext já faz isso corretamente
+  // A verificação anterior causava race condition quando os dados ainda não chegaram
+  // Agora o ModuleContext aguarda a API e define o módulo correto automaticamente
 
   const handleBack = () => {
     setLocation(backUrl);
