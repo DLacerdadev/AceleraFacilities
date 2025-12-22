@@ -10644,11 +10644,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[THIRD-PARTY WO] Total customer work orders:', allCustomerWorkOrders.length);
       
       // Filter work orders based on third-party access rules:
+      // IMPORTANTE: Todas as O.S. devem estar em zonas/sites ATIVOS
       // 1. Work orders assigned to this third-party company with matching operationalScopeId (any status)
       // 2. Work orders assigned to this third-party company without scope (legacy - any status)
       // 3. Open work orders in allowed zones/sites with matching scope (not assigned to another third-party)
       // 4. Open work orders in allowed zones/sites without scope - legacy (not assigned to another third-party)
       const filteredWorkOrders = allCustomerWorkOrders.filter(wo => {
+        // PRIMEIRO: Verificar se a O.S. está em zona/site ATIVO
+        const inActiveZone = wo.zoneId && allowedZoneIds.includes(wo.zoneId);
+        const inActiveSite = wo.siteId && allowedSiteIds.includes(wo.siteId);
+        
+        // Se a O.S. não está em uma zona OU site ativo, não mostrar
+        if (!inActiveZone && !inActiveSite) {
+          return false;
+        }
+        
         // Rule 1 & 2: Work orders assigned to this third-party
         if (wo.thirdPartyCompanyId === user.thirdPartyCompanyId) {
           // Se o usuário tem escopos, só mostra OS dos seus escopos
@@ -10666,11 +10676,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Rule 3 & 4: Open work orders in allowed zones/sites, not assigned to another third-party
         const isOpen = wo.status === 'aberta';
         const notAssigned = wo.thirdPartyCompanyId === null;
-        const inAllowedZone = wo.zoneId && allowedZoneIds.includes(wo.zoneId);
-        const inAllowedSite = wo.siteId && allowedSiteIds.includes(wo.siteId);
         
-        // Verificar se a OS aberta está na zona/site permitidos
-        if (isOpen && notAssigned && (inAllowedZone || inAllowedSite)) {
+        // Verificar se a OS aberta está na zona/site permitidos (já verificamos que está ativo acima)
+        if (isOpen && notAssigned) {
           // Se o usuário tem escopos, verificar se a OS tem scope compatível
           if (userScopeIds.length > 0) {
             // Apenas OS sem scope (legacy) ou OS com scope do usuário
