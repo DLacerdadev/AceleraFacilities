@@ -91,16 +91,40 @@ export const getQueryFn: <T>(options: {
     }
     
     // Process queryKey to handle objects as query parameters
+    // The first element should always be the API path
+    // Additional elements can be: 
+    // - objects: converted to query params
+    // - strings: added to URL path
+    // Special handling for third-party portal: if first element is /api/third-party-portal/* 
+    // and second element looks like an ID (nanoid format), skip it as it's a cache key
     let url = "";
     const queryParams: Record<string, string> = {};
     
-    for (const part of queryKey) {
+    for (let i = 0; i < queryKey.length; i++) {
+      const part = queryKey[i];
       if (typeof part === "object" && part !== null) {
-        // Extract query parameters from object
-        Object.assign(queryParams, part);
-      } else {
+        // Extract query parameters from object (but skip _cacheOnly keys)
+        const filtered = Object.fromEntries(
+          Object.entries(part as Record<string, unknown>).filter(([key]) => !key.startsWith('_'))
+        );
+        Object.assign(queryParams, filtered);
+      } else if (typeof part === "string") {
+        // Check if this is a cache-only key for third-party portal queries
+        // These are nanoid-format IDs that should not be appended to the URL
+        const firstPart = String(queryKey[0]);
+        const isThirdPartyPortalQuery = firstPart.includes('/api/third-party-portal/');
+        const looksLikeNanoid = /^[A-Za-z0-9_-]{10,30}$/.test(part) && !part.includes('/');
+        
+        if (i > 0 && isThirdPartyPortalQuery && looksLikeNanoid) {
+          // Skip this - it's a cache key only for third-party portal isolation
+          continue;
+        }
+        
         // Build URL path
         url += (url ? "/" : "") + part;
+      } else if (part !== null && part !== undefined) {
+        // Non-string, non-object values
+        url += (url ? "/" : "") + String(part);
       }
     }
     
