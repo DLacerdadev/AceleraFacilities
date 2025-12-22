@@ -4032,13 +4032,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/qr-public/:code", async (req, res) => {
     try {
-      const point = await storage.getQrCodePointByCode(req.params.code);
-      if (!point || point.type !== 'atendimento') {
-        return res.status(404).json({ message: "QR code not found or invalid type" });
+      const codeParam = req.params.code;
+      
+      // Tentar buscar pelo código direto primeiro, depois pelo public_slug
+      let point = await storage.getQrCodePointByCode(codeParam);
+      if (!point) {
+        point = await storage.getQrCodePointByPublicSlug(codeParam);
+        if (point) {
+          console.log(`[QR PUBLIC] Found by public_slug: ${codeParam} -> code: ${point.code}`);
+        }
+      }
+      
+      // Para acesso público, o QR deve existir e estar com isPublic = true
+      if (!point) {
+        console.log(`[QR PUBLIC] QR code not found: ${codeParam}`);
+        return res.status(404).json({ message: "QR code não encontrado" });
+      }
+      
+      if (!point.isPublic) {
+        console.log(`[QR PUBLIC] QR code not public: ${codeParam}`);
+        return res.status(404).json({ message: "QR code não está habilitado para acesso público" });
+      }
+      
+      if (!point.isActive) {
+        console.log(`[QR PUBLIC] QR code inactive: ${codeParam}`);
+        return res.status(404).json({ message: "QR code está inativo" });
       }
       
       res.json({ point });
     } catch (error) {
+      console.error('[QR PUBLIC] Error:', error);
       res.status(500).json({ message: "Failed to process QR scan" });
     }
   });
