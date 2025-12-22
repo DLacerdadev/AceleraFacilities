@@ -142,42 +142,51 @@ export default function MobileQrScanner() {
     setIsScanning(false);
   };
 
+  // Helper function to extract QR code from URL
+  const normalizeQrCode = (rawQrCode: string): { code: string; isPublic: boolean } => {
+    let code = rawQrCode;
+    let isPublic = false;
+    
+    // Detectar QR code público (atendimento) - formato /qr-public/CODE
+    if (rawQrCode.includes('/qr-public/')) {
+      const match = rawQrCode.match(/\/qr-public\/([^\/\?]+)/);
+      if (match) {
+        code = match[1];
+        isPublic = true;
+      }
+    }
+    // Detectar QR code de TV pública - formato /public/tv/CODE (usado para atendimento)
+    else if (rawQrCode.includes('/public/tv/')) {
+      const match = rawQrCode.match(/\/public\/tv\/([^\/\?]+)/);
+      if (match) {
+        code = match[1];
+        isPublic = true;
+      }
+    }
+    // Detectar QR code de execução - formato /qr-execution/CODE
+    else if (rawQrCode.includes('replit.dev/qr-execution/') || rawQrCode.includes('/qr-execution/')) {
+      const match = rawQrCode.match(/\/qr-execution\/([^\/\?]+)/);
+      if (match) {
+        code = match[1];
+      }
+    }
+    
+    return { code, isPublic };
+  };
+
   const handleQrCodeDetected = async (qrCode: string) => {
     if (isProcessing) return;
     
     setIsProcessing(true);
     stopScanner();
-    setScannedQrCode(qrCode);
     
-    // Extrair código da URL se necessário e detectar tipo
-    let extractedCode = qrCode;
-    let isPublicQr = false;
+    // Extrair código da URL ANTES de salvar no estado
+    const { code: extractedCode, isPublic: isPublicQr } = normalizeQrCode(qrCode);
     
-    // Detectar QR code público (atendimento) - formato /qr-public/CODE
-    if (qrCode.includes('/qr-public/')) {
-      const match = qrCode.match(/\/qr-public\/([^\/\?]+)/);
-      if (match) {
-        extractedCode = match[1];
-        isPublicQr = true;
-      }
-    }
-    // Detectar QR code de TV pública - formato /public/tv/CODE (usado para atendimento)
-    else if (qrCode.includes('/public/tv/')) {
-      const match = qrCode.match(/\/public\/tv\/([^\/\?]+)/);
-      if (match) {
-        extractedCode = match[1];
-        isPublicQr = true;
-      }
-    }
-    // Detectar QR code de execução - formato /qr-execution/CODE
-    else if (qrCode.includes('replit.dev/qr-execution/') || qrCode.includes('/qr-execution/')) {
-      const match = qrCode.match(/\/qr-execution\/([^\/\?]+)/);
-      if (match) {
-        extractedCode = match[1];
-      }
-    }
+    // Salvar o código extraído, não a URL completa
+    setScannedQrCode(extractedCode);
 
-    console.log('[QR SCANNER] Processando QR code:', { extractedCode, isOnline, isPublicQr });
+    console.log('[QR SCANNER] Processando QR code:', { rawQrCode: qrCode, extractedCode, isOnline, isPublicQr });
 
     try {
       // MODO OFFLINE: Buscar do IndexedDB
