@@ -4917,21 +4917,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Determine default module from user's team operational scope
         // This ensures maintenance operators see maintenance first, not clean
+        // Note: Members are stored in member_ids array column, not in team_members table
         const userTeams = await db.select({
-          teamId: teamMembers.teamId,
-          scopeId: thirdPartyTeams.operationalScopeId
+          teamId: thirdPartyTeams.id,
+          scopeId: thirdPartyTeams.operationalScopeId,
+          memberIds: thirdPartyTeams.memberIds
         })
-          .from(teamMembers)
-          .innerJoin(thirdPartyTeams, eq(teamMembers.teamId, thirdPartyTeams.id))
-          .where(and(
-            eq(teamMembers.userId, user.id),
-            eq(teamMembers.isActive, true)
-          ));
+          .from(thirdPartyTeams)
+          .where(eq(thirdPartyTeams.thirdPartyCompanyId, user.thirdPartyCompanyId));
         
-        if (userTeams.length > 0 && userTeams[0].scopeId) {
+        // Find the team that contains this user in member_ids
+        const userTeam = userTeams.find(team => 
+          team.memberIds && team.memberIds.includes(user.id)
+        );
+        
+        if (userTeam && userTeam.scopeId) {
           const scope = await db.select()
             .from(operationalScopes)
-            .where(eq(operationalScopes.id, userTeams[0].scopeId))
+            .where(eq(operationalScopes.id, userTeam.scopeId))
             .limit(1);
           
           if (scope.length > 0 && scope[0].moduleId) {
@@ -4939,7 +4942,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Put the scope's module first in the list
             if (modules.includes(scopeModule)) {
               modules = [scopeModule, ...modules.filter(m => m !== scopeModule)];
-              console.log(`[AUTH MODULES] Third-party user ${user.id} default module set from scope: ${scopeModule}`);
+              console.log(`[AUTH MODULES] Third-party user ${user.id} default module set from team scope: ${scopeModule}`);
             }
           }
         }
