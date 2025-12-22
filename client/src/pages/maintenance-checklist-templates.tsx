@@ -75,6 +75,16 @@ function MultiSelect({
     }
   };
 
+  const selectAll = () => {
+    onChange(options.map(opt => opt.value));
+  };
+
+  const clearAll = () => {
+    onChange([]);
+  };
+
+  const allSelected = options.length > 0 && value.length === options.length;
+
   const selectedLabels = options
     .filter(opt => value.includes(opt.value))
     .map(opt => opt.label)
@@ -100,6 +110,32 @@ function MultiSelect({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
+          {options.length > 0 && (
+            <div className="flex gap-2 p-2 border-b">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={selectAll}
+                disabled={disabled || allSelected}
+                data-testid="button-select-all"
+              >
+                Selecionar Todos
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={clearAll}
+                disabled={disabled || value.length === 0}
+                data-testid="button-clear-all"
+              >
+                Limpar
+              </Button>
+            </div>
+          )}
           <div className="max-h-64 overflow-auto p-2">
             {options.length === 0 ? (
               <div className="p-2 text-sm text-muted-foreground">
