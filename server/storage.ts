@@ -763,6 +763,17 @@ export class DatabaseStorage implements IStorage {
       ? and(inArray(workOrders.zoneId, zoneIds), or(isNull(workOrders.module), eq(workOrders.module, module)))
       : inArray(workOrders.zoneId, zoneIds);
     
+    // Custom status order: vencida -> aberta -> em_execucao -> pausada -> concluida -> cancelada
+    const statusOrder = sql`CASE 
+      WHEN ${workOrders.status} = 'vencida' THEN 1
+      WHEN ${workOrders.status} = 'aberta' THEN 2
+      WHEN ${workOrders.status} = 'em_execucao' THEN 3
+      WHEN ${workOrders.status} = 'pausada' THEN 4
+      WHEN ${workOrders.status} = 'concluida' THEN 5
+      WHEN ${workOrders.status} = 'cancelada' THEN 6
+      ELSE 7
+    END`;
+
     // Get work orders with zone and site objects via JOIN
     const results = await db.select({
       workOrder: workOrders,
@@ -773,7 +784,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(zones, eq(workOrders.zoneId, zones.id))
       .leftJoin(sites, eq(zones.siteId, sites.id))
       .where(whereConditions)
-      .orderBy(desc(workOrders.createdAt));
+      .orderBy(asc(statusOrder), desc(workOrders.createdAt));
     
     console.log(`[getWorkOrdersByCustomer] Work orders found: ${results.length}`);
     
@@ -4195,21 +4206,54 @@ export class DatabaseStorage implements IStorage {
       ? and(eq(workOrders.companyId, companyId), eq(workOrders.module, module))
       : eq(workOrders.companyId, companyId);
     
+    // Custom status order: vencida -> aberta -> em_execucao -> pausada -> concluida -> cancelada
+    const statusOrder = sql`CASE 
+      WHEN ${workOrders.status} = 'vencida' THEN 1
+      WHEN ${workOrders.status} = 'aberta' THEN 2
+      WHEN ${workOrders.status} = 'em_execucao' THEN 3
+      WHEN ${workOrders.status} = 'pausada' THEN 4
+      WHEN ${workOrders.status} = 'concluida' THEN 5
+      WHEN ${workOrders.status} = 'cancelada' THEN 6
+      ELSE 7
+    END`;
+    
     return await db.select().from(workOrders)
       .where(whereConditions)
-      .orderBy(desc(workOrders.createdAt));
+      .orderBy(asc(statusOrder), desc(workOrders.createdAt));
   }
 
   async getWorkOrdersByUser(userId: string): Promise<WorkOrder[]> {
+    // Custom status order: vencida -> aberta -> em_execucao -> pausada -> concluida -> cancelada
+    const statusOrder = sql`CASE 
+      WHEN ${workOrders.status} = 'vencida' THEN 1
+      WHEN ${workOrders.status} = 'aberta' THEN 2
+      WHEN ${workOrders.status} = 'em_execucao' THEN 3
+      WHEN ${workOrders.status} = 'pausada' THEN 4
+      WHEN ${workOrders.status} = 'concluida' THEN 5
+      WHEN ${workOrders.status} = 'cancelada' THEN 6
+      ELSE 7
+    END`;
+    
     return await db.select().from(workOrders)
       .where(eq(workOrders.assignedUserId, userId))
-      .orderBy(desc(workOrders.createdAt));
+      .orderBy(asc(statusOrder), desc(workOrders.createdAt));
   }
 
   async getWorkOrdersByEquipment(equipmentId: string): Promise<WorkOrder[]> {
+    // Custom status order: vencida -> aberta -> em_execucao -> pausada -> concluida -> cancelada
+    const statusOrder = sql`CASE 
+      WHEN ${workOrders.status} = 'vencida' THEN 1
+      WHEN ${workOrders.status} = 'aberta' THEN 2
+      WHEN ${workOrders.status} = 'em_execucao' THEN 3
+      WHEN ${workOrders.status} = 'pausada' THEN 4
+      WHEN ${workOrders.status} = 'concluida' THEN 5
+      WHEN ${workOrders.status} = 'cancelada' THEN 6
+      ELSE 7
+    END`;
+    
     return await db.select().from(workOrders)
       .where(eq(workOrders.equipmentId, equipmentId))
-      .orderBy(desc(workOrders.createdAt));
+      .orderBy(asc(statusOrder), desc(workOrders.createdAt));
   }
 
   async getWorkOrder(id: string): Promise<WorkOrder | undefined> {
