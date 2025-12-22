@@ -3924,13 +3924,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // QR Code scanning endpoints
+  // Usuários autenticados podem acessar qualquer QR code (execucao ou atendimento)
+  // para executar tarefas ou criar ordens de serviço
   app.get("/api/qr-execution/:code", requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
       const point = await storage.getQrCodePointByCode(req.params.code);
-      if (!point || point.type !== 'execucao') {
-        return res.status(404).json({ message: "QR code not found or invalid type" });
+      
+      // Usuários autenticados podem acessar tanto QR codes de execução quanto de atendimento
+      if (!point) {
+        console.log(`[QR EXECUTION] QR code not found: ${req.params.code}`);
+        return res.status(404).json({ message: "QR code não encontrado" });
       }
+      
+      // Verificar se o QR code está ativo (se o campo existir)
+      if (point.isActive === false) {
+        console.log(`[QR EXECUTION] QR code inactive: ${req.params.code}`);
+        return res.status(404).json({ message: "QR code está inativo" });
+      }
+      
+      console.log(`[QR EXECUTION] QR code found: ${point.code}, type: ${point.type}, active: ${point.isActive}`);
       
       // Verificar se usuário de terceiro tem acesso à zona do QR code
       if (user.thirdPartyCompanyId && point.zoneId) {
