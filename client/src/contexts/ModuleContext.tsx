@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useUserModules } from '@/hooks/useUserModules';
 import { useClient } from './ClientContext';
@@ -81,7 +81,12 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
 
   // SEMPRE usar o módulo da API - sem persistência entre usuários
   // Quando a API responde (sucesso ou erro), definir o módulo correto
+  // IMPORTANTE: Este useEffect só roda UMA VEZ quando os dados da API chegam (currentModule === null)
   useEffect(() => {
+    // Só executar quando currentModule ainda não foi definido
+    // Isso evita o loop de redefinir o módulo após o cliente validar
+    if (currentModule !== null) return;
+    
     // Aguardar a API responder (sucesso ou erro)
     if (isLoading) return;
     
@@ -92,32 +97,47 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Usar o defaultModule da API se disponível, senão fallback
-    const apiModule = hasApiData ? defaultModule : 'clean';
+    let apiModule = hasApiData ? defaultModule : 'clean';
     
-    // Se o módulo atual já está correto, não fazer nada
-    if (currentModule === apiModule) {
-      return;
+    // VALIDAR: Se já temos o cliente ativo, verificar se o módulo é válido
+    if (activeClient) {
+      const clientModules = activeClient.modules || [];
+      if (clientModules.length > 0 && !clientModules.includes(apiModule)) {
+        // Módulo padrão não está disponível no cliente, usar primeiro disponível
+        const validModule = clientModules.find(m => canAccessModule(m as ModuleType));
+        if (validModule) {
+          console.log(`[MODULE] 🔄 Módulo padrão "${apiModule}" não disponível para "${activeClient.name}", usando "${validModule}"`);
+          apiModule = validModule as ModuleType;
+        }
+      }
     }
     
-    // Atualizar para o módulo da API
-    console.log(`[MODULE] 🔄 Atualizando módulo para: ${apiModule} (hasApiData: ${hasApiData}, apiCompleted: ${apiCompleted})`);
+    // Atualizar para o módulo inicial
+    console.log(`[MODULE] 🔄 Definindo módulo inicial: ${apiModule} (hasApiData: ${hasApiData}, apiCompleted: ${apiCompleted})`);
     console.log(`[MODULE] allowedModules: [${allowedModules.join(', ')}], user: ${user?.username || 'none'}`);
     setCurrentModule(apiModule);
-  }, [isLoading, hasApiData, apiCompleted, allowedModules, defaultModule, user?.id, currentModule, isAuthenticated]);
+  }, [isLoading, hasApiData, apiCompleted, allowedModules, defaultModule, user?.id, currentModule, isAuthenticated, activeClient, canAccessModule]);
 
-  // Sincronizar módulo quando o cliente mudar
+  // Sincronizar módulo quando o cliente mudar (APÓS o módulo já ter sido definido inicialmente)
+  // Usar useRef para evitar loops infinitos
+  const lastClientIdRef = useRef<string | null>(null);
+  
   useEffect(() => {
-    if (!activeClient || !currentModule) return;
+    // Só validar após módulo ter sido definido
+    if (!activeClient || currentModule === null) return;
+    
+    // Evitar loop: só processar se o cliente realmente mudou
+    if (lastClientIdRef.current === activeClient.id) return;
+    lastClientIdRef.current = activeClient.id;
     
     const clientModules = activeClient.modules || [];
     
     // Apenas validar se o módulo atual é suportado pelo cliente
-    // NÃO forçar troca automática, respeitar a escolha do usuário
     if (clientModules.length > 0 && !clientModules.includes(currentModule)) {
       // Trocar para o primeiro módulo do cliente que o usuário pode acessar
       const validModule = clientModules.find(m => canAccessModule(m as ModuleType));
       if (validModule) {
-        console.log(`[MODULE] ⚠️ Módulo "${currentModule}" não disponível para cliente "${activeClient.name}", trocando para "${validModule}"...`);
+        console.log(`[MODULE] ⚠️ Cliente trocou para "${activeClient.name}" - Módulo "${currentModule}" não disponível, trocando para "${validModule}"...`);
         setCurrentModule(validModule as ModuleType);
         
         // Redirecionar para a tela inicial
@@ -125,7 +145,7 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
         setLocation('/');
       }
     }
-  }, [activeClient, currentModule, canAccessModule, setLocation]);
+  }, [activeClient?.id, currentModule, canAccessModule, setLocation]);
 
   // Helper to convert HEX to HSL
   const hexToHSL = (hex: string): { h: number; s: number; l: number } => {
