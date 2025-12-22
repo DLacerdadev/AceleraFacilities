@@ -7315,6 +7315,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // 3. Third, check parts in maintenance activities associated to open work orders
+      // This handles parts from maintenance plans/activities that generate work orders
+      const activityIds = new Set<string>();
+      for (const wo of openWorkOrders) {
+        if (wo.maintenanceActivityId) {
+          activityIds.add(wo.maintenanceActivityId);
+        }
+      }
+      
+      // Fetch all activity parts for activities with open work orders
+      if (activityIds.size > 0) {
+        const activityPartsMap: Record<string, any[]> = {};
+        for (const actId of activityIds) {
+          const actParts = await storage.getMaintenanceActivityParts(actId);
+          activityPartsMap[actId] = actParts;
+        }
+        
+        // Count how many open work orders each activity has
+        for (const wo of openWorkOrders) {
+          if (wo.maintenanceActivityId && activityPartsMap[wo.maintenanceActivityId]) {
+            const actParts = activityPartsMap[wo.maintenanceActivityId];
+            for (const actPart of actParts) {
+              const qty = parseFloat(actPart.quantityPerExecution || '1');
+              reservedByPart[actPart.partId] = (reservedByPart[actPart.partId] || 0) + qty;
+            }
+          }
+        }
+      }
+      
       // Add projected quantity to each part
       const partsWithProjections = parts.map((part: any) => {
         const reserved = reservedByPart[part.id] || 0;
