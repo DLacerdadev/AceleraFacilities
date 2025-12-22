@@ -48,9 +48,23 @@ export default function MobileQrScanner() {
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
   const [resolvedContext, setResolvedContext] = useState<any>(null);
   const [scannedQrCode, setScannedQrCode] = useState<string>("");
+  const [autoScanProcessed, setAutoScanProcessed] = useState(false);
 
   useEffect(() => {
-    initializeCamera();
+    // Verificar se há um código para processar automaticamente via URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoScanCode = urlParams.get('autoScan');
+    
+    if (autoScanCode && !autoScanProcessed) {
+      setAutoScanProcessed(true);
+      // Processar o QR code automaticamente (simular escaneamento)
+      // Construir URL completa do QR code público
+      const qrUrl = `${window.location.origin}/qr-public/${autoScanCode}`;
+      handleQrCodeDetected(qrUrl);
+    } else {
+      initializeCamera();
+    }
+    
     return () => {
       stopScanner();
     };

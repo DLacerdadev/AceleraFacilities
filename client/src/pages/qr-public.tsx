@@ -4,9 +4,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { 
   MessageCircle, 
   Camera, 
@@ -15,17 +15,44 @@ import {
   MapPin,
   Send,
   Shield,
-  Clock
+  Clock,
+  Loader2
 } from "lucide-react";
 
 export default function QrPublic() {
   const { code } = useParams<{ code: string }>();
+  const [, navigateTo] = useLocation();
   const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [workOrderNumber, setWorkOrderNumber] = useState<number | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const { toast } = useToast();
+
+  // Verificar se usuário está logado - se sim, redirecionar para execução
+  useEffect(() => {
+    const token = localStorage.getItem("acelera_token");
+    if (token && code) {
+      // Usuário logado - redirecionar para o scanner móvel com contexto do QR code
+      // O scanner móvel vai buscar os dados do QR e mostrar a tela de seleção de serviço
+      navigateTo(`/mobile/qr-scanner?autoScan=${encodeURIComponent(code)}`);
+    } else {
+      setIsCheckingAuth(false);
+    }
+  }, [code, navigateTo]);
+
+  // Mostrar loading enquanto verifica autenticação
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-2" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   const createServiceRequestMutation = useMutation({
     mutationFn: async (data: any) => {
