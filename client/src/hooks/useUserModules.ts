@@ -14,8 +14,21 @@ export function useUserModules() {
   const { user, isAuthenticated } = useAuth();
 
   // CRITICAL: Include user.id in queryKey to refetch when user changes
+  // Use separate queryKey structure so user.id doesn't become part of URL
   const { data, isLoading, error } = useQuery<UserModulesResponse>({
-    queryKey: ['/api/auth/user-modules', user?.id],
+    queryKey: ['user-modules', user?.id],
+    queryFn: async () => {
+      const token = localStorage.getItem('opus:token');
+      const response = await fetch('/api/auth/user-modules', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch user modules');
+      }
+      return response.json();
+    },
     enabled: !!user && isAuthenticated,
     staleTime: 0, // Always refetch on mount
   });
