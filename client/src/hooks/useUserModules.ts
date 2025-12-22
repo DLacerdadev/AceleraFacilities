@@ -34,7 +34,10 @@ export function useUserModules() {
   });
 
   // Indica se os dados reais da API já chegaram (não é fallback)
+  // Considera que temos dados se: API retornou com sucesso OU se houve erro (não bloquear)
   const hasApiData = !!data && data.modules && data.modules.length > 0;
+  // Se houve erro ou query não está carregando e não tem dados, não bloquear a UI
+  const apiCompleted = !isLoading && (hasApiData || !!error);
   
   // Normalizar: garantir que sempre tenha pelo menos um módulo
   const rawModules = data?.modules || [];
@@ -69,7 +72,8 @@ export function useUserModules() {
     canAccessModule,
     getValidModule,
     isLoading,
-    hasApiData, // Indica se os dados vieram da API (não é fallback)
+    hasApiData, // Indica se os dados vieram da API com sucesso
+    apiCompleted, // Indica se a API já respondeu (sucesso ou erro) - não bloqueia UI
     error,
   };
 }
