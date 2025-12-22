@@ -40,7 +40,7 @@ export default function ThirdPartyDashboard() {
 
   const { data: workOrders = [], isLoading: loadingWorkOrders } = useQuery<WorkOrder[]>({
     queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId, currentModule],
-    enabled: !!user?.thirdPartyCompanyId,
+    enabled: !!user?.thirdPartyCompanyId && !!currentModule,
   });
 
   const { data: stats, isLoading: loadingStats } = useQuery<{

@@ -64,7 +64,7 @@ export default function ThirdPartyWorkOrders() {
 
   const { data: workOrders = [], isLoading: loadingWorkOrders, refetch } = useQuery<WorkOrder[]>({
     queryKey: ['/api/third-party-portal/work-orders', user?.thirdPartyCompanyId, currentModule],
-    enabled: !!user?.thirdPartyCompanyId,
+    enabled: !!user?.thirdPartyCompanyId && !!currentModule,
   });
 
   const { data: proposals = [], isLoading: loadingProposals } = useQuery<any[]>({
