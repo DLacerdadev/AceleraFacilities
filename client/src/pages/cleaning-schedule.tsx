@@ -1629,7 +1629,7 @@ function MultiSelect({
                 {options.map((option) => (
                   <div
                     key={option.value}
-                    className="flex items-center space-x-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
+                    className="flex items-center space-x-2 p-2 hover:bg-muted rounded-sm cursor-pointer"
                     onClick={() => toggleOption(option.value)}
                   >
                     <Checkbox

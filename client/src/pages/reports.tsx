@@ -2326,7 +2326,7 @@ export default function Reports() {
                                     ].map((month) => (
                                       <label
                                         key={month.value}
-                                        className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-accent"
+                                        className="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-muted"
                                       >
                                         <Checkbox
                                           checked={selectedMonths.includes(month.value)}
