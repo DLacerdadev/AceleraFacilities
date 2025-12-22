@@ -77,51 +77,53 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
   // Hook de navegação para redirecionamento automático
   const [, setLocation] = useLocation();
 
-  // Rastrear o ID do usuário anterior para detectar mudanças de login
-  const [previousUserId, setPreviousUserId] = useState<string | null>(null);
+  // Rastrear o ID do usuário para detectar mudanças de login
+  const [lastUserId, setLastUserId] = useState<string | null | undefined>(undefined);
   
-  // RESET: Quando o usuário muda (logout ou login de outro usuário), resetar o módulo
-  useEffect(() => {
-    const newUserId = user?.id || null;
-    
-    // Detectar mudança de usuário
-    if (previousUserId !== null && previousUserId !== newUserId) {
-      console.log(`[MODULE] 🔄 Usuário mudou de ${previousUserId} para ${newUserId} - Resetando módulo`);
-      setCurrentModule(null);
-      localStorage.removeItem('opus:currentModule');
-    }
-    
-    setPreviousUserId(newUserId);
-  }, [user?.id, previousUserId]);
-  
-  // Inicializar o módulo apenas DEPOIS que os dados do usuário carregarem
+  // Inicializar/Reinicializar o módulo quando usuário ou allowedModules mudam
   useEffect(() => {
     // Aguardar os dados carregarem
     if (isLoading) return;
     
-    // Se já tem um módulo válido e não é a primeira inicialização, não fazer nada
-    if (currentModule !== null && allowedModules.includes(currentModule)) return;
+    const currentUserId = user?.id || null;
+    const userChanged = lastUserId !== undefined && lastUserId !== currentUserId;
     
-    // Se não tem módulos configurados, forçar 'clean' como padrão seguro
+    // Atualizar o último ID de usuário
+    if (lastUserId !== currentUserId) {
+      setLastUserId(currentUserId);
+    }
+    
+    // Se o usuário mudou, forçar reinicialização
+    if (userChanged) {
+      console.log(`[MODULE] 🔄 Usuário mudou de ${lastUserId} para ${currentUserId} - Forçando reinicialização do módulo`);
+      localStorage.removeItem('opus:currentModule');
+      // Continuar para reinicializar
+    } else if (currentModule !== null) {
+      // Usuário não mudou, mas verificar se o módulo atual é válido
+      if (allowedModules.includes(currentModule)) {
+        // Módulo atual é válido, não fazer nada
+        return;
+      }
+      // Módulo atual não é mais válido, precisa reinicializar
+      console.log(`[MODULE] ⚠️ Módulo atual '${currentModule}' não está mais permitido, reinicializando...`);
+    }
+    
+    // Reinicializar módulo
     const safeDefaultModule = allowedModules.length > 0 ? defaultModule : 'clean';
-    
-    // TERCEIROS: Sempre usar o módulo padrão da API, ignorando localStorage
-    // Isso garante que o operador de manutenção não veja dados de limpeza
     const isThirdPartyUser = !!user?.thirdPartyCompanyId;
     
     if (isThirdPartyUser) {
+      // TERCEIROS: Sempre usar o módulo padrão da API, ignorando localStorage
       console.log(`[MODULE] Terceiro detectado - Inicializando com módulo da empresa: ${safeDefaultModule}`);
-      // Limpar localStorage para evitar conflitos
       localStorage.removeItem('opus:currentModule');
       setCurrentModule(safeDefaultModule);
       return;
     }
     
-    // Primeira inicialização - usar localStorage ou defaultModule (apenas para usuários normais)
+    // Usuários normais: usar localStorage se válido, senão usar defaultModule
     const stored = localStorage.getItem('opus:currentModule');
     const storedModule = (stored === 'clean' || stored === 'maintenance') ? stored : null;
     
-    // Validar se o módulo salvo é permitido
     if (storedModule && allowedModules.length > 0 && canAccessModule(storedModule)) {
       console.log(`[MODULE] Inicializando com módulo salvo: ${storedModule}`);
       setCurrentModule(storedModule);
@@ -129,7 +131,7 @@ export function ModuleProvider({ children }: { children: React.ReactNode }) {
       console.log(`[MODULE] Inicializando com módulo padrão: ${safeDefaultModule}`);
       setCurrentModule(safeDefaultModule);
     }
-  }, [isLoading, allowedModules, currentModule, canAccessModule, defaultModule, user]);
+  }, [isLoading, allowedModules, defaultModule, user?.id, user?.thirdPartyCompanyId, canAccessModule, lastUserId, currentModule]);
 
   // Sincronizar módulo quando o cliente mudar
   useEffect(() => {
