@@ -784,7 +784,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(zones, eq(workOrders.zoneId, zones.id))
       .leftJoin(sites, eq(zones.siteId, sites.id))
       .where(whereConditions)
-      .orderBy(asc(statusOrder), desc(workOrders.createdAt));
+      .orderBy(asc(statusOrder), asc(workOrders.createdAt));
     
     console.log(`[getWorkOrdersByCustomer] Work orders found: ${results.length}`);
     
@@ -4219,7 +4219,7 @@ export class DatabaseStorage implements IStorage {
     
     return await db.select().from(workOrders)
       .where(whereConditions)
-      .orderBy(asc(statusOrder), desc(workOrders.createdAt));
+      .orderBy(asc(statusOrder), asc(workOrders.createdAt));
   }
 
   async getWorkOrdersByUser(userId: string): Promise<WorkOrder[]> {
@@ -4236,7 +4236,7 @@ export class DatabaseStorage implements IStorage {
     
     return await db.select().from(workOrders)
       .where(eq(workOrders.assignedUserId, userId))
-      .orderBy(asc(statusOrder), desc(workOrders.createdAt));
+      .orderBy(asc(statusOrder), asc(workOrders.createdAt));
   }
 
   async getWorkOrdersByEquipment(equipmentId: string): Promise<WorkOrder[]> {
@@ -4253,7 +4253,7 @@ export class DatabaseStorage implements IStorage {
     
     return await db.select().from(workOrders)
       .where(eq(workOrders.equipmentId, equipmentId))
-      .orderBy(asc(statusOrder), desc(workOrders.createdAt));
+      .orderBy(asc(statusOrder), asc(workOrders.createdAt));
   }
 
   async getWorkOrder(id: string): Promise<WorkOrder | undefined> {
